@@ -32,7 +32,7 @@ export function Home() {
       </section>
 
       {/* Mission Statement */}
-      <section className="py-16 px-4">
+      <section className="py-16 px-4" data-mission-section>
         <div className="container mx-auto max-w-6xl">
           <Card className="shadow-card border-0">
             <CardContent className="p-8 md:p-12 text-center">
@@ -112,7 +112,10 @@ export function Home() {
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
-                <Button variant="energy" size="lg" onClick={() => navigate('/mission')} className="flex-1">
+                <Button variant="energy" size="lg" onClick={() => {
+                  const missionSection = document.querySelector('[data-mission-section]');
+                  missionSection?.scrollIntoView({ behavior: 'smooth' });
+                }} className="flex-1">
                   Learn More About Our Mission
                 </Button>
                 <Button variant="hero" size="lg" onClick={() => setShowEmailSignup(true)} className="flex-1">

@@ -36,7 +36,7 @@ function AppContent() {
       />
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/mission" element={<Mission onLogout={handleLogout} />} />
+        {isLoggedIn && <Route path="/mission" element={<Mission onLogout={handleLogout} />} />}
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
