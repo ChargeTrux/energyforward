@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface LoginModalProps {
   open: boolean;
@@ -21,22 +22,32 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: LoginModalPro
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate login process
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    if (email && password) {
-      toast({
-        title: "Login Successful",
-        description: "Welcome to EnergyForward!",
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
-      onLoginSuccess();
-      onOpenChange(false);
-      setEmail("");
-      setPassword("");
-    } else {
+
+      if (error) {
+        toast({
+          title: "Login Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else if (data.user) {
+        toast({
+          title: "Login Successful",
+          description: "Welcome to EnergyForward!",
+        });
+        onLoginSuccess();
+        onOpenChange(false);
+        setEmail("");
+        setPassword("");
+      }
+    } catch (error) {
       toast({
         title: "Login Failed",
-        description: "Please enter both email and password.",
+        description: "An unexpected error occurred.",
         variant: "destructive",
       });
     }
