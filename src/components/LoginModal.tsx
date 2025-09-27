@@ -49,6 +49,9 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: LoginModalPro
       <DialogContent className="sm:max-w-md shadow-energy">
         <DialogHeader>
           <DialogTitle className="text-center text-xl">Login to EnergyForward</DialogTitle>
+          <p className="text-center text-sm text-muted-foreground mt-2">
+            Access restricted to authorized users only
+          </p>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
