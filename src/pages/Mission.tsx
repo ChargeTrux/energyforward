@@ -13,8 +13,17 @@ import {
   Cpu
 } from "lucide-react";
 
-export function Mission() {
+interface MissionProps {
+  onLogout: () => void;
+}
+
+export function Mission({ onLogout }: MissionProps) {
   const navigate = useNavigate();
+
+  const handleBackToHome = () => {
+    onLogout();
+    navigate('/');
+  };
 
   const developmentAreas = [
     { icon: Zap, name: "Energy Generation", progress: 75 },
@@ -25,14 +34,14 @@ export function Mission() {
 
   return (
     <main className="min-h-screen py-12 px-4">
-      <div className="container mx-auto max-w-4xl">
+      <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="text-center mb-16">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-primary to-accent rounded-full mb-8 shadow-energy">
             <Atom className="w-10 h-10 text-white" />
           </div>
           
-          <h1 className="text-4xl md:text-6xl font-bold mb-6">
+          <h1 className="font-display text-4xl md:text-6xl font-bold mb-6">
             <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               Under Development
             </span>
@@ -109,7 +118,7 @@ export function Mission() {
           <Button 
             variant="hero" 
             size="lg"
-            onClick={() => navigate('/')}
+            onClick={handleBackToHome}
             className="inline-flex items-center gap-2"
           >
             <ArrowLeft className="w-5 h-5" />

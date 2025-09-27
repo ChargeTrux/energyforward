@@ -22,12 +22,21 @@ function AppContent() {
     navigate('/mission');
   };
 
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    navigate('/');
+  };
+
   return (
     <>
-      <Header onLoginClick={() => setShowLogin(true)} />
+      <Header 
+        onLoginClick={() => setShowLogin(true)} 
+        onLogout={handleLogout}
+        isLoggedIn={isLoggedIn}
+      />
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/mission" element={<Mission />} />
+        <Route path="/mission" element={<Mission onLogout={handleLogout} />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>

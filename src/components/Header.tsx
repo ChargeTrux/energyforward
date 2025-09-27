@@ -1,12 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import energyForwardLogo from "@/assets/energy-forward-logo.png";
+import energyForwardLogo from "@/assets/energy-forward-logo-new.png";
 
 interface HeaderProps {
   onLoginClick: () => void;
+  onLogout: () => void;
+  isLoggedIn: boolean;
 }
 
-export function Header({ onLoginClick }: HeaderProps) {
+export function Header({ onLoginClick, onLogout, isLoggedIn }: HeaderProps) {
   const navigate = useNavigate();
 
   return (
@@ -25,10 +27,10 @@ export function Header({ onLoginClick }: HeaderProps) {
         
         <Button 
           variant="energy" 
-          onClick={onLoginClick}
+          onClick={isLoggedIn ? onLogout : onLoginClick}
           className="px-6"
         >
-          Login
+          {isLoggedIn ? "Sign Out" : "Login"}
         </Button>
       </div>
     </header>
