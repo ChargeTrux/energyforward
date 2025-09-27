@@ -4,24 +4,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { EmailSignupModal } from "@/components/EmailSignupModal";
 import { Zap, Target, Clock, Users } from "lucide-react";
-
 export function Home() {
   const [showEmailSignup, setShowEmailSignup] = useState(false);
   const navigate = useNavigate();
-
-  return (
-    <main className="min-h-screen">
+  return <main className="min-h-screen">
       {/* Hero Section */}
       <section className="hero-gradient py-20 px-4">
         <div className="container mx-auto text-center max-w-4xl">
-          <div className="mb-8 p-8 bg-card/50 backdrop-blur-sm rounded-2xl shadow-card">
-            <div className="w-full h-64 bg-muted rounded-xl mb-6 flex items-center justify-center">
-              <div className="text-center">
-                <Zap className="w-16 h-16 mx-auto mb-4 text-accent" />
-                <p className="text-muted-foreground">Mission/Company Image Placeholder</p>
-              </div>
-            </div>
-          </div>
+          
           
           <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
             Bringing tomorrow's{" "}
@@ -122,20 +112,10 @@ export function Home() {
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
-                <Button 
-                  variant="energy" 
-                  size="lg"
-                  onClick={() => navigate('/mission')}
-                  className="flex-1"
-                >
+                <Button variant="energy" size="lg" onClick={() => navigate('/mission')} className="flex-1">
                   Learn More About Our Mission
                 </Button>
-                <Button 
-                  variant="hero" 
-                  size="lg"
-                  onClick={() => setShowEmailSignup(true)}
-                  className="flex-1"
-                >
+                <Button variant="hero" size="lg" onClick={() => setShowEmailSignup(true)} className="flex-1">
                   Sign Up for Updates
                 </Button>
               </div>
@@ -144,10 +124,6 @@ export function Home() {
         </div>
       </section>
 
-      <EmailSignupModal 
-        open={showEmailSignup} 
-        onOpenChange={setShowEmailSignup} 
-      />
-    </main>
-  );
+      <EmailSignupModal open={showEmailSignup} onOpenChange={setShowEmailSignup} />
+    </main>;
 }
