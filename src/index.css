@@ -97,13 +97,13 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Roboto', system-ui, -apple-system, sans-serif;
+    font-family: Arial, Helvetica, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
   
   h1, h2, h3, h4, h5, h6 {
     @apply text-foreground font-bold tracking-tight;
-    font-family: 'Poppins', 'Roboto', system-ui, sans-serif;
+    font-family: Arial, Helvetica, sans-serif;
   }
   
   .energy-gradient {
