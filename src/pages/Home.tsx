@@ -25,7 +25,7 @@ export function Home() {
             to today
           </h1>
           
-          <p className="text-xl md:text-2xl text-muted-foreground mb-8 font-medium">
+          <p className="text-xl mb-8 font-extrabold text-blue-900 md:text-4xl">
             Operating in Stealth Mode
           </p>
         </div>
@@ -113,9 +113,11 @@ export function Home() {
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
                 <Button variant="energy" size="lg" onClick={() => {
-                  const missionSection = document.querySelector('[data-mission-section]');
-                  missionSection?.scrollIntoView({ behavior: 'smooth' });
-                }} className="flex-1">
+                const missionSection = document.querySelector('[data-mission-section]');
+                missionSection?.scrollIntoView({
+                  behavior: 'smooth'
+                });
+              }} className="flex-1">
                   Learn More About Our Mission
                 </Button>
                 <Button variant="hero" size="lg" onClick={() => setShowEmailSignup(true)} className="flex-1">
