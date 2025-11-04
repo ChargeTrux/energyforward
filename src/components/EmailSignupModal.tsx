@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 
+// Validation schema
 const signupSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
   email: z.string().trim().email("Invalid email format").max(255, "Email must be less than 255 characters"),
@@ -25,39 +26,44 @@ export function EmailSignupModal({ open, onOpenChange }: EmailSignupModalProps) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate inputs
+    const validation = signupSchema.safeParse({ 
+      name: name.trim(), 
+      email: email.trim() 
+    });
+    
+    if (!validation.success) {
+      toast({
+        title: "Validation Error",
+        description: validation.error.errors[0].message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      // Validate inputs
-      const result = signupSchema.safeParse({ name, email });
-      
-      if (!result.success) {
-        toast({
-          title: "Validation Error",
-          description: result.error.errors[0].message,
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // Store in database
       const { error } = await supabase
         .from('email_signups')
-        .insert([{ name: result.data.name, email: result.data.email }]);
+        .insert([{
+          name: validation.data.name,
+          email: validation.data.email,
+        }]);
 
       if (error) {
-        // Handle duplicate email error specifically
+        // Handle duplicate email error gracefully
         if (error.code === '23505') {
           toast({
-            title: "Already Registered",
+            title: "Already Signed Up",
             description: "This email is already registered for updates.",
             variant: "destructive",
           });
         } else {
           toast({
             title: "Signup Failed",
-            description: "Unable to register at this time. Please try again later.",
+            description: "Unable to sign up at this time. Please try again later.",
             variant: "destructive",
           });
         }
@@ -72,7 +78,7 @@ export function EmailSignupModal({ open, onOpenChange }: EmailSignupModalProps) 
       }
     } catch (error) {
       toast({
-        title: "Error",
+        title: "Signup Failed",
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });

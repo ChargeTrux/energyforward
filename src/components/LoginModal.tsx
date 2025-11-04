@@ -8,22 +8,27 @@ import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 import type { AuthError } from "@supabase/supabase-js";
 
+// Validation schema
 const loginSchema = z.object({
   email: z.string().trim().email("Invalid email format").max(255, "Email must be less than 255 characters"),
-  password: z.string().min(1, "Password is required").max(100, "Password must be less than 100 characters"),
+  password: z.string().min(8, "Password must be at least 8 characters").max(100, "Password must be less than 100 characters"),
 });
 
+// Map Supabase errors to user-friendly messages
 const getErrorMessage = (error: AuthError): string => {
   const message = error.message.toLowerCase();
   
-  if (message.includes('invalid') || message.includes('credentials')) {
+  if (message.includes("invalid login credentials") || message.includes("invalid password")) {
     return "Invalid email or password. Please try again.";
   }
-  if (message.includes('email not confirmed')) {
+  if (message.includes("email not confirmed")) {
     return "Please verify your email address before logging in.";
   }
-  if (message.includes('too many requests')) {
+  if (message.includes("too many requests")) {
     return "Too many login attempts. Please try again later.";
+  }
+  if (message.includes("user not found")) {
+    return "Invalid email or password. Please try again.";
   }
   
   return "Login failed. Please check your credentials and try again.";
@@ -42,25 +47,28 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate inputs
+    const validation = loginSchema.safeParse({ 
+      email: email.trim(), 
+      password 
+    });
+    
+    if (!validation.success) {
+      toast({
+        title: "Validation Error",
+        description: validation.error.errors[0].message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      // Validate inputs
-      const result = loginSchema.safeParse({ email, password });
-      
-      if (!result.success) {
-        toast({
-          title: "Validation Error",
-          description: result.error.errors[0].message,
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: result.data.email,
-        password: result.data.password,
+        email: validation.data.email,
+        password: validation.data.password,
       });
 
       if (error) {
