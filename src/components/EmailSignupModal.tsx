@@ -4,6 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { z } from "zod";
+
+const signupSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
+  email: z.string().trim().email("Invalid email format").max(255, "Email must be less than 255 characters"),
+});
 
 interface EmailSignupModalProps {
   open: boolean;
@@ -20,21 +27,53 @@ export function EmailSignupModal({ open, onOpenChange }: EmailSignupModalProps) 
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate signup process
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    if (email && name) {
+    try {
+      // Validate inputs
+      const result = signupSchema.safeParse({ name, email });
+      
+      if (!result.success) {
+        toast({
+          title: "Validation Error",
+          description: result.error.errors[0].message,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Store in database
+      const { error } = await supabase
+        .from('email_signups')
+        .insert([{ name: result.data.name, email: result.data.email }]);
+
+      if (error) {
+        // Handle duplicate email error specifically
+        if (error.code === '23505') {
+          toast({
+            title: "Already Registered",
+            description: "This email is already registered for updates.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Signup Failed",
+            description: "Unable to register at this time. Please try again later.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Successfully Signed Up!",
+          description: "You'll be among the first to know about our energy innovations.",
+        });
+        onOpenChange(false);
+        setEmail("");
+        setName("");
+      }
+    } catch (error) {
       toast({
-        title: "Successfully Signed Up!",
-        description: "You'll be among the first to know about our energy innovations.",
-      });
-      onOpenChange(false);
-      setEmail("");
-      setName("");
-    } else {
-      toast({
-        title: "Signup Failed",
-        description: "Please enter both name and email.",
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     }

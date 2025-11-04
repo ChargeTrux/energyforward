@@ -5,6 +5,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { z } from "zod";
+import type { AuthError } from "@supabase/supabase-js";
+
+const loginSchema = z.object({
+  email: z.string().trim().email("Invalid email format").max(255, "Email must be less than 255 characters"),
+  password: z.string().min(1, "Password is required").max(100, "Password must be less than 100 characters"),
+});
+
+const getErrorMessage = (error: AuthError): string => {
+  const message = error.message.toLowerCase();
+  
+  if (message.includes('invalid') || message.includes('credentials')) {
+    return "Invalid email or password. Please try again.";
+  }
+  if (message.includes('email not confirmed')) {
+    return "Please verify your email address before logging in.";
+  }
+  if (message.includes('too many requests')) {
+    return "Too many login attempts. Please try again later.";
+  }
+  
+  return "Login failed. Please check your credentials and try again.";
+};
 
 interface LoginModalProps {
   open: boolean;
@@ -22,15 +45,28 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
     setIsLoading(true);
 
     try {
+      // Validate inputs
+      const result = loginSchema.safeParse({ email, password });
+      
+      if (!result.success) {
+        toast({
+          title: "Validation Error",
+          description: result.error.errors[0].message,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: result.data.email,
+        password: result.data.password,
       });
 
       if (error) {
         toast({
           title: "Login Failed",
-          description: error.message,
+          description: getErrorMessage(error),
           variant: "destructive",
         });
       } else if (data.user) {
@@ -45,7 +81,7 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
     } catch (error) {
       toast({
         title: "Login Failed",
-        description: "An unexpected error occurred.",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     }
