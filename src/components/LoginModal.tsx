@@ -9,10 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
 interface LoginModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onLoginSuccess: () => void;
 }
 
-export function LoginModal({ open, onOpenChange, onLoginSuccess }: LoginModalProps) {
+export function LoginModal({ open, onOpenChange }: LoginModalProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -39,7 +38,6 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: LoginModalPro
           title: "Login Successful",
           description: "Welcome to EnergyForward!",
         });
-        onLoginSuccess();
         onOpenChange(false);
         setEmail("");
         setPassword("");

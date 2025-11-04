@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,34 +9,64 @@ import { LoginModal } from "@/components/LoginModal";
 import { Home } from "@/pages/Home";
 import { Mission } from "@/pages/Mission";
 import NotFound from "./pages/NotFound";
+import { supabase } from "@/integrations/supabase/client";
+import type { Session } from "@supabase/supabase-js";
 
 const queryClient = new QueryClient();
 
 function AppContent() {
   const [showLogin, setShowLogin] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  const handleLoginSuccess = () => {
-    setIsLoggedIn(true);
-    navigate('/mission');
-  };
+  useEffect(() => {
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+        setLoading(false);
+        
+        // Navigate to mission page on login
+        if (session && !loading) {
+          navigate('/mission');
+        }
+      }
+    );
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setSession(null);
     navigate('/');
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <>
       <Header 
         onLoginClick={() => setShowLogin(true)} 
         onLogout={handleLogout}
-        isLoggedIn={isLoggedIn}
+        isLoggedIn={!!session}
       />
       <Routes>
         <Route path="/" element={<Home />} />
-        {isLoggedIn && <Route path="/mission" element={<Mission onLogout={handleLogout} />} />}
+        {session && <Route path="/mission" element={<Mission onLogout={handleLogout} />} />}
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -44,7 +74,6 @@ function AppContent() {
       <LoginModal 
         open={showLogin} 
         onOpenChange={setShowLogin}
-        onLoginSuccess={handleLoginSuccess}
       />
     </>
   );
