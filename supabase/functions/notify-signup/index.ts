@@ -42,7 +42,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const emailResponse = await resend.emails.send({
       from: "Energy Forward <onboarding@resend.dev>",
-      to: ["Submission@energyforward.com"],
+      to: ["arahimi@cloudmor.com"],
       subject: `New Signup: ${name}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
