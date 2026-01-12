@@ -68,6 +68,19 @@ export function EmailSignupModal({ open, onOpenChange }: EmailSignupModalProps) 
           });
         }
       } else {
+        // Send notification email
+        try {
+          await supabase.functions.invoke('notify-signup', {
+            body: {
+              name: validation.data.name,
+              email: validation.data.email,
+            },
+          });
+        } catch (notifyError) {
+          console.error("Failed to send notification:", notifyError);
+          // Don't fail the signup if notification fails
+        }
+
         toast({
           title: "Successfully Signed Up!",
           description: "You'll be among the first to know about our energy innovations.",
