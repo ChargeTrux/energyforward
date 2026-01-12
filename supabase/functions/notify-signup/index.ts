@@ -11,7 +11,19 @@ const corsHeaders = {
 interface SignupNotificationRequest {
   name: string;
   email: string;
+  serviceType: string;
 }
+
+const getServiceTypeLabel = (serviceType: string): string => {
+  switch (serviceType) {
+    case "tyre_replacement":
+      return "Tyre Replacement";
+    case "brake_replacement":
+      return "Brake Replacement";
+    default:
+      return serviceType;
+  }
+};
 
 const handler = async (req: Request): Promise<Response> => {
   console.log("notify-signup function called");
@@ -22,9 +34,9 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { name, email }: SignupNotificationRequest = await req.json();
+    const { name, email, serviceType }: SignupNotificationRequest = await req.json();
     
-    console.log(`Processing signup notification for: ${name} (${email})`);
+    console.log(`Processing signup notification for: ${name} (${email}) - Service: ${serviceType}`);
 
     if (!name || !email) {
       console.error("Missing required fields: name or email");
@@ -40,10 +52,12 @@ const handler = async (req: Request): Promise<Response> => {
       timeStyle: "long",
     });
 
+    const serviceTypeLabel = getServiceTypeLabel(serviceType);
+
     const emailResponse = await resend.emails.send({
       from: "Energy Forward <onboarding@resend.dev>",
-      to: ["arahimi@cloudmor.com"],
-      subject: `New Signup: ${name}`,
+      to: ["submissions@wibookly.com"],
+      subject: `New Signup: ${name} - ${serviceTypeLabel}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h1 style="color: #333; border-bottom: 2px solid #10b981; padding-bottom: 10px;">
@@ -55,7 +69,7 @@ const handler = async (req: Request): Promise<Response> => {
             
             <table style="width: 100%; border-collapse: collapse;">
               <tr>
-                <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb; font-weight: bold; color: #6b7280;">Name:</td>
+                <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb; font-weight: bold; color: #6b7280;">Full Name:</td>
                 <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb; color: #111827;">${name}</td>
               </tr>
               <tr>
@@ -63,6 +77,10 @@ const handler = async (req: Request): Promise<Response> => {
                 <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb; color: #111827;">
                   <a href="mailto:${email}" style="color: #10b981;">${email}</a>
                 </td>
+              </tr>
+              <tr>
+                <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb; font-weight: bold; color: #6b7280;">Service Type:</td>
+                <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb; color: #111827;">${serviceTypeLabel}</td>
               </tr>
               <tr>
                 <td style="padding: 10px 0; font-weight: bold; color: #6b7280;">Submitted At:</td>

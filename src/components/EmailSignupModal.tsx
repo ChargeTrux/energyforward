@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
@@ -11,6 +12,7 @@ import { z } from "zod";
 const signupSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
   email: z.string().trim().email("Invalid email format").max(255, "Email must be less than 255 characters"),
+  serviceType: z.string().min(1, "Please select a service type"),
 });
 
 interface EmailSignupModalProps {
@@ -21,6 +23,7 @@ interface EmailSignupModalProps {
 export function EmailSignupModal({ open, onOpenChange }: EmailSignupModalProps) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [serviceType, setServiceType] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -30,7 +33,8 @@ export function EmailSignupModal({ open, onOpenChange }: EmailSignupModalProps) 
     // Validate inputs
     const validation = signupSchema.safeParse({ 
       name: name.trim(), 
-      email: email.trim() 
+      email: email.trim(),
+      serviceType,
     });
     
     if (!validation.success) {
@@ -50,6 +54,7 @@ export function EmailSignupModal({ open, onOpenChange }: EmailSignupModalProps) 
         .insert([{
           name: validation.data.name,
           email: validation.data.email,
+          service_type: validation.data.serviceType,
         }]);
 
       if (error) {
@@ -74,6 +79,7 @@ export function EmailSignupModal({ open, onOpenChange }: EmailSignupModalProps) 
             body: {
               name: validation.data.name,
               email: validation.data.email,
+              serviceType: validation.data.serviceType,
             },
           });
         } catch (notifyError) {
@@ -88,6 +94,7 @@ export function EmailSignupModal({ open, onOpenChange }: EmailSignupModalProps) 
         onOpenChange(false);
         setEmail("");
         setName("");
+        setServiceType("");
       }
     } catch (error) {
       toast({
@@ -112,11 +119,11 @@ export function EmailSignupModal({ open, onOpenChange }: EmailSignupModalProps) 
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">Full Name</Label>
             <Input
               id="name"
               type="text"
-              placeholder="Enter your name"
+              placeholder="Enter your full name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
@@ -133,6 +140,19 @@ export function EmailSignupModal({ open, onOpenChange }: EmailSignupModalProps) 
               onChange={(e) => setEmail(e.target.value)}
               required
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="service-type">Service Type</Label>
+            <Select value={serviceType} onValueChange={setServiceType}>
+              <SelectTrigger id="service-type">
+                <SelectValue placeholder="Select service type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tyre_replacement">Tyre Replacement</SelectItem>
+                <SelectItem value="brake_replacement">Brake Replacement</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           
           <div className="flex gap-3 pt-4">
