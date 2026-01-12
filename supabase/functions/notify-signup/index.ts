@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -8,9 +9,37 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface SignupNotificationRequest {
-  name: string;
-  email: string;
+// HTML escape function to prevent XSS/injection attacks
+function escapeHtml(unsafe: string): string {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+// Input validation
+function validateInput(name: unknown, email: unknown): { valid: boolean; error?: string; name?: string; email?: string } {
+  if (typeof name !== "string" || typeof email !== "string") {
+    return { valid: false, error: "Invalid input types" };
+  }
+
+  const trimmedName = name.trim();
+  const trimmedEmail = email.trim().toLowerCase();
+
+  // Name validation
+  if (!trimmedName || trimmedName.length < 1 || trimmedName.length > 100) {
+    return { valid: false, error: "Name must be between 1 and 100 characters" };
+  }
+
+  // Email validation - basic regex check
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!trimmedEmail || !emailRegex.test(trimmedEmail) || trimmedEmail.length > 255) {
+    return { valid: false, error: "Invalid email format" };
+  }
+
+  return { valid: true, name: trimmedName, email: trimmedEmail };
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -21,29 +50,77 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const { name, email }: SignupNotificationRequest = await req.json();
-    
-    console.log(`Processing signup notification for: ${name} (${email})`);
+  // Only allow POST requests
+  if (req.method !== "POST") {
+    return new Response(
+      JSON.stringify({ error: "Method not allowed" }),
+      { status: 405, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
+  }
 
-    if (!name || !email) {
-      console.error("Missing required fields: name or email");
+  try {
+    const body = await req.json();
+    const validation = validateInput(body.name, body.email);
+
+    if (!validation.valid) {
+      console.error("Validation failed:", validation.error);
       return new Response(
-        JSON.stringify({ error: "Name and email are required" }),
+        JSON.stringify({ error: validation.error }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    const submittedAt = new Date().toLocaleString("en-US", {
+    const { name, email } = validation;
+    console.log(`Processing signup notification for: ${name} (${email})`);
+
+    // Verify the signup exists in the database (prevents abuse - only sends if record exists)
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: signupRecord, error: dbError } = await supabase
+      .from("email_signups")
+      .select("id, created_at")
+      .eq("email", email)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (dbError || !signupRecord) {
+      console.error("Signup not found in database:", dbError?.message);
+      return new Response(
+        JSON.stringify({ error: "Signup record not found" }),
+        { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Check if signup was created within the last 5 minutes (prevents replay attacks)
+    const signupTime = new Date(signupRecord.created_at).getTime();
+    const now = Date.now();
+    const fiveMinutes = 5 * 60 * 1000;
+
+    if (now - signupTime > fiveMinutes) {
+      console.error("Signup record is too old");
+      return new Response(
+        JSON.stringify({ error: "Signup notification window expired" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const submittedAt = new Date(signupRecord.created_at).toLocaleString("en-US", {
       timeZone: "America/New_York",
       dateStyle: "full",
       timeStyle: "long",
     });
 
+    // Escape user inputs before inserting into HTML
+    const safeName = escapeHtml(name!);
+    const safeEmail = escapeHtml(email!);
+
     const emailResponse = await resend.emails.send({
       from: "Energy Forward <onboarding@resend.dev>",
       to: ["submissions@wibookly.com"],
-      subject: `New Signup: ${name}`,
+      subject: `New Signup: ${safeName}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h1 style="color: #333; border-bottom: 2px solid #10b981; padding-bottom: 10px;">
@@ -56,12 +133,12 @@ const handler = async (req: Request): Promise<Response> => {
             <table style="width: 100%; border-collapse: collapse;">
               <tr>
                 <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb; font-weight: bold; color: #6b7280;">Full Name:</td>
-                <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb; color: #111827;">${name}</td>
+                <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb; color: #111827;">${safeName}</td>
               </tr>
               <tr>
                 <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb; font-weight: bold; color: #6b7280;">Email:</td>
                 <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb; color: #111827;">
-                  <a href="mailto:${email}" style="color: #10b981;">${email}</a>
+                  <a href="mailto:${safeEmail}" style="color: #10b981;">${safeEmail}</a>
                 </td>
               </tr>
               <tr>
