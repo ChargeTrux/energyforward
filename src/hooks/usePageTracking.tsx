@@ -40,33 +40,8 @@ export function usePageTracking() {
       }
     })();
 
-    const handleUnload = () => {
-      if (currentRef.current) {
-        const duration = Math.floor((Date.now() - currentRef.current.enteredAt) / 1000);
-        navigator.sendBeacon?.(
-          `https://scyqmmakqmnzpnhrrnlx.supabase.co/rest/v1/page_views?id=eq.${currentRef.current.id}`,
-        );
-        // best-effort fallback via fetch
-        fetch(
-          `https://scyqmmakqmnzpnhrrnlx.supabase.co/rest/v1/page_views?id=eq.${currentRef.current.id}`,
-          {
-            method: "PATCH",
-            keepalive: true,
-            headers: {
-              "Content-Type": "application/json",
-              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjeXFtbWFrcW1uenBuaHJybmx4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5OTY2NTMsImV4cCI6MjA3NDU3MjY1M30.pzSqpFJNrJVAn9wx-zSdTN7wibphuN24R2tIQMi85SA",
-              Authorization: `Bearer ${supabase.auth.getSession ? "" : ""}`,
-            },
-            body: JSON.stringify({ duration_seconds: duration }),
-          },
-        ).catch(() => {});
-      }
-    };
-    window.addEventListener("beforeunload", handleUnload);
-
     return () => {
       cancelled = true;
-      window.removeEventListener("beforeunload", handleUnload);
       closePrev();
     };
   }, [location.pathname, user, sessionId]);
