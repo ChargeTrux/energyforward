@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -21,6 +21,13 @@ function AppContent() {
   const { session, loading, signOut } = useAuth();
   const navigate = useNavigate();
   usePageTracking();
+  const prevSession = useRef<boolean>(!!session);
+  useEffect(() => {
+    if (!loading && session && !prevSession.current) {
+      navigate('/mission');
+    }
+    prevSession.current = !!session;
+  }, [session, loading, navigate]);
 
   const handleLogout = async () => {
     await signOut();
