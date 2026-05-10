@@ -39,9 +39,9 @@ export default ReauthenticationEmail
 const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
 const container = { padding: '20px 25px' }
 const h1 = {
-  fontSize: '22px',
+  fontSize: '24px',
   fontWeight: 'bold' as const,
-  color: '#000000',
+  color: '#1e3a8a',
   margin: '0 0 20px',
 }
 const text = {
@@ -52,9 +52,10 @@ const text = {
 }
 const codeStyle = {
   fontFamily: 'Courier, monospace',
-  fontSize: '22px',
+  fontSize: '26px',
   fontWeight: 'bold' as const,
-  color: '#000000',
+  color: '#1e3a8a',
   margin: '0 0 30px',
+  letterSpacing: '4px',
 }
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
