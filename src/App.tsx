@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,44 +8,22 @@ import { Header } from "@/components/Header";
 import { LoginModal } from "@/components/LoginModal";
 import { Home } from "@/pages/Home";
 import { Mission } from "@/pages/Mission";
+import AdminDashboard from "@/pages/AdminDashboard";
+import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "./pages/NotFound";
-import { supabase } from "@/integrations/supabase/client";
-import type { Session } from "@supabase/supabase-js";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { usePageTracking } from "@/hooks/usePageTracking";
 
 const queryClient = new QueryClient();
 
 function AppContent() {
   const [showLogin, setShowLogin] = useState(false);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { session, loading, signOut } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-        setLoading(false);
-        
-        // Navigate to mission page on login
-        if (session && !loading) {
-          navigate('/mission');
-        }
-      }
-    );
-
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  usePageTracking();
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setSession(null);
+    await signOut();
     navigate('/');
   };
 
@@ -67,6 +45,8 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<Home />} />
         {session && <Route path="/mission" element={<Mission onLogout={handleLogout} />} />}
+        {session && <Route path="/admin" element={<AdminDashboard />} />}
+        <Route path="/reset-password" element={<ResetPassword />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -85,7 +65,9 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AppContent />
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

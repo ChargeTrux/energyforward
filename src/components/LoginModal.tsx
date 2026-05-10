@@ -43,6 +43,7 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -97,6 +98,24 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
     setIsLoading(false);
   };
 
+  const handleForgot = async () => {
+    if (!email) {
+      toast({ title: "Enter your email first", variant: "destructive" });
+      return;
+    }
+    setIsLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setIsLoading(false);
+    if (error) {
+      toast({ title: "Could not send reset email", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Check your inbox", description: "Password reset email sent." });
+      setShowForgot(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md shadow-energy">
@@ -130,6 +149,17 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+          </div>
+
+          <div className="text-right">
+            <button
+              type="button"
+              onClick={handleForgot}
+              className="text-sm text-primary hover:underline"
+              disabled={isLoading}
+            >
+              Forgot password?
+            </button>
           </div>
           
           <div className="flex gap-3 pt-4">
