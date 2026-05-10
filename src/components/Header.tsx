@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import energyForwardLogo from "@/assets/energy-forward-logo-new.png";
+import { useAuth } from "@/hooks/useAuth";
+import { ShieldCheck } from "lucide-react";
 
 interface HeaderProps {
   onLoginClick: () => void;
@@ -10,6 +12,7 @@ interface HeaderProps {
 
 export function Header({ onLoginClick, onLogout, isLoggedIn }: HeaderProps) {
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
 
   return (
     <header className="w-full bg-background/95 backdrop-blur-sm border-b border-border shadow-card sticky top-0 z-50">
@@ -25,13 +28,20 @@ export function Header({ onLoginClick, onLogout, isLoggedIn }: HeaderProps) {
           />
         </div>
         
-        <Button 
-          variant="energy" 
-          onClick={isLoggedIn ? onLogout : onLoginClick}
-          className="px-6"
-        >
-          {isLoggedIn ? "Sign Out" : "Login"}
-        </Button>
+        <div className="flex items-center gap-2">
+          {isLoggedIn && isAdmin && (
+            <Button variant="outline" onClick={() => navigate('/admin')} className="gap-1">
+              <ShieldCheck className="w-4 h-4" /> Admin
+            </Button>
+          )}
+          <Button
+            variant="energy"
+            onClick={isLoggedIn ? onLogout : onLoginClick}
+            className="px-6"
+          >
+            {isLoggedIn ? "Sign Out" : "Login"}
+          </Button>
+        </div>
       </div>
     </header>
   );
