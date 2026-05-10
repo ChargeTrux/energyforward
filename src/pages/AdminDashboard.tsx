@@ -16,7 +16,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Activity, UserPlus, ShieldCheck, Power } from "lucide-react";
+import { Users, Activity, UserPlus, ShieldCheck, Power, Lock } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface ProfileRow {
   user_id: string;
@@ -38,12 +39,17 @@ interface SessionRow {
   total_page_seconds?: number;
 }
 
+interface PageRow { slug: string; title: string }
+
 export default function AdminDashboard() {
   const { isAdmin, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
+  const [pages, setPages] = useState<PageRow[]>([]);
+  const [accessMap, setAccessMap] = useState<Record<string, Set<string>>>({});
+  const [pageTimeByUser, setPageTimeByUser] = useState<Record<string, Record<string, number>>>({});
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -53,7 +59,7 @@ export default function AdminDashboard() {
   }, [loading, isAdmin, navigate]);
 
   const load = async () => {
-    const [{ data: profs }, { data: roles }, { data: sess }, { data: views }] = await Promise.all([
+    const [{ data: profs }, { data: roles }, { data: sess }, { data: views }, { data: pgs }, { data: pa }] = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("user_roles").select("user_id, role"),
       supabase
@@ -61,7 +67,9 @@ export default function AdminDashboard() {
         .select("*")
         .order("login_at", { ascending: false })
         .limit(200),
-      supabase.from("page_views").select("session_id, duration_seconds"),
+      supabase.from("page_views").select("user_id, session_id, path, duration_seconds"),
+      supabase.from("pages").select("slug, title").order("title"),
+      supabase.from("page_access").select("user_id, page_slug"),
     ]);
 
     const adminSet = new Set(
@@ -87,6 +95,24 @@ export default function AdminDashboard() {
         total_page_seconds: pageTotals.get(s.id) ?? 0,
       })),
     );
+
+    setPages((pgs ?? []) as PageRow[]);
+    const accMap: Record<string, Set<string>> = {};
+    (pa ?? []).forEach((row) => {
+      if (!accMap[row.user_id]) accMap[row.user_id] = new Set();
+      accMap[row.user_id].add(row.page_slug);
+    });
+    setAccessMap(accMap);
+
+    const ptu: Record<string, Record<string, number>> = {};
+    (views ?? []).forEach((v) => {
+      const uid = (v as { user_id: string }).user_id;
+      const path = (v as { path: string }).path ?? "";
+      const dur = (v as { duration_seconds: number | null }).duration_seconds ?? 0;
+      if (!ptu[uid]) ptu[uid] = {};
+      ptu[uid][path] = (ptu[uid][path] ?? 0) + dur;
+    });
+    setPageTimeByUser(ptu);
   };
 
   useEffect(() => {
@@ -127,6 +153,25 @@ export default function AdminDashboard() {
     const m = Math.floor(s / 60);
     const sec = s % 60;
     return `${m}m ${sec}s`;
+  };
+
+  const toggleAccess = async (user_id: string, page_slug: string, grant: boolean) => {
+    setBusy(true);
+    if (grant) {
+      const { error } = await supabase
+        .from("page_access")
+        .insert({ user_id, page_slug });
+      if (error) toast({ title: "Failed", description: error.message, variant: "destructive" });
+    } else {
+      const { error } = await supabase
+        .from("page_access")
+        .delete()
+        .eq("user_id", user_id)
+        .eq("page_slug", page_slug);
+      if (error) toast({ title: "Failed", description: error.message, variant: "destructive" });
+    }
+    setBusy(false);
+    await load();
   };
 
   if (loading) return <div className="p-12 text-center">Loading…</div>;
@@ -306,6 +351,84 @@ export default function AdminDashboard() {
                   <TableCell>{formatDuration(s.total_page_seconds)}</TableCell>
                 </TableRow>
               ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Lock className="w-5 h-5" /> Page Access
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>User</TableHead>
+                {pages.map((pg) => (
+                  <TableHead key={pg.slug} className="text-center">{pg.title}</TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {profiles.map((p) => (
+                <TableRow key={p.user_id}>
+                  <TableCell>
+                    <div className="font-medium">{p.full_name || "—"}</div>
+                    <div className="text-xs text-muted-foreground">{p.email}</div>
+                  </TableCell>
+                  {pages.map((pg) => {
+                    const has = accessMap[p.user_id]?.has(pg.slug) ?? false;
+                    return (
+                      <TableCell key={pg.slug} className="text-center">
+                        <Checkbox
+                          checked={has}
+                          disabled={busy}
+                          onCheckedChange={(v) => toggleAccess(p.user_id, pg.slug, !!v)}
+                        />
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="w-5 h-5" /> Time Spent Per Page (per User)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>User</TableHead>
+                <TableHead>Path</TableHead>
+                <TableHead className="text-right">Total Time</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {profiles.flatMap((p) => {
+                const paths = pageTimeByUser[p.user_id] ?? {};
+                const entries = Object.entries(paths).sort((a, b) => b[1] - a[1]);
+                if (entries.length === 0) return [];
+                return entries.map(([path, secs]) => (
+                  <TableRow key={`${p.user_id}-${path}`}>
+                    <TableCell>
+                      <div className="font-medium">{p.full_name || "—"}</div>
+                      <div className="text-xs text-muted-foreground">{p.email}</div>
+                    </TableCell>
+                    <TableCell><code className="text-xs">{path}</code></TableCell>
+                    <TableCell className="text-right">{formatDuration(secs)}</TableCell>
+                  </TableRow>
+                ));
+              })}
             </TableBody>
           </Table>
         </CardContent>

@@ -10,6 +10,7 @@ import { Home } from "@/pages/Home";
 import { Mission } from "@/pages/Mission";
 import AdminDashboard from "@/pages/AdminDashboard";
 import ResetPassword from "@/pages/ResetPassword";
+import GatedPage from "@/pages/GatedPage";
 import NotFound from "./pages/NotFound";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { usePageTracking } from "@/hooks/usePageTracking";
@@ -53,6 +54,7 @@ function AppContent() {
         <Route path="/" element={<Home />} />
         {session && <Route path="/mission" element={<Mission onLogout={handleLogout} />} />}
         {session && <Route path="/admin" element={<AdminDashboard />} />}
+        {session && <Route path="/p/:slug" element={<GatedPage />} />}
         <Route path="/reset-password" element={<ResetPassword />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />

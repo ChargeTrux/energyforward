@@ -65,6 +65,35 @@ export type Database = {
         }
         Relationships: []
       }
+      page_access: {
+        Row: {
+          created_at: string
+          id: string
+          page_slug: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          page_slug: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          page_slug?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "page_access_page_slug_fkey"
+            columns: ["page_slug"]
+            isOneToOne: false
+            referencedRelation: "pages"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
       page_views: {
         Row: {
           created_at: string
@@ -102,6 +131,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pages: {
+        Row: {
+          created_at: string
+          slug: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          slug: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          slug?: string
+          title?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
