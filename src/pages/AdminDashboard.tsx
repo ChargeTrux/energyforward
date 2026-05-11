@@ -26,6 +26,7 @@ interface ProfileRow {
   is_active: boolean;
   created_at: string;
   is_admin?: boolean;
+  is_investor?: boolean;
 }
 
 interface SessionRow {
@@ -75,11 +76,18 @@ export default function AdminDashboard() {
     const adminSet = new Set(
       (roles ?? []).filter((r) => r.role === "admin").map((r) => r.user_id),
     );
+    const investorSet = new Set(
+      (roles ?? []).filter((r) => r.role === "investor").map((r) => r.user_id),
+    );
     const profileMap = new Map(
       (profs ?? []).map((p) => [p.user_id, p as ProfileRow]),
     );
     setProfiles(
-      (profs ?? []).map((p) => ({ ...(p as ProfileRow), is_admin: adminSet.has(p.user_id) })),
+      (profs ?? []).map((p) => ({
+        ...(p as ProfileRow),
+        is_admin: adminSet.has(p.user_id),
+        is_investor: investorSet.has(p.user_id),
+      })),
     );
 
     const pageTotals = new Map<string, number>();
@@ -146,6 +154,21 @@ export default function AdminDashboard() {
       setInviteEmail("");
       setInviteName("");
     }
+  };
+
+  const handleSetPassword = async (user_id: string, email: string) => {
+    const password = window.prompt(`Enter new password for ${email} (min 8 chars):`);
+    if (!password) return;
+    if (password.length < 8) {
+      toast({ title: "Password too short", description: "Min 8 characters", variant: "destructive" });
+      return;
+    }
+    await callAdmin("set_password", { user_id, password });
+  };
+
+  const handleDelete = async (user_id: string, email: string) => {
+    if (!window.confirm(`Permanently delete ${email}? This cannot be undone.`)) return;
+    await callAdmin("delete_user", { user_id });
   };
 
   const formatDuration = (s: number | null | undefined) => {
