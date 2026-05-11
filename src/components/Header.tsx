@@ -52,6 +52,11 @@ export function Header({ onLoginClick, onLogout, isLoggedIn }: HeaderProps) {
         </div>
         
         <div className="flex items-center gap-2">
+          {isLoggedIn && (
+            <Button variant="outline" onClick={() => navigate('/')} className="gap-1">
+              <HomeIcon className="w-4 h-4" /> Home
+            </Button>
+          )}
           {isLoggedIn && pages.map((p) => (
             <Button
               key={p.slug}
@@ -62,11 +67,6 @@ export function Header({ onLoginClick, onLogout, isLoggedIn }: HeaderProps) {
               {p.title}
             </Button>
           ))}
-          {isLoggedIn && (
-            <Button variant="outline" onClick={() => navigate('/')} className="gap-1">
-              <HomeIcon className="w-4 h-4" /> Home
-            </Button>
-          )}
           {isLoggedIn && isAdmin && (
             <Button variant="outline" onClick={() => navigate('/admin')} className="gap-1">
               <ShieldCheck className="w-4 h-4" /> Admin
