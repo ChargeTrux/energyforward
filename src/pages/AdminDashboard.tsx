@@ -415,8 +415,11 @@ export default function AdminDashboard() {
       full_name: fullName,
       role,
     })) as { temp_password?: string } | null;
-    if (data?.temp_password) {
-      setTempCred({ email, password: data.temp_password });
+    if (data) {
+      toast({
+        title: "Welcome email sent",
+        description: `An invitation email has been sent to ${email}.`,
+      });
       setInviteEmail("");
       setInviteName("");
       setInviteRole("investor");
@@ -439,8 +442,11 @@ export default function AdminDashboard() {
       full_name: row.full_name ?? "",
       role: "investor",
     })) as { temp_password?: string } | null;
-    if (data?.temp_password) {
-      setTempCred({ email: row.email, password: data.temp_password });
+    if (data) {
+      toast({
+        title: "Welcome email sent",
+        description: `An invitation email has been sent to ${row.email}.`,
+      });
     }
   };
 
