@@ -7,7 +7,6 @@ import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { LoginModal } from "@/components/LoginModal";
 import { Home } from "@/pages/Home";
-import { Mission } from "@/pages/Mission";
 import AdminDashboard from "@/pages/AdminDashboard";
 import ResetPassword from "@/pages/ResetPassword";
 import GatedPage from "@/pages/GatedPage";
@@ -68,7 +67,7 @@ function AppContent() {
         if (data?.must_change_password) {
           navigate('/reset-password');
         } else {
-          navigate('/mission');
+          navigate('/p/investor');
         }
       })();
     }
@@ -97,7 +96,6 @@ function AppContent() {
       />
       <Routes>
         <Route path="/" element={<Home />} />
-        {session && <Route path="/mission" element={<Mission onLogout={handleLogout} />} />}
         {session && <Route path="/admin" element={<AdminDashboard />} />}
         {session && <Route path="/p/:slug" element={<GatedPage />} />}
         {session && <Route path="/investor" element={<GatedPage />} />}
