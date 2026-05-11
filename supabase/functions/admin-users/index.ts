@@ -18,6 +18,19 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+const APP_ORIGIN = "https://energyforward.com";
+const getResetRedirectUrl = () => `${APP_ORIGIN}/reset-password`;
+
+const forceEnergyForwardResetUrl = (url: string) => {
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.set("redirect_to", getResetRedirectUrl());
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -150,9 +163,7 @@ Deno.serve(async (req) => {
       if (!email) return json({ error: "Missing email" }, 400);
       // Always use the production app URL — never the caller's origin
       // (which may be localhost or a preview URL when admins reset from dev).
-      const SITE_URL =
-        Deno.env.get("SITE_URL") ?? "https://energyforward.com";
-      const redirectTo = `${SITE_URL.replace(/\/$/, "")}/reset-password`;
+      const redirectTo = getResetRedirectUrl();
       // Generate the recovery link without triggering Supabase's default email.
       const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
         type: "recovery",
@@ -175,7 +186,7 @@ Deno.serve(async (req) => {
       if (!RESEND_API_KEY) return json({ error: "Email provider not configured" }, 500);
       const tpl = resetEmail({
         name: (prof?.full_name as string | null) ?? "Investor",
-        resetUrl: actionLink,
+        resetUrl: forceEnergyForwardResetUrl(actionLink),
         expirationMinutes: 60,
       });
       const r = await sendBrandedEmail(RESEND_API_KEY, {

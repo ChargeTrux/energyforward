@@ -46,7 +46,18 @@ function AppContent() {
   }, [loading, session]);
   const prevSession = useRef<boolean>(!!session);
   useEffect(() => {
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const searchParams = new URLSearchParams(window.location.search);
+    const isPasswordRecovery =
+      window.location.pathname === "/reset-password" ||
+      hashParams.get("type") === "recovery" ||
+      searchParams.get("type") === "recovery";
+
     if (!loading && session && !prevSession.current) {
+      if (isPasswordRecovery) {
+        prevSession.current = !!session;
+        return;
+      }
       // Check if user must change password (temporary password from invite)
       (async () => {
         const { data } = await supabase
