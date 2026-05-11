@@ -287,7 +287,7 @@ export default function AdminDashboard() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
+                <TableHead>Roles</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -298,9 +298,11 @@ export default function AdminDashboard() {
                   <TableCell>{p.full_name || "—"}</TableCell>
                   <TableCell>{p.email}</TableCell>
                   <TableCell>
-                    <Badge variant={p.is_admin ? "default" : "secondary"}>
-                      {p.is_admin ? "Admin" : "User"}
-                    </Badge>
+                    <div className="flex gap-1 flex-wrap">
+                      {p.is_admin && <Badge variant="default">Admin</Badge>}
+                      {p.is_investor && <Badge variant="secondary">Investor</Badge>}
+                      {!p.is_admin && !p.is_investor && <Badge variant="outline">User</Badge>}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant={p.is_active ? "default" : "destructive"}>
@@ -323,6 +325,19 @@ export default function AdminDashboard() {
                     </Button>
                     <Button
                       size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() =>
+                        callAdmin("set_investor", {
+                          user_id: p.user_id,
+                          make_investor: !p.is_investor,
+                        })
+                      }
+                    >
+                      {p.is_investor ? "Remove Investor" : "Make Investor"}
+                    </Button>
+                    <Button
+                      size="sm"
                       variant={p.is_active ? "destructive" : "outline"}
                       disabled={busy}
                       onClick={() =>
@@ -334,6 +349,30 @@ export default function AdminDashboard() {
                     >
                       <Power className="w-3 h-3 mr-1" />
                       {p.is_active ? "Deactivate" : "Activate"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => callAdmin("send_reset", { email: p.email })}
+                    >
+                      Reset Email
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => handleSetPassword(p.user_id, p.email)}
+                    >
+                      Set Password
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={busy}
+                      onClick={() => handleDelete(p.user_id, p.email)}
+                    >
+                      Delete
                     </Button>
                   </TableCell>
                 </TableRow>
