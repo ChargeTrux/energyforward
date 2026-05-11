@@ -533,9 +533,6 @@ export default function AdminDashboard() {
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <ShieldCheck className="w-8 h-8 text-primary" /> Admin Dashboard
           </h1>
-          <Button variant="outline" onClick={() => navigate('/')} className="gap-2">
-            <HomeIcon className="w-4 h-4" /> Back to Home
-          </Button>
         </div>
         <p className="text-muted-foreground">Manage investors, admins, website signups, and portal activity</p>
       </div>
