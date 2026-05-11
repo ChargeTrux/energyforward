@@ -152,6 +152,34 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    if (action === "update_name") {
+      const { user_id, full_name } = body;
+      if (!user_id || typeof full_name !== "string") {
+        return json({ error: "user_id and full_name required" }, 400);
+      }
+      const trimmed = full_name.trim().slice(0, 200);
+      const { error: pErr } = await admin
+        .from("profiles")
+        .update({ full_name: trimmed })
+        .eq("user_id", user_id);
+      if (pErr) return json({ error: pErr.message }, 400);
+      await admin.auth.admin.updateUserById(user_id, {
+        user_metadata: { full_name: trimmed },
+      });
+      return json({ ok: true });
+    }
+
+    if (action === "delete_signup") {
+      const { email } = body;
+      if (!email || typeof email !== "string") return json({ error: "Missing email" }, 400);
+      const { error } = await admin
+        .from("email_signups")
+        .delete()
+        .eq("email", email);
+      if (error) return json({ error: error.message }, 400);
+      return json({ ok: true });
+    }
+
     if (action === "set_active") {
       const { user_id, is_active } = body;
       if (!user_id) return json({ error: "Missing user_id" }, 400);
