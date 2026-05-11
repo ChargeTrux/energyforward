@@ -1,8 +1,8 @@
 // Shared branded email templates for Energy Forward Investor Portal.
 // All transactional emails go out through Resend from no-reply@energyforward.com.
 
-export const EF_FROM = "Energy Forward Investor Portal <no-reply@energyforward.com>";
-export const EF_REPLY_TO = "support@energyforward.com";
+export const EF_FROM = "Energy Forward Investor Portal <investor@energyforward.com>";
+export const EF_REPLY_TO = "investor@energyforward.com";
 export const EF_LOGO_URL = "https://energyforward.com/favicon.png";
 export const EF_SITE_URL = "https://energyforward.com";
 export const EF_PORTAL_URL = "https://energyforward.com/p/investor";
