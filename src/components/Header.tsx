@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import energyForwardLogo from "@/assets/energy-forward-logo-new.png";
 import { useAuth } from "@/hooks/useAuth";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Home as HomeIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -62,6 +62,11 @@ export function Header({ onLoginClick, onLogout, isLoggedIn }: HeaderProps) {
               {p.title}
             </Button>
           ))}
+          {isLoggedIn && (
+            <Button variant="outline" onClick={() => navigate('/')} className="gap-1">
+              <HomeIcon className="w-4 h-4" /> Home
+            </Button>
+          )}
           {isLoggedIn && isAdmin && (
             <Button variant="outline" onClick={() => navigate('/admin')} className="gap-1">
               <ShieldCheck className="w-4 h-4" /> Admin
