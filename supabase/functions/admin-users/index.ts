@@ -43,15 +43,45 @@ Deno.serve(async (req) => {
     const { action } = body;
 
     if (action === "invite") {
-      const { email, full_name } = body;
+      const { email, full_name, role } = body;
       if (!email || typeof email !== "string") return json({ error: "Invalid email" }, 400);
-      const origin = req.headers.get("origin") ?? "";
-      const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-        redirectTo: `${origin}/reset-password`,
-        data: { full_name: full_name ?? "" },
+
+      // Generate a strong temporary password
+      const bytes = new Uint8Array(12);
+      crypto.getRandomValues(bytes);
+      const tempPassword =
+        Array.from(bytes, (b) => b.toString(36).padStart(2, "0")).join("") + "A1!";
+
+      const { data, error } = await admin.auth.admin.createUser({
+        email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: { full_name: full_name ?? "" },
       });
       if (error) return json({ error: error.message }, 400);
-      return json({ ok: true, user: data.user });
+      const newUserId = data.user?.id;
+      if (!newUserId) return json({ error: "User creation failed" }, 500);
+
+      // Ensure profile + must_change_password flag
+      await admin.from("profiles").upsert(
+        {
+          user_id: newUserId,
+          email,
+          full_name: full_name ?? "",
+          must_change_password: true,
+          is_active: true,
+        },
+        { onConflict: "user_id" },
+      );
+
+      // Assign role if requested
+      if (role === "admin" || role === "investor") {
+        await admin
+          .from("user_roles")
+          .upsert({ user_id: newUserId, role }, { onConflict: "user_id,role" });
+      }
+
+      return json({ ok: true, user: data.user, temp_password: tempPassword });
     }
 
     if (action === "set_role") {

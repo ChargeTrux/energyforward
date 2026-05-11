@@ -43,6 +43,14 @@ export default function ResetPassword() {
       toast({ title: "Reset failed", description: error.message, variant: "destructive" });
       return;
     }
+    // Clear must_change_password flag
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase
+        .from("profiles")
+        .update({ must_change_password: false })
+        .eq("user_id", user.id);
+    }
     toast({ title: "Password updated", description: "You're now signed in." });
     navigate("/");
   };
