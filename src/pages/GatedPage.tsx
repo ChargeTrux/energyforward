@@ -45,6 +45,45 @@ export default function GatedPage() {
   }
 
   const title = TITLES[slug] ?? slug;
+
+  if (slug === "investor") {
+    return (
+      <main className="container mx-auto px-4 py-12 max-w-5xl">
+        <h1 className="text-4xl font-bold mb-2 text-primary">Investor Portal</h1>
+        <p className="text-muted-foreground mb-8">
+          Welcome to the EnergyForward Investor Portal. Confidential materials below.
+        </p>
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="rounded-lg border border-border p-6 bg-card">
+            <h2 className="text-xl font-semibold mb-2">Company Overview</h2>
+            <p className="text-sm text-muted-foreground">
+              EnergyForward is moving the world toward clean, distributed energy.
+              Detailed company information will appear here.
+            </p>
+          </div>
+          <div className="rounded-lg border border-border p-6 bg-card">
+            <h2 className="text-xl font-semibold mb-2">Financials & Reports</h2>
+            <p className="text-sm text-muted-foreground">
+              Quarterly reports, projections, and pitch decks will be posted here.
+            </p>
+          </div>
+          <div className="rounded-lg border border-border p-6 bg-card">
+            <h2 className="text-xl font-semibold mb-2">Investment Opportunities</h2>
+            <p className="text-sm text-muted-foreground">
+              Current and upcoming funding rounds, terms, and contact details.
+            </p>
+          </div>
+          <div className="rounded-lg border border-border p-6 bg-card">
+            <h2 className="text-xl font-semibold mb-2">Contact</h2>
+            <p className="text-sm text-muted-foreground">
+              For questions, reach out to <a className="underline" href="mailto:arahimi@energyforward.com">arahimi@energyforward.com</a>.
+            </p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="container mx-auto px-4 py-12 max-w-4xl">
       <h1 className="text-4xl font-bold mb-4 text-primary">{title}</h1>
