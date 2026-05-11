@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { accessRequestEmail, sendBrandedEmail, EF_FROM, EF_REPLY_TO } from "../_shared/branded-emails.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -138,7 +139,8 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const emailResponse = await resend.emails.send({
-      from: "Energy Forward <onboarding@resend.dev>",
+      from: EF_FROM,
+      reply_to: EF_REPLY_TO,
       to: adminEmails,
       subject: `New Signup: ${safeName}`,
       html: `
@@ -176,6 +178,25 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     console.log("Email sent successfully:", emailResponse);
+
+    // Also send the branded "Access Request Received" confirmation to the investor.
+    try {
+      const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+      if (RESEND_API_KEY) {
+        const tpl = accessRequestEmail({
+          name: name!,
+          requestDate: submittedAt,
+        });
+        const r = await sendBrandedEmail(RESEND_API_KEY, {
+          to: email!,
+          subject: tpl.subject,
+          html: tpl.html,
+        });
+        if (!r.ok) console.error("Investor confirmation email failed:", r.error);
+      }
+    } catch (e) {
+      console.error("Investor confirmation send error:", e);
+    }
 
     return new Response(
       JSON.stringify({ success: true, message: "Notification sent" }),
