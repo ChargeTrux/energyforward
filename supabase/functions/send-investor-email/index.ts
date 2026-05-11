@@ -18,7 +18,7 @@ const json = (body: unknown, status = 200) =>
   });
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const APP_ORIGIN = "https://energyforward.com";
+const APP_ORIGIN = "https://energyforward-launchpad.lovable.app";
 
 const getResetRedirectUrl = () => `${APP_ORIGIN}/reset-password`;
 
