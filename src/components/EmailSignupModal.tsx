@@ -22,10 +22,36 @@ export function EmailSignupModal({ open, onOpenChange }: EmailSignupModalProps) 
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [alreadyExists, setAlreadyExists] = useState(false);
+  const [resetSending, setResetSending] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const { toast } = useToast();
+
+  const handleSendReset = async () => {
+    setResetSending(true);
+    const { error } = await supabase.functions.invoke("send-investor-email", {
+      body: { type: "reset", email: email.trim() },
+    });
+    setResetSending(false);
+    if (error) {
+      toast({
+        title: "Could not send reset link",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      setResetSent(true);
+      toast({
+        title: "Check your inbox",
+        description: "We've sent a password reset link to your email.",
+      });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAlreadyExists(false);
+    setResetSent(false);
     
     // Validate inputs
     const validation = signupSchema.safeParse({ 
@@ -55,11 +81,7 @@ export function EmailSignupModal({ open, onOpenChange }: EmailSignupModalProps) 
       if (error) {
         // Handle duplicate email error gracefully
         if (error.code === '23505') {
-          toast({
-            title: "Already Signed Up",
-            description: "This email is already registered for updates.",
-            variant: "destructive",
-          });
+          setAlreadyExists(true);
         } else {
           toast({
             title: "Signup Failed",
@@ -111,6 +133,34 @@ export function EmailSignupModal({ open, onOpenChange }: EmailSignupModalProps) 
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
+          {alreadyExists && (
+            <div className="rounded-md border border-primary/30 bg-primary/5 p-4 space-y-3">
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  This email is already registered
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  An account with <strong>{email.trim()}</strong> already exists. You can reset your password to regain access.
+                </p>
+              </div>
+              {resetSent ? (
+                <p className="text-sm text-primary font-medium">
+                  ✓ Reset link sent. Please check your inbox.
+                </p>
+              ) : (
+                <Button
+                  type="button"
+                  variant="energy"
+                  size="sm"
+                  onClick={handleSendReset}
+                  disabled={resetSending}
+                  className="w-full"
+                >
+                  {resetSending ? "Sending reset link..." : "Send password reset link"}
+                </Button>
+              )}
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="name">Full Name</Label>
             <Input
