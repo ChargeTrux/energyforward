@@ -193,6 +193,7 @@ export function EmailSignupModal({ open, onOpenChange }: EmailSignupModalProps) 
               )}
             </div>
           )}
+          {!alreadyExists && (
           <div className="space-y-2">
             <Label htmlFor="name">Full Name</Label>
             <Input
@@ -204,7 +205,9 @@ export function EmailSignupModal({ open, onOpenChange }: EmailSignupModalProps) 
               required
             />
           </div>
-          
+          )}
+
+          {!alreadyExists && (
           <div className="space-y-2">
             <Label htmlFor="signup-email">Email</Label>
             <Input
@@ -216,7 +219,9 @@ export function EmailSignupModal({ open, onOpenChange }: EmailSignupModalProps) 
               required
             />
           </div>
-          
+          )}
+
+          {!alreadyExists && (
           <div className="flex gap-3 pt-4">
             <Button
               type="button"
@@ -235,6 +240,7 @@ export function EmailSignupModal({ open, onOpenChange }: EmailSignupModalProps) 
               {isLoading ? "Signing up..." : "Sign Up for Updates"}
             </Button>
           </div>
+          )}
         </form>
       </DialogContent>
     </Dialog>
