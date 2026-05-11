@@ -836,6 +836,72 @@ export default function AdminDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        open={!!editNameUser}
+        onOpenChange={(o) => {
+          if (!o) setEditNameUser(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Full Name</DialogTitle>
+            <DialogDescription>
+              Update the user's full name. This is shown across the portal.
+            </DialogDescription>
+          </DialogHeader>
+          {editNameUser && (
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs">Email</Label>
+                <Input readOnly value={editNameUser.email} />
+              </div>
+              <div>
+                <Label className="text-xs" htmlFor="edit-name-input">Full Name</Label>
+                <Input
+                  id="edit-name-input"
+                  value={editNameValue}
+                  onChange={(e) => setEditNameValue(e.target.value)}
+                  placeholder="Jane Doe"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditNameUser(null)}>
+              Cancel
+            </Button>
+            <Button onClick={submitEditName} disabled={busy}>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={!!pendingDeleteSignup}
+        onOpenChange={(o) => !o && setPendingDeleteSignup(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this website signup?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove{" "}
+              <strong>{pendingDeleteSignup?.email}</strong> from the website
+              signup list. This cannot be undone. (It does not affect any portal
+              account that may already exist for this email.)
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => pendingDeleteSignup && handleDeleteSignup(pendingDeleteSignup)}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }
