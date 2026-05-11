@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
       // Always use the production app URL — never the caller's origin
       // (which may be localhost or a preview URL when admins reset from dev).
       const SITE_URL =
-        Deno.env.get("SITE_URL") ?? "https://energyforward-launchpad.lovable.app";
+        Deno.env.get("SITE_URL") ?? "https://energyforward.com";
       const redirectTo = `${SITE_URL.replace(/\/$/, "")}/reset-password`;
       // Generate the recovery link without triggering Supabase's default email.
       const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
