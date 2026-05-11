@@ -26,6 +26,7 @@ interface ProfileRow {
   is_active: boolean;
   created_at: string;
   is_admin?: boolean;
+  is_investor?: boolean;
 }
 
 interface SessionRow {
@@ -75,11 +76,18 @@ export default function AdminDashboard() {
     const adminSet = new Set(
       (roles ?? []).filter((r) => r.role === "admin").map((r) => r.user_id),
     );
+    const investorSet = new Set(
+      (roles ?? []).filter((r) => r.role === "investor").map((r) => r.user_id),
+    );
     const profileMap = new Map(
       (profs ?? []).map((p) => [p.user_id, p as ProfileRow]),
     );
     setProfiles(
-      (profs ?? []).map((p) => ({ ...(p as ProfileRow), is_admin: adminSet.has(p.user_id) })),
+      (profs ?? []).map((p) => ({
+        ...(p as ProfileRow),
+        is_admin: adminSet.has(p.user_id),
+        is_investor: investorSet.has(p.user_id),
+      })),
     );
 
     const pageTotals = new Map<string, number>();
@@ -146,6 +154,21 @@ export default function AdminDashboard() {
       setInviteEmail("");
       setInviteName("");
     }
+  };
+
+  const handleSetPassword = async (user_id: string, email: string) => {
+    const password = window.prompt(`Enter new password for ${email} (min 8 chars):`);
+    if (!password) return;
+    if (password.length < 8) {
+      toast({ title: "Password too short", description: "Min 8 characters", variant: "destructive" });
+      return;
+    }
+    await callAdmin("set_password", { user_id, password });
+  };
+
+  const handleDelete = async (user_id: string, email: string) => {
+    if (!window.confirm(`Permanently delete ${email}? This cannot be undone.`)) return;
+    await callAdmin("delete_user", { user_id });
   };
 
   const formatDuration = (s: number | null | undefined) => {
@@ -264,7 +287,7 @@ export default function AdminDashboard() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
+                <TableHead>Roles</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -275,9 +298,11 @@ export default function AdminDashboard() {
                   <TableCell>{p.full_name || "—"}</TableCell>
                   <TableCell>{p.email}</TableCell>
                   <TableCell>
-                    <Badge variant={p.is_admin ? "default" : "secondary"}>
-                      {p.is_admin ? "Admin" : "User"}
-                    </Badge>
+                    <div className="flex gap-1 flex-wrap">
+                      {p.is_admin && <Badge variant="default">Admin</Badge>}
+                      {p.is_investor && <Badge variant="secondary">Investor</Badge>}
+                      {!p.is_admin && !p.is_investor && <Badge variant="outline">User</Badge>}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant={p.is_active ? "default" : "destructive"}>
@@ -300,6 +325,19 @@ export default function AdminDashboard() {
                     </Button>
                     <Button
                       size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() =>
+                        callAdmin("set_investor", {
+                          user_id: p.user_id,
+                          make_investor: !p.is_investor,
+                        })
+                      }
+                    >
+                      {p.is_investor ? "Remove Investor" : "Make Investor"}
+                    </Button>
+                    <Button
+                      size="sm"
                       variant={p.is_active ? "destructive" : "outline"}
                       disabled={busy}
                       onClick={() =>
@@ -311,6 +349,30 @@ export default function AdminDashboard() {
                     >
                       <Power className="w-3 h-3 mr-1" />
                       {p.is_active ? "Deactivate" : "Activate"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => callAdmin("send_reset", { email: p.email })}
+                    >
+                      Reset Email
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => handleSetPassword(p.user_id, p.email)}
+                    >
+                      Set Password
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={busy}
+                      onClick={() => handleDelete(p.user_id, p.email)}
+                    >
+                      Delete
                     </Button>
                   </TableCell>
                 </TableRow>

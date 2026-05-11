@@ -73,6 +73,55 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    if (action === "set_investor") {
+      const { user_id, make_investor } = body;
+      if (!user_id) return json({ error: "Missing user_id" }, 400);
+      if (make_investor) {
+        const { error } = await admin
+          .from("user_roles")
+          .upsert({ user_id, role: "investor" }, { onConflict: "user_id,role" });
+        if (error) return json({ error: error.message }, 400);
+      } else {
+        const { error } = await admin
+          .from("user_roles")
+          .delete()
+          .eq("user_id", user_id)
+          .eq("role", "investor");
+        if (error) return json({ error: error.message }, 400);
+      }
+      return json({ ok: true });
+    }
+
+    if (action === "send_reset") {
+      const { email } = body;
+      if (!email) return json({ error: "Missing email" }, 400);
+      const origin = req.headers.get("origin") ?? "";
+      const { error } = await admin.auth.resetPasswordForEmail(email, {
+        redirectTo: `${origin}/reset-password`,
+      });
+      if (error) return json({ error: error.message }, 400);
+      return json({ ok: true });
+    }
+
+    if (action === "set_password") {
+      const { user_id, password } = body;
+      if (!user_id || !password || typeof password !== "string" || password.length < 8) {
+        return json({ error: "user_id and password (min 8 chars) required" }, 400);
+      }
+      const { error } = await admin.auth.admin.updateUserById(user_id, { password });
+      if (error) return json({ error: error.message }, 400);
+      return json({ ok: true });
+    }
+
+    if (action === "delete_user") {
+      const { user_id } = body;
+      if (!user_id) return json({ error: "Missing user_id" }, 400);
+      if (user_id === userData.user.id) return json({ error: "Cannot delete yourself" }, 400);
+      const { error } = await admin.auth.admin.deleteUser(user_id);
+      if (error) return json({ error: error.message }, 400);
+      return json({ ok: true });
+    }
+
     if (action === "set_active") {
       const { user_id, is_active } = body;
       if (!user_id) return json({ error: "Missing user_id" }, 400);

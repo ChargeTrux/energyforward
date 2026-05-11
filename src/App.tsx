@@ -55,6 +55,7 @@ function AppContent() {
         {session && <Route path="/mission" element={<Mission onLogout={handleLogout} />} />}
         {session && <Route path="/admin" element={<AdminDashboard />} />}
         {session && <Route path="/p/:slug" element={<GatedPage />} />}
+        {session && <Route path="/investor" element={<GatedPage />} />}
         <Route path="/reset-password" element={<ResetPassword />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
