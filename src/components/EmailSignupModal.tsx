@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,19 @@ export function EmailSignupModal({ open, onOpenChange }: EmailSignupModalProps) 
   const [resetSending, setResetSending] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (alreadyExists && resetSent) {
+      const t = setTimeout(() => {
+        onOpenChange(false);
+        setAlreadyExists(false);
+        setResetSent(false);
+        setEmail("");
+        setName("");
+      }, 4000);
+      return () => clearTimeout(t);
+    }
+  }, [alreadyExists, resetSent, onOpenChange]);
 
   const handleSendReset = async () => {
     setResetSending(true);
