@@ -52,7 +52,7 @@ export default function ResetPassword() {
         .eq("user_id", user.id);
     }
     toast({ title: "Password updated", description: "You're now signed in." });
-    navigate("/");
+    navigate("/p/investor");
   };
 
   return (
