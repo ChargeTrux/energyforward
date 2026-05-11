@@ -8,6 +8,21 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Table,
   TableBody,
   TableCell,
@@ -15,9 +30,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Activity, UserPlus, ShieldCheck, Power, Lock } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Users,
+  Activity,
+  UserPlus,
+  ShieldCheck,
+  MoreHorizontal,
+  Copy,
+} from "lucide-react";
 
 interface ProfileRow {
   user_id: string;
@@ -35,43 +64,56 @@ interface SessionRow {
   login_at: string;
   logout_at: string | null;
   duration_seconds: number | null;
-  email?: string;
-  full_name?: string | null;
-  total_page_seconds?: number;
 }
 
-interface PageRow { slug: string; title: string }
+interface PageViewRow {
+  user_id: string;
+  session_id: string | null;
+  path: string;
+  duration_seconds: number | null;
+}
+
+interface ActivityRow {
+  key: string;
+  full_name: string | null;
+  email: string;
+  role: string;
+  login_at: string;
+  logout_at: string | null;
+  duration_seconds: number | null;
+  path: string;
+  page_seconds: number;
+}
 
 export default function AdminDashboard() {
   const { isAdmin, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
-  const [sessions, setSessions] = useState<SessionRow[]>([]);
-  const [pages, setPages] = useState<PageRow[]>([]);
-  const [accessMap, setAccessMap] = useState<Record<string, Set<string>>>({});
-  const [pageTimeByUser, setPageTimeByUser] = useState<Record<string, Record<string, number>>>({});
+  const [activity, setActivity] = useState<ActivityRow[]>([]);
+  const [recentLoginCount, setRecentLoginCount] = useState(0);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
+  const [inviteRole, setInviteRole] = useState<"user" | "admin" | "investor">("investor");
   const [busy, setBusy] = useState(false);
+  const [tempCred, setTempCred] = useState<{ email: string; password: string } | null>(null);
 
   useEffect(() => {
     if (!loading && !isAdmin) navigate("/");
   }, [loading, isAdmin, navigate]);
 
   const load = async () => {
-    const [{ data: profs }, { data: roles }, { data: sess }, { data: views }, { data: pgs }, { data: pa }] = await Promise.all([
-      supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-      supabase.from("user_roles").select("user_id, role"),
-      supabase
-        .from("login_sessions")
-        .select("*")
-        .order("login_at", { ascending: false })
-        .limit(200),
-      supabase.from("page_views").select("user_id, session_id, path, duration_seconds"),
-      supabase.from("pages").select("slug, title").order("title"),
-      supabase.from("page_access").select("user_id, page_slug"),
-    ]);
+    const [{ data: profs }, { data: roles }, { data: sess }, { data: views }] =
+      await Promise.all([
+        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+        supabase.from("user_roles").select("user_id, role"),
+        supabase
+          .from("login_sessions")
+          .select("*")
+          .order("login_at", { ascending: false })
+          .limit(200),
+        supabase.from("page_views").select("user_id, session_id, path, duration_seconds"),
+      ]);
 
     const adminSet = new Set(
       (roles ?? []).filter((r) => r.role === "admin").map((r) => r.user_id),
@@ -89,38 +131,62 @@ export default function AdminDashboard() {
         is_investor: investorSet.has(p.user_id),
       })),
     );
+    setRecentLoginCount((sess ?? []).length);
 
-    const pageTotals = new Map<string, number>();
+    // Build merged activity rows: one row per session+page (or one row per session if no pages)
+    const viewsBySession = new Map<string, PageViewRow[]>();
     (views ?? []).forEach((v) => {
       if (!v.session_id) return;
-      pageTotals.set(v.session_id, (pageTotals.get(v.session_id) ?? 0) + (v.duration_seconds ?? 0));
+      const arr = viewsBySession.get(v.session_id) ?? [];
+      arr.push(v as PageViewRow);
+      viewsBySession.set(v.session_id, arr);
     });
-    setSessions(
-      (sess ?? []).map((s) => ({
-        ...(s as SessionRow),
-        email: profileMap.get(s.user_id)?.email,
-        full_name: profileMap.get(s.user_id)?.full_name,
-        total_page_seconds: pageTotals.get(s.id) ?? 0,
-      })),
-    );
 
-    setPages((pgs ?? []) as PageRow[]);
-    const accMap: Record<string, Set<string>> = {};
-    (pa ?? []).forEach((row) => {
-      if (!accMap[row.user_id]) accMap[row.user_id] = new Set();
-      accMap[row.user_id].add(row.page_slug);
+    const rows: ActivityRow[] = [];
+    (sess ?? []).forEach((s) => {
+      const prof = profileMap.get(s.user_id);
+      const role = adminSet.has(s.user_id)
+        ? "Admin"
+        : investorSet.has(s.user_id)
+        ? "Investor"
+        : "User";
+      const sessionViews = viewsBySession.get(s.id) ?? [];
+      if (sessionViews.length === 0) {
+        rows.push({
+          key: s.id,
+          full_name: prof?.full_name ?? null,
+          email: prof?.email ?? "—",
+          role,
+          login_at: s.login_at,
+          logout_at: s.logout_at,
+          duration_seconds: s.duration_seconds,
+          path: "—",
+          page_seconds: 0,
+        });
+      } else {
+        // Aggregate per path within this session
+        const byPath = new Map<string, number>();
+        sessionViews.forEach((v) =>
+          byPath.set(v.path, (byPath.get(v.path) ?? 0) + (v.duration_seconds ?? 0)),
+        );
+        Array.from(byPath.entries())
+          .sort((a, b) => b[1] - a[1])
+          .forEach(([path, secs], i) => {
+            rows.push({
+              key: `${s.id}-${path}`,
+              full_name: prof?.full_name ?? null,
+              email: prof?.email ?? "—",
+              role,
+              login_at: s.login_at,
+              logout_at: s.logout_at,
+              duration_seconds: s.duration_seconds,
+              path,
+              page_seconds: secs,
+            });
+          });
+      }
     });
-    setAccessMap(accMap);
-
-    const ptu: Record<string, Record<string, number>> = {};
-    (views ?? []).forEach((v) => {
-      const uid = (v as { user_id: string }).user_id;
-      const path = (v as { path: string }).path ?? "";
-      const dur = (v as { duration_seconds: number | null }).duration_seconds ?? 0;
-      if (!ptu[uid]) ptu[uid] = {};
-      ptu[uid][path] = (ptu[uid][path] ?? 0) + dur;
-    });
-    setPageTimeByUser(ptu);
+    setActivity(rows);
   };
 
   useEffect(() => {
@@ -139,18 +205,23 @@ export default function AdminDashboard() {
         description: error?.message ?? (data as { error?: string }).error,
         variant: "destructive",
       });
-      return false;
+      return null;
     }
     toast({ title: "Done" });
     await load();
-    return true;
+    return data;
   };
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail) return;
-    const ok = await callAdmin("invite", { email: inviteEmail, full_name: inviteName });
-    if (ok) {
+    const data = (await callAdmin("invite", {
+      email: inviteEmail,
+      full_name: inviteName,
+      role: inviteRole,
+    })) as { temp_password?: string } | null;
+    if (data?.temp_password) {
+      setTempCred({ email: inviteEmail, password: data.temp_password });
       setInviteEmail("");
       setInviteName("");
     }
@@ -160,7 +231,11 @@ export default function AdminDashboard() {
     const password = window.prompt(`Enter new password for ${email} (min 8 chars):`);
     if (!password) return;
     if (password.length < 8) {
-      toast({ title: "Password too short", description: "Min 8 characters", variant: "destructive" });
+      toast({
+        title: "Password too short",
+        description: "Min 8 characters",
+        variant: "destructive",
+      });
       return;
     }
     await callAdmin("set_password", { user_id, password });
@@ -178,23 +253,12 @@ export default function AdminDashboard() {
     return `${m}m ${sec}s`;
   };
 
-  const toggleAccess = async (user_id: string, page_slug: string, grant: boolean) => {
-    setBusy(true);
-    if (grant) {
-      const { error } = await supabase
-        .from("page_access")
-        .insert({ user_id, page_slug });
-      if (error) toast({ title: "Failed", description: error.message, variant: "destructive" });
-    } else {
-      const { error } = await supabase
-        .from("page_access")
-        .delete()
-        .eq("user_id", user_id)
-        .eq("page_slug", page_slug);
-      if (error) toast({ title: "Failed", description: error.message, variant: "destructive" });
-    }
-    setBusy(false);
-    await load();
+  const copyCred = async () => {
+    if (!tempCred) return;
+    await navigator.clipboard.writeText(
+      `Email: ${tempCred.email}\nTemporary password: ${tempCred.password}`,
+    );
+    toast({ title: "Copied to clipboard" });
   };
 
   if (loading) return <div className="p-12 text-center">Loading…</div>;
@@ -237,7 +301,7 @@ export default function AdminDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{sessions.length}</p>
+            <p className="text-3xl font-bold">{recentLoginCount}</p>
           </CardContent>
         </Card>
       </div>
@@ -249,8 +313,11 @@ export default function AdminDashboard() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleInvite} className="grid md:grid-cols-3 gap-3 items-end">
-            <div>
+          <form
+            onSubmit={handleInvite}
+            className="grid md:grid-cols-12 gap-3 items-end"
+          >
+            <div className="md:col-span-3">
               <Label htmlFor="iname">Full Name</Label>
               <Input
                 id="iname"
@@ -259,7 +326,7 @@ export default function AdminDashboard() {
                 placeholder="Jane Doe"
               />
             </div>
-            <div>
+            <div className="md:col-span-4">
               <Label htmlFor="iemail">Email</Label>
               <Input
                 id="iemail"
@@ -270,10 +337,32 @@ export default function AdminDashboard() {
                 placeholder="user@example.com"
               />
             </div>
-            <Button type="submit" disabled={busy} variant="energy">
-              Send Invite
-            </Button>
+            <div className="md:col-span-3">
+              <Label htmlFor="irole">Role</Label>
+              <Select
+                value={inviteRole}
+                onValueChange={(v) => setInviteRole(v as typeof inviteRole)}
+              >
+                <SelectTrigger id="irole">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="investor">Investor</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-2">
+              <Button type="submit" disabled={busy} variant="energy" className="w-full">
+                Create & Invite
+              </Button>
+            </div>
           </form>
+          <p className="text-xs text-muted-foreground mt-3">
+            A temporary password will be generated. The user will be required to
+            change it on first sign-in.
+          </p>
         </CardContent>
       </Card>
 
@@ -285,9 +374,9 @@ export default function AdminDashboard() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Roles</TableHead>
+                <TableHead className="min-w-[180px]">Name</TableHead>
+                <TableHead className="min-w-[220px]">Email</TableHead>
+                <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -295,13 +384,17 @@ export default function AdminDashboard() {
             <TableBody>
               {profiles.map((p) => (
                 <TableRow key={p.user_id}>
-                  <TableCell>{p.full_name || "—"}</TableCell>
-                  <TableCell>{p.email}</TableCell>
+                  <TableCell className="font-medium whitespace-nowrap">
+                    {p.full_name || "—"}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">{p.email}</TableCell>
                   <TableCell>
                     <div className="flex gap-1 flex-wrap">
                       {p.is_admin && <Badge variant="default">Admin</Badge>}
                       {p.is_investor && <Badge variant="secondary">Investor</Badge>}
-                      {!p.is_admin && !p.is_investor && <Badge variant="outline">User</Badge>}
+                      {!p.is_admin && !p.is_investor && (
+                        <Badge variant="outline">User</Badge>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -309,71 +402,66 @@ export default function AdminDashboard() {
                       {p.is_active ? "Active" : "Disabled"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={busy}
-                      onClick={() =>
-                        callAdmin("set_role", {
-                          user_id: p.user_id,
-                          make_admin: !p.is_admin,
-                        })
-                      }
-                    >
-                      {p.is_admin ? "Remove Admin" : "Make Admin"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={busy}
-                      onClick={() =>
-                        callAdmin("set_investor", {
-                          user_id: p.user_id,
-                          make_investor: !p.is_investor,
-                        })
-                      }
-                    >
-                      {p.is_investor ? "Remove Investor" : "Make Investor"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={p.is_active ? "destructive" : "outline"}
-                      disabled={busy}
-                      onClick={() =>
-                        callAdmin("set_active", {
-                          user_id: p.user_id,
-                          is_active: !p.is_active,
-                        })
-                      }
-                    >
-                      <Power className="w-3 h-3 mr-1" />
-                      {p.is_active ? "Deactivate" : "Activate"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={busy}
-                      onClick={() => callAdmin("send_reset", { email: p.email })}
-                    >
-                      Reset Email
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={busy}
-                      onClick={() => handleSetPassword(p.user_id, p.email)}
-                    >
-                      Set Password
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      disabled={busy}
-                      onClick={() => handleDelete(p.user_id, p.email)}
-                    >
-                      Delete
-                    </Button>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="sm" variant="outline" disabled={busy}>
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48 bg-background">
+                        <DropdownMenuLabel>Roles</DropdownMenuLabel>
+                        <DropdownMenuItem
+                          onClick={() =>
+                            callAdmin("set_role", {
+                              user_id: p.user_id,
+                              make_admin: !p.is_admin,
+                            })
+                          }
+                        >
+                          {p.is_admin ? "Remove Admin" : "Make Admin"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() =>
+                            callAdmin("set_investor", {
+                              user_id: p.user_id,
+                              make_investor: !p.is_investor,
+                            })
+                          }
+                        >
+                          {p.is_investor ? "Remove Investor" : "Make Investor"}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel>Account</DropdownMenuLabel>
+                        <DropdownMenuItem
+                          onClick={() =>
+                            callAdmin("set_active", {
+                              user_id: p.user_id,
+                              is_active: !p.is_active,
+                            })
+                          }
+                        >
+                          {p.is_active ? "Deactivate" : "Activate"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => callAdmin("send_reset", { email: p.email })}
+                        >
+                          Send Reset Email
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleSetPassword(p.user_id, p.email)}
+                        >
+                          Set Password
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => handleDelete(p.user_id, p.email)}
+                        >
+                          Delete User
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}
@@ -385,32 +473,54 @@ export default function AdminDashboard() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Activity className="w-5 h-5" /> Login Activity
+            <Activity className="w-5 h-5" /> Login Activity & Time Spent
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
                 <TableHead>Login</TableHead>
                 <TableHead>Logout</TableHead>
                 <TableHead>Session Duration</TableHead>
-                <TableHead>Time on Pages</TableHead>
+                <TableHead>Page</TableHead>
+                <TableHead className="text-right">Time on Page</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sessions.map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell>{s.full_name || "—"}</TableCell>
-                  <TableCell>{s.email || "—"}</TableCell>
-                  <TableCell>{new Date(s.login_at).toLocaleString()}</TableCell>
+              {activity.map((r) => (
+                <TableRow key={r.key}>
+                  <TableCell>{r.full_name || "—"}</TableCell>
+                  <TableCell>{r.email}</TableCell>
                   <TableCell>
-                    {s.logout_at ? new Date(s.logout_at).toLocaleString() : "Active"}
+                    <Badge
+                      variant={
+                        r.role === "Admin"
+                          ? "default"
+                          : r.role === "Investor"
+                          ? "secondary"
+                          : "outline"
+                      }
+                    >
+                      {r.role}
+                    </Badge>
                   </TableCell>
-                  <TableCell>{formatDuration(s.duration_seconds)}</TableCell>
-                  <TableCell>{formatDuration(s.total_page_seconds)}</TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    {new Date(r.login_at).toLocaleString()}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    {r.logout_at ? new Date(r.logout_at).toLocaleString() : "Active"}
+                  </TableCell>
+                  <TableCell>{formatDuration(r.duration_seconds)}</TableCell>
+                  <TableCell>
+                    <code className="text-xs">{r.path}</code>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {r.page_seconds ? formatDuration(r.page_seconds) : "—"}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -418,83 +528,35 @@ export default function AdminDashboard() {
         </CardContent>
       </Card>
 
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Lock className="w-5 h-5" /> Page Access
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                {pages.map((pg) => (
-                  <TableHead key={pg.slug} className="text-center">{pg.title}</TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {profiles.map((p) => (
-                <TableRow key={p.user_id}>
-                  <TableCell>
-                    <div className="font-medium">{p.full_name || "—"}</div>
-                    <div className="text-xs text-muted-foreground">{p.email}</div>
-                  </TableCell>
-                  {pages.map((pg) => {
-                    const has = accessMap[p.user_id]?.has(pg.slug) ?? false;
-                    return (
-                      <TableCell key={pg.slug} className="text-center">
-                        <Checkbox
-                          checked={has}
-                          disabled={busy}
-                          onCheckedChange={(v) => toggleAccess(p.user_id, pg.slug, !!v)}
-                        />
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="w-5 h-5" /> Time Spent Per Page (per User)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Path</TableHead>
-                <TableHead className="text-right">Total Time</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {profiles.flatMap((p) => {
-                const paths = pageTimeByUser[p.user_id] ?? {};
-                const entries = Object.entries(paths).sort((a, b) => b[1] - a[1]);
-                if (entries.length === 0) return [];
-                return entries.map(([path, secs]) => (
-                  <TableRow key={`${p.user_id}-${path}`}>
-                    <TableCell>
-                      <div className="font-medium">{p.full_name || "—"}</div>
-                      <div className="text-xs text-muted-foreground">{p.email}</div>
-                    </TableCell>
-                    <TableCell><code className="text-xs">{path}</code></TableCell>
-                    <TableCell className="text-right">{formatDuration(secs)}</TableCell>
-                  </TableRow>
-                ));
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <Dialog open={!!tempCred} onOpenChange={(o) => !o && setTempCred(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>User created — share these credentials</DialogTitle>
+            <DialogDescription>
+              The user must change this password on first sign-in. This password
+              will not be shown again.
+            </DialogDescription>
+          </DialogHeader>
+          {tempCred && (
+            <div className="space-y-2">
+              <div>
+                <Label className="text-xs">Email</Label>
+                <Input readOnly value={tempCred.email} />
+              </div>
+              <div>
+                <Label className="text-xs">Temporary Password</Label>
+                <Input readOnly value={tempCred.password} />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={copyCred}>
+              <Copy className="w-4 h-4 mr-1" /> Copy
+            </Button>
+            <Button onClick={() => setTempCred(null)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
