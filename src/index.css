@@ -28,6 +28,11 @@
     --accent: 214 100% 67%; /* Light blue accent */
     --accent-foreground: 0 0% 100%;
 
+    --admin: 220 91% 20%;
+    --admin-foreground: 0 0% 100%;
+    --investor: 158 64% 36%;
+    --investor-foreground: 0 0% 100%;
+
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
@@ -82,6 +87,10 @@
     --muted-foreground: 208 50% 70%;
     --accent: 214 100% 67%;
     --accent-foreground: 220 50% 8%;
+    --admin: 214 100% 67%;
+    --admin-foreground: 220 50% 8%;
+    --investor: 158 64% 46%;
+    --investor-foreground: 0 0% 100%;
     --destructive: 0 75% 55%;
     --destructive-foreground: 0 0% 100%;
     --border: 220 30% 20%;
