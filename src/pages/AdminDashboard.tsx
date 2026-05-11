@@ -58,6 +58,7 @@ import {
   Copy,
   Search,
   CalendarDays,
+  Pencil,
 } from "lucide-react";
 
 interface ProfileRow {
@@ -144,6 +145,9 @@ export default function AdminDashboard() {
   const [activitySearch, setActivitySearch] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [editNameUser, setEditNameUser] = useState<UserListRow | null>(null);
+  const [editNameValue, setEditNameValue] = useState("");
+  const [pendingDeleteSignup, setPendingDeleteSignup] = useState<UserListRow | null>(null);
 
   useEffect(() => {
     if (!loading && !isAdmin) navigate("/");
@@ -363,6 +367,25 @@ export default function AdminDashboard() {
     await callAdmin("delete_user", { user_id });
   };
 
+  const openEditName = (row: UserListRow) => {
+    setEditNameUser(row);
+    setEditNameValue(row.full_name ?? "");
+  };
+
+  const submitEditName = async () => {
+    if (!editNameUser?.user_id) return;
+    await callAdmin("update_name", {
+      user_id: editNameUser.user_id,
+      full_name: editNameValue,
+    });
+    setEditNameUser(null);
+  };
+
+  const handleDeleteSignup = async (row: UserListRow) => {
+    await callAdmin("delete_signup", { email: row.email });
+    setPendingDeleteSignup(null);
+  };
+
   const formatDuration = (s: number | null | undefined) => {
     if (!s) return "—";
     const m = Math.floor(s / 60);
@@ -484,11 +507,18 @@ export default function AdminDashboard() {
 
       <Card className="mb-8">
         <CardHeader>
-          <CardTitle>Users & Website Signups</CardTitle>
+          <CardTitle>
+            Users & Website Signups{" "}
+            <span className="text-sm font-normal text-muted-foreground">
+              ({userRows.length} total · scroll to see more)
+            </span>
+          </CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
-            <TableHeader>
+        <CardContent>
+          <div className="rounded-md border overflow-hidden">
+            <div className="max-h-[32rem] overflow-auto always-scrollbar">
+              <Table>
+            <TableHeader className="sticky top-0 z-10 bg-card">
               <TableRow>
                 <TableHead className="min-w-[220px]">Name</TableHead>
                 <TableHead className="min-w-[260px]">Email</TableHead>
@@ -539,10 +569,21 @@ export default function AdminDashboard() {
                               <DropdownMenuItem onClick={() => handleSignupInvite(row)}>
                                 Invite as Investor
                               </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => setPendingDeleteSignup(row)}
+                              >
+                                Remove Signup
+                              </DropdownMenuItem>
                             </>
                           ) : (
                             <>
                               <DropdownMenuLabel>Roles</DropdownMenuLabel>
+                              <DropdownMenuItem onClick={() => openEditName(row)}>
+                                <Pencil className="w-3.5 h-3.5 mr-2" /> Edit Name
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={() =>
                                   row.is_admin
@@ -603,7 +644,9 @@ export default function AdminDashboard() {
                 );
               })}
             </TableBody>
-          </Table>
+              </Table>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -665,7 +708,7 @@ export default function AdminDashboard() {
           </div>
 
           <div className="rounded-md border overflow-hidden">
-            <div className="max-h-[34rem] overflow-auto">
+            <div className="max-h-[34rem] overflow-auto always-scrollbar">
               <Table>
                 <TableHeader className="sticky top-0 z-10 bg-card">
                   <TableRow>
