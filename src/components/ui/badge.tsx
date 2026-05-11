@@ -11,6 +11,8 @@ const badgeVariants = cva(
         default: "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
         secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
         destructive: "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+        roleAdmin: "border-transparent bg-admin text-admin-foreground hover:bg-admin/80",
+        roleInvestor: "border-transparent bg-investor text-investor-foreground hover:bg-investor/80",
         outline: "text-foreground",
       },
     },
