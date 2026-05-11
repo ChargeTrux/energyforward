@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,11 +37,15 @@ const getErrorMessage = (error: AuthError): string => {
 interface LoginModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultEmail?: string;
 }
 
-export function LoginModal({ open, onOpenChange }: LoginModalProps) {
-  const [email, setEmail] = useState("");
+export function LoginModal({ open, onOpenChange, defaultEmail }: LoginModalProps) {
+  const [email, setEmail] = useState(defaultEmail ?? "");
   const [password, setPassword] = useState("");
+  useEffect(() => {
+    if (defaultEmail) setEmail(defaultEmail);
+  }, [defaultEmail, open]);
   const [isLoading, setIsLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const { toast } = useToast();

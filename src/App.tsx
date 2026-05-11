@@ -20,9 +20,24 @@ const queryClient = new QueryClient();
 
 function AppContent() {
   const [showLogin, setShowLogin] = useState(false);
+  const [prefillEmail, setPrefillEmail] = useState<string | undefined>(undefined);
   const { session, loading, signOut } = useAuth();
   const navigate = useNavigate();
   usePageTracking();
+  // Auto-open login modal when arriving from email CTA: ?login=1&email=...
+  useEffect(() => {
+    if (loading) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("login") === "1" && !session) {
+      const em = params.get("email") ?? undefined;
+      setPrefillEmail(em);
+      setShowLogin(true);
+      params.delete("login");
+      params.delete("email");
+      const qs = params.toString();
+      window.history.replaceState({}, "", window.location.pathname + (qs ? `?${qs}` : ""));
+    }
+  }, [loading, session]);
   const prevSession = useRef<boolean>(!!session);
   useEffect(() => {
     if (!loading && session && !prevSession.current) {
@@ -77,6 +92,7 @@ function AppContent() {
       <LoginModal 
         open={showLogin} 
         onOpenChange={setShowLogin}
+        defaultEmail={prefillEmail}
       />
     </>
   );
