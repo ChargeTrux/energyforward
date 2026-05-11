@@ -14,6 +14,7 @@ import GatedPage from "@/pages/GatedPage";
 import NotFound from "./pages/NotFound";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { usePageTracking } from "@/hooks/usePageTracking";
+import { supabase } from "@/integrations/supabase/client";
 
 const queryClient = new QueryClient();
 
