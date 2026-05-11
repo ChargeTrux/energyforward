@@ -7,3 +7,7 @@ project_id = "scyqmmakqmnzpnhrrnlx"
     verify_jwt = false
   [functions.notify-signup]
     verify_jwt = false
+  [functions.send-investor-email]
+    verify_jwt = false
+  [functions.resend-test]
+    verify_jwt = false
