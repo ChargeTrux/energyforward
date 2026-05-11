@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,10 +12,32 @@ export default function ResetPassword() {
   const [confirm, setConfirm] = useState("");
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(false);
+  const verificationStarted = useRef(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
+    const verifyTokenHash = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const tokenHash = params.get("token_hash");
+      if (!tokenHash || params.get("type") !== "recovery" || verificationStarted.current) return;
+
+      verificationStarted.current = true;
+      const { error } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: "recovery",
+      });
+
+      if (error) {
+        toast({ title: "Reset link expired", description: "Please request a new password reset link.", variant: "destructive" });
+        return;
+      }
+
+      setReady(true);
+      window.history.replaceState({}, "", "/reset-password");
+    };
+
+    verifyTokenHash();
     // Supabase parses the recovery token from URL hash automatically
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") setReady(true);
