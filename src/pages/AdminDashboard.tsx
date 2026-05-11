@@ -106,7 +106,7 @@ type PortalRole = "admin" | "investor";
 type ActivityPreset = "all" | "7" | "10" | "custom";
 type BadgeVariant = ComponentProps<typeof Badge>["variant"];
 type SortDir = "asc" | "desc";
-type UserSortKey = "name" | "email" | "role" | "status";
+type UserSortKey = "name" | "email" | "role" | "status" | "signed_up";
 type ActivitySortKey =
   | "name"
   | "email"
@@ -311,6 +311,9 @@ export default function AdminDashboard() {
       } else if (key === "status") {
         av = statusRank(a);
         bv = statusRank(b);
+      } else if (key === "signed_up") {
+        av = a.created_at ? new Date(a.created_at).getTime() : 0;
+        bv = b.created_at ? new Date(b.created_at).getTime() : 0;
       }
       if (av < bv) return -1 * mult;
       if (av > bv) return 1 * mult;
@@ -664,6 +667,11 @@ export default function AdminDashboard() {
                     Status <SortIcon active={userSort.key === "status"} dir={userSort.dir} />
                   </button>
                 </TableHead>
+                <TableHead>
+                  <button type="button" onClick={() => toggleUserSort("signed_up")} className="flex items-center gap-1 hover:text-foreground">
+                    Signed up <SortIcon active={userSort.key === "signed_up"} dir={userSort.dir} />
+                  </button>
+                </TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -694,6 +702,15 @@ export default function AdminDashboard() {
                           {row.is_active ? "Active" : "Disabled"}
                         </Badge>
                       )}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                      {row.created_at
+                        ? new Date(row.created_at).toLocaleDateString(undefined, {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })
+                        : "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
