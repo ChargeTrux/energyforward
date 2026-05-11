@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
-import { Navigate, useParams, useLocation } from "react-router-dom";
+import { Navigate, useParams, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 import {
   Newspaper,
   FileText,
@@ -10,6 +15,8 @@ import {
   Activity,
   MessageSquareLock,
   Megaphone,
+  ArrowLeft,
+  Send,
 } from "lucide-react";
 
 const TITLES: Record<string, string> = {
@@ -29,9 +36,14 @@ const DASHBOARD_SECTIONS = [
 export default function GatedPage() {
   const params = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const slug = params.slug ?? location.pathname.replace(/^\/+/, "").split("/")[0] ?? "";
   const { user, isAdmin, loading } = useAuth();
   const [allowed, setAllowed] = useState<boolean | null>(null);
+  const [qSubject, setQSubject] = useState("");
+  const [qMessage, setQMessage] = useState("");
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -66,8 +78,47 @@ export default function GatedPage() {
   const title = TITLES[slug] ?? slug;
 
   if (slug === "investor") {
+    const submitQuestion = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!qSubject.trim() || !qMessage.trim()) return;
+      setSending(true);
+      const { data, error } = await supabase.functions.invoke("investor-question", {
+        body: { subject: qSubject, message: qMessage },
+      });
+      setSending(false);
+      if (error || (data as { error?: string })?.error) {
+        toast({
+          title: "Failed to send",
+          description: error?.message ?? (data as { error?: string }).error,
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({ title: "Message sent", description: "An administrator will be in touch shortly." });
+      setQSubject("");
+      setQMessage("");
+    };
+
     return (
       <main className="min-h-screen bg-[#F8FAFC]">
+        {isAdmin && (
+          <div className="bg-white border-b border-slate-200">
+            <div className="container mx-auto px-4 py-3 max-w-6xl flex items-center justify-between">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/admin")}
+                className="gap-2 text-[#0F172A]"
+              >
+                <ArrowLeft className="w-4 h-4" /> Back to Admin Dashboard
+              </Button>
+              <span className="text-xs uppercase tracking-wider text-slate-500">
+                Admin preview
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Executive header band */}
         <section className="bg-gradient-to-br from-[#0F172A] via-[#0F172A] to-[#1E3A8A] text-white">
           <div className="container mx-auto px-4 py-12 md:py-16 max-w-6xl">
@@ -117,6 +168,55 @@ export default function GatedPage() {
             >
               Contact support@energyforward.com
             </a>
+          </div>
+
+          <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 md:p-8">
+            <div className="flex items-start justify-between mb-5 gap-4 flex-wrap">
+              <div>
+                <h3 className="text-lg font-semibold text-[#0F172A]">Ask a Question</h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  Send a confidential message directly to the EnergyForward administrators.
+                </p>
+              </div>
+              <span className="text-[10px] uppercase tracking-wider font-medium text-[#2563EB] bg-[#2563EB]/10 px-2 py-1 rounded">
+                Secure
+              </span>
+            </div>
+            <form onSubmit={submitQuestion} className="space-y-4">
+              <div>
+                <Label htmlFor="q-subject" className="text-[#0F172A]">Subject</Label>
+                <Input
+                  id="q-subject"
+                  value={qSubject}
+                  onChange={(e) => setQSubject(e.target.value)}
+                  maxLength={200}
+                  placeholder="What is this regarding?"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="q-message" className="text-[#0F172A]">Message</Label>
+                <Textarea
+                  id="q-message"
+                  value={qMessage}
+                  onChange={(e) => setQMessage(e.target.value)}
+                  maxLength={5000}
+                  rows={6}
+                  placeholder="Type your question or request here..."
+                  required
+                />
+                <p className="text-xs text-slate-400 mt-1">{qMessage.length}/5000</p>
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  type="submit"
+                  disabled={sending || !qSubject.trim() || !qMessage.trim()}
+                  className="bg-[#0F172A] hover:bg-[#1E3A8A] text-white gap-2"
+                >
+                  <Send className="w-4 h-4" /> {sending ? "Sending…" : "Send to Admin"}
+                </Button>
+              </div>
+            </form>
           </div>
         </section>
       </main>
