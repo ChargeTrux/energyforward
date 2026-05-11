@@ -106,7 +106,7 @@ type PortalRole = "admin" | "investor";
 type ActivityPreset = "all" | "7" | "10" | "custom";
 type BadgeVariant = ComponentProps<typeof Badge>["variant"];
 type SortDir = "asc" | "desc";
-type UserSortKey = "name" | "email" | "role" | "status";
+type UserSortKey = "name" | "email" | "role" | "status" | "signed_up";
 type ActivitySortKey =
   | "name"
   | "email"
@@ -311,6 +311,9 @@ export default function AdminDashboard() {
       } else if (key === "status") {
         av = statusRank(a);
         bv = statusRank(b);
+      } else if (key === "signed_up") {
+        av = a.created_at ? new Date(a.created_at).getTime() : 0;
+        bv = b.created_at ? new Date(b.created_at).getTime() : 0;
       }
       if (av < bv) return -1 * mult;
       if (av > bv) return 1 * mult;
