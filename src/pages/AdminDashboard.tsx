@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type ComponentProps, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -38,6 +38,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   Users,
@@ -46,6 +56,8 @@ import {
   ShieldCheck,
   MoreHorizontal,
   Copy,
+  Search,
+  CalendarDays,
 } from "lucide-react";
 
 interface ProfileRow {
@@ -58,12 +70,12 @@ interface ProfileRow {
   is_investor?: boolean;
 }
 
-interface SessionRow {
+interface SignupRow {
   id: string;
-  user_id: string;
-  login_at: string;
-  logout_at: string | null;
-  duration_seconds: number | null;
+  name: string;
+  email: string;
+  created_at: string;
+  service_type: string | null;
 }
 
 interface PageViewRow {
@@ -77,7 +89,7 @@ interface ActivityRow {
   key: string;
   full_name: string | null;
   email: string;
-  role: string;
+  role: "Admin" | "Investor" | "No portal role";
   login_at: string;
   logout_at: string | null;
   duration_seconds: number | null;
@@ -85,25 +97,60 @@ interface ActivityRow {
   page_seconds: number;
 }
 
+type PortalRole = "admin" | "investor";
+type ActivityPreset = "all" | "7" | "10" | "custom";
+type BadgeVariant = ComponentProps<typeof Badge>["variant"];
+
+type UserListRow = {
+  key: string;
+  source: "account" | "signup";
+  user_id?: string;
+  full_name: string | null;
+  email: string;
+  created_at: string;
+  is_active?: boolean;
+  is_admin?: boolean;
+  is_investor?: boolean;
+};
+
+const getRoleLabel = (user: Pick<ProfileRow, "is_admin" | "is_investor">): ActivityRow["role"] => {
+  if (user.is_admin) return "Admin";
+  if (user.is_investor) return "Investor";
+  return "No portal role";
+};
+
+const getRoleBadgeVariant = (role: string): BadgeVariant => {
+  if (role === "Admin") return "roleAdmin";
+  if (role === "Investor") return "roleInvestor";
+  return "outline";
+};
+
 export default function AdminDashboard() {
   const { isAdmin, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
+  const [signups, setSignups] = useState<SignupRow[]>([]);
   const [activity, setActivity] = useState<ActivityRow[]>([]);
   const [recentLoginCount, setRecentLoginCount] = useState(0);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
-  const [inviteRole, setInviteRole] = useState<"user" | "admin" | "investor">("investor");
+  const [inviteRole, setInviteRole] = useState<PortalRole>("investor");
   const [busy, setBusy] = useState(false);
   const [tempCred, setTempCred] = useState<{ email: string; password: string } | null>(null);
+  const [pendingAdminUser, setPendingAdminUser] = useState<UserListRow | null>(null);
+  const [confirmAdminInvite, setConfirmAdminInvite] = useState(false);
+  const [activityPreset, setActivityPreset] = useState<ActivityPreset>("7");
+  const [activitySearch, setActivitySearch] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   useEffect(() => {
     if (!loading && !isAdmin) navigate("/");
   }, [loading, isAdmin, navigate]);
 
   const load = async () => {
-    const [{ data: profs }, { data: roles }, { data: sess }, { data: views }] =
+    const [{ data: profs }, { data: roles }, { data: sess }, { data: views }, { data: signupRows }] =
       await Promise.all([
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
         supabase.from("user_roles").select("user_id, role"),
@@ -111,8 +158,9 @@ export default function AdminDashboard() {
           .from("login_sessions")
           .select("*")
           .order("login_at", { ascending: false })
-          .limit(200),
+          .limit(1000),
         supabase.from("page_views").select("user_id, session_id, path, duration_seconds"),
+        supabase.from("email_signups").select("id, name, email, created_at, service_type").order("created_at", { ascending: false }),
       ]);
 
     const adminSet = new Set(
@@ -121,19 +169,17 @@ export default function AdminDashboard() {
     const investorSet = new Set(
       (roles ?? []).filter((r) => r.role === "investor").map((r) => r.user_id),
     );
-    const profileMap = new Map(
-      (profs ?? []).map((p) => [p.user_id, p as ProfileRow]),
-    );
-    setProfiles(
-      (profs ?? []).map((p) => ({
-        ...(p as ProfileRow),
-        is_admin: adminSet.has(p.user_id),
-        is_investor: investorSet.has(p.user_id),
-      })),
-    );
+    const enrichedProfiles = (profs ?? []).map((p) => ({
+      ...(p as ProfileRow),
+      is_admin: adminSet.has(p.user_id),
+      is_investor: investorSet.has(p.user_id),
+    }));
+    const profileMap = new Map(enrichedProfiles.map((p) => [p.user_id, p]));
+
+    setProfiles(enrichedProfiles);
+    setSignups((signupRows ?? []) as SignupRow[]);
     setRecentLoginCount((sess ?? []).length);
 
-    // Build merged activity rows: one row per session+page (or one row per session if no pages)
     const viewsBySession = new Map<string, PageViewRow[]>();
     (views ?? []).forEach((v) => {
       if (!v.session_id) return;
@@ -145,11 +191,7 @@ export default function AdminDashboard() {
     const rows: ActivityRow[] = [];
     (sess ?? []).forEach((s) => {
       const prof = profileMap.get(s.user_id);
-      const role = adminSet.has(s.user_id)
-        ? "Admin"
-        : investorSet.has(s.user_id)
-        ? "Investor"
-        : "User";
+      const role = prof ? getRoleLabel(prof) : "No portal role";
       const sessionViews = viewsBySession.get(s.id) ?? [];
       if (sessionViews.length === 0) {
         rows.push({
@@ -164,14 +206,13 @@ export default function AdminDashboard() {
           page_seconds: 0,
         });
       } else {
-        // Aggregate per path within this session
         const byPath = new Map<string, number>();
         sessionViews.forEach((v) =>
           byPath.set(v.path, (byPath.get(v.path) ?? 0) + (v.duration_seconds ?? 0)),
         );
         Array.from(byPath.entries())
           .sort((a, b) => b[1] - a[1])
-          .forEach(([path, secs], i) => {
+          .forEach(([path, secs]) => {
             rows.push({
               key: `${s.id}-${path}`,
               full_name: prof?.full_name ?? null,
@@ -193,6 +234,61 @@ export default function AdminDashboard() {
     if (isAdmin) load();
   }, [isAdmin]);
 
+  const userRows = useMemo<UserListRow[]>(() => {
+    const accountEmails = new Set(profiles.map((p) => p.email.toLowerCase()));
+    const accountRows: UserListRow[] = profiles.map((p) => ({
+      key: `account-${p.user_id}`,
+      source: "account",
+      user_id: p.user_id,
+      full_name: p.full_name,
+      email: p.email,
+      created_at: p.created_at,
+      is_active: p.is_active,
+      is_admin: p.is_admin,
+      is_investor: p.is_investor,
+    }));
+    const signupRows: UserListRow[] = signups
+      .filter((s) => !accountEmails.has(s.email.toLowerCase()))
+      .map((s) => ({
+        key: `signup-${s.id}`,
+        source: "signup",
+        full_name: s.name,
+        email: s.email,
+        created_at: s.created_at,
+        is_admin: false,
+        is_investor: false,
+      }));
+    return [...accountRows, ...signupRows];
+  }, [profiles, signups]);
+
+  const filteredActivity = useMemo(() => {
+    const search = activitySearch.trim().toLowerCase();
+    const now = Date.now();
+    const fromTs =
+      activityPreset === "7"
+        ? now - 7 * 24 * 60 * 60 * 1000
+        : activityPreset === "10"
+        ? now - 10 * 24 * 60 * 60 * 1000
+        : activityPreset === "custom" && fromDate
+        ? new Date(`${fromDate}T00:00:00`).getTime()
+        : null;
+    const toTs =
+      activityPreset === "custom" && toDate
+        ? new Date(`${toDate}T23:59:59`).getTime()
+        : null;
+
+    return activity.filter((row) => {
+      const loginTs = new Date(row.login_at).getTime();
+      if (fromTs && loginTs < fromTs) return false;
+      if (toTs && loginTs > toTs) return false;
+      if (!search) return true;
+      return [row.full_name ?? "", row.email, row.role, row.path]
+        .join(" ")
+        .toLowerCase()
+        .includes(search);
+    });
+  }, [activity, activityPreset, activitySearch, fromDate, toDate]);
+
   const callAdmin = async (action: string, payload: Record<string, unknown>) => {
     setBusy(true);
     const { data, error } = await supabase.functions.invoke("admin-users", {
@@ -212,18 +308,39 @@ export default function AdminDashboard() {
     return data;
   };
 
+  const createInvite = async (role: PortalRole, email = inviteEmail, fullName = inviteName) => {
+    if (!email) return;
+    const data = (await callAdmin("invite", {
+      email,
+      full_name: fullName,
+      role,
+    })) as { temp_password?: string } | null;
+    if (data?.temp_password) {
+      setTempCred({ email, password: data.temp_password });
+      setInviteEmail("");
+      setInviteName("");
+      setInviteRole("investor");
+    }
+  };
+
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail) return;
+    if (inviteRole === "admin") {
+      setConfirmAdminInvite(true);
+      return;
+    }
+    await createInvite("investor");
+  };
+
+  const handleSignupInvite = async (row: UserListRow) => {
     const data = (await callAdmin("invite", {
-      email: inviteEmail,
-      full_name: inviteName,
-      role: inviteRole,
+      email: row.email,
+      full_name: row.full_name ?? "",
+      role: "investor",
     })) as { temp_password?: string } | null;
     if (data?.temp_password) {
-      setTempCred({ email: inviteEmail, password: data.temp_password });
-      setInviteEmail("");
-      setInviteName("");
+      setTempCred({ email: row.email, password: data.temp_password });
     }
   };
 
@@ -270,18 +387,18 @@ export default function AdminDashboard() {
         <h1 className="text-3xl font-bold mb-2 flex items-center gap-2">
           <ShieldCheck className="w-8 h-8 text-primary" /> Admin Dashboard
         </h1>
-        <p className="text-muted-foreground">Manage users and view activity</p>
+        <p className="text-muted-foreground">Manage investors, admins, website signups, and portal activity</p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-4 mb-8">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              <Users className="w-4 h-4" /> Total Users
+              <Users className="w-4 h-4" /> Total Contacts
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{profiles.length}</p>
+            <p className="text-3xl font-bold">{userRows.length}</p>
           </CardContent>
         </Card>
         <Card>
@@ -297,7 +414,7 @@ export default function AdminDashboard() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              <Activity className="w-4 h-4" /> Logins (recent)
+              <Activity className="w-4 h-4" /> Logins Tracked
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -341,7 +458,7 @@ export default function AdminDashboard() {
               <Label htmlFor="irole">Role</Label>
               <Select
                 value={inviteRole}
-                onValueChange={(v) => setInviteRole(v as typeof inviteRole)}
+                onValueChange={(v) => setInviteRole(v as PortalRole)}
               >
                 <SelectTrigger id="irole">
                   <SelectValue />
@@ -349,7 +466,6 @@ export default function AdminDashboard() {
                 <SelectContent>
                   <SelectItem value="investor">Investor</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="user">User</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -368,103 +484,124 @@ export default function AdminDashboard() {
 
       <Card className="mb-8">
         <CardHeader>
-          <CardTitle>Users</CardTitle>
+          <CardTitle>Users & Website Signups</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="min-w-[180px]">Name</TableHead>
-                <TableHead className="min-w-[220px]">Email</TableHead>
+                <TableHead className="min-w-[220px]">Name</TableHead>
+                <TableHead className="min-w-[260px]">Email</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {profiles.map((p) => (
-                <TableRow key={p.user_id}>
-                  <TableCell className="font-medium whitespace-nowrap">
-                    {p.full_name || "—"}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">{p.email}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1 flex-wrap">
-                      {p.is_admin && <Badge variant="default">Admin</Badge>}
-                      {p.is_investor && <Badge variant="secondary">Investor</Badge>}
-                      {!p.is_admin && !p.is_investor && (
-                        <Badge variant="outline">User</Badge>
+              {userRows.map((row) => {
+                const role = getRoleLabel(row);
+                void role;
+                return (
+                  <TableRow key={row.key}>
+                    <TableCell className="font-medium whitespace-nowrap">
+                      {row.full_name || "—"}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">{row.email}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1 flex-wrap">
+                        {row.is_admin && <Badge variant="roleAdmin">Admin</Badge>}
+                        {row.is_investor && <Badge variant="roleInvestor">Investor</Badge>}
+                        {!row.is_admin && !row.is_investor && (
+                          <Badge variant="outline">No portal role</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {row.source === "signup" ? (
+                        <Badge variant="secondary">Website signup</Badge>
+                      ) : (
+                        <Badge variant={row.is_active ? "default" : "destructive"}>
+                          {row.is_active ? "Active" : "Disabled"}
+                        </Badge>
                       )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={p.is_active ? "default" : "destructive"}>
-                      {p.is_active ? "Active" : "Disabled"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button size="sm" variant="outline" disabled={busy}>
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48 bg-background">
-                        <DropdownMenuLabel>Roles</DropdownMenuLabel>
-                        <DropdownMenuItem
-                          onClick={() =>
-                            callAdmin("set_role", {
-                              user_id: p.user_id,
-                              make_admin: !p.is_admin,
-                            })
-                          }
-                        >
-                          {p.is_admin ? "Remove Admin" : "Make Admin"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() =>
-                            callAdmin("set_investor", {
-                              user_id: p.user_id,
-                              make_investor: !p.is_investor,
-                            })
-                          }
-                        >
-                          {p.is_investor ? "Remove Investor" : "Make Investor"}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuLabel>Account</DropdownMenuLabel>
-                        <DropdownMenuItem
-                          onClick={() =>
-                            callAdmin("set_active", {
-                              user_id: p.user_id,
-                              is_active: !p.is_active,
-                            })
-                          }
-                        >
-                          {p.is_active ? "Deactivate" : "Activate"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => callAdmin("send_reset", { email: p.email })}
-                        >
-                          Send Reset Email
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleSetPassword(p.user_id, p.email)}
-                        >
-                          Set Password
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => handleDelete(p.user_id, p.email)}
-                        >
-                          Delete User
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="outline" disabled={busy} aria-label={`Actions for ${row.email}`}>
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-52 bg-background">
+                          {row.source === "signup" ? (
+                            <>
+                              <DropdownMenuLabel>Website signup</DropdownMenuLabel>
+                              <DropdownMenuItem onClick={() => handleSignupInvite(row)}>
+                                Invite as Investor
+                              </DropdownMenuItem>
+                            </>
+                          ) : (
+                            <>
+                              <DropdownMenuLabel>Roles</DropdownMenuLabel>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  row.is_admin
+                                    ? callAdmin("set_role", {
+                                        user_id: row.user_id,
+                                        make_admin: false,
+                                      })
+                                    : setPendingAdminUser(row)
+                                }
+                              >
+                                {row.is_admin ? "Remove Admin" : "Make Admin"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  callAdmin("set_investor", {
+                                    user_id: row.user_id,
+                                    make_investor: !row.is_investor,
+                                  })
+                                }
+                              >
+                                {row.is_investor ? "Remove Investor" : "Make Investor"}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuLabel>Account</DropdownMenuLabel>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  callAdmin("set_active", {
+                                    user_id: row.user_id,
+                                    is_active: !row.is_active,
+                                  })
+                                }
+                              >
+                                {row.is_active ? "Deactivate" : "Activate"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => callAdmin("send_reset", { email: row.email })}
+                              >
+                                Send Reset Email
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => row.user_id && handleSetPassword(row.user_id, row.email)}
+                              >
+                                Set Password
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => row.user_id && handleDelete(row.user_id, row.email)}
+                              >
+                                Delete User
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>
@@ -476,57 +613,156 @@ export default function AdminDashboard() {
             <Activity className="w-5 h-5" /> Login Activity & Time Spent
           </CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Login</TableHead>
-                <TableHead>Logout</TableHead>
-                <TableHead>Session Duration</TableHead>
-                <TableHead>Page</TableHead>
-                <TableHead className="text-right">Time on Page</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {activity.map((r) => (
-                <TableRow key={r.key}>
-                  <TableCell>{r.full_name || "—"}</TableCell>
-                  <TableCell>{r.email}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        r.role === "Admin"
-                          ? "default"
-                          : r.role === "Investor"
-                          ? "secondary"
-                          : "outline"
-                      }
-                    >
-                      {r.role}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    {new Date(r.login_at).toLocaleString()}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    {r.logout_at ? new Date(r.logout_at).toLocaleString() : "Active"}
-                  </TableCell>
-                  <TableCell>{formatDuration(r.duration_seconds)}</TableCell>
-                  <TableCell>
-                    <code className="text-xs">{r.path}</code>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {r.page_seconds ? formatDuration(r.page_seconds) : "—"}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-[minmax(220px,1fr)_180px_180px_180px] items-end">
+            <div>
+              <Label htmlFor="activity-search" className="flex items-center gap-2">
+                <Search className="h-4 w-4" /> Search user, email, role, or page
+              </Label>
+              <Input
+                id="activity-search"
+                value={activitySearch}
+                onChange={(e) => setActivitySearch(e.target.value)}
+                placeholder="Search activity"
+              />
+            </div>
+            <div>
+              <Label htmlFor="activity-range" className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4" /> Date Range
+              </Label>
+              <Select value={activityPreset} onValueChange={(v) => setActivityPreset(v as ActivityPreset)}>
+                <SelectTrigger id="activity-range">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">Last 7 days</SelectItem>
+                  <SelectItem value="10">Last 10 days</SelectItem>
+                  <SelectItem value="all">All time</SelectItem>
+                  <SelectItem value="custom">Custom range</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="from-date">From</Label>
+              <Input
+                id="from-date"
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                disabled={activityPreset !== "custom"}
+              />
+            </div>
+            <div>
+              <Label htmlFor="to-date">To</Label>
+              <Input
+                id="to-date"
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                disabled={activityPreset !== "custom"}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-md border overflow-hidden">
+            <div className="max-h-[34rem] overflow-auto">
+              <Table>
+                <TableHeader className="sticky top-0 z-10 bg-card">
+                  <TableRow>
+                    <TableHead className="min-w-[180px]">Name</TableHead>
+                    <TableHead className="min-w-[240px]">Email</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Login</TableHead>
+                    <TableHead>Logout</TableHead>
+                    <TableHead>Session Duration</TableHead>
+                    <TableHead className="min-w-[180px]">Page</TableHead>
+                    <TableHead className="text-right">Time on Page</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredActivity.map((r) => (
+                    <TableRow key={r.key}>
+                      <TableCell className="whitespace-nowrap">{r.full_name || "—"}</TableCell>
+                      <TableCell className="whitespace-nowrap">{r.email}</TableCell>
+                      <TableCell>
+                        <Badge variant={getRoleBadgeVariant(r.role)}>{r.role}</Badge>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {new Date(r.login_at).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {r.logout_at ? new Date(r.logout_at).toLocaleString() : "Active"}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{formatDuration(r.duration_seconds)}</TableCell>
+                      <TableCell>
+                        <code className="text-xs">{r.path}</code>
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        {r.page_seconds ? formatDuration(r.page_seconds) : "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filteredActivity.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                        No activity matches the selected filters.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!pendingAdminUser} onOpenChange={(open) => !open && setPendingAdminUser(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to make them admin?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Admins can manage users, roles, reset emails, and view all portal activity. Only grant this to trusted team members.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!pendingAdminUser?.user_id) return;
+                await callAdmin("set_role", {
+                  user_id: pendingAdminUser.user_id,
+                  make_admin: true,
+                });
+                setPendingAdminUser(null);
+              }}
+            >
+              Make Admin
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmAdminInvite} onOpenChange={setConfirmAdminInvite}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to invite an admin?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will create a new admin account with full dashboard access.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                setConfirmAdminInvite(false);
+                await createInvite("admin");
+              }}
+            >
+              Invite Admin
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={!!tempCred} onOpenChange={(o) => !o && setTempCred(null)}>
         <DialogContent>
