@@ -18,6 +18,19 @@ const json = (body: unknown, status = 200) =>
   });
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const APP_ORIGIN = "https://energyforward.com";
+
+const getResetRedirectUrl = () => `${APP_ORIGIN}/reset-password`;
+
+const forceEnergyForwardResetUrl = (url: string) => {
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.set("redirect_to", getResetRedirectUrl());
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -76,8 +89,7 @@ Deno.serve(async (req) => {
   }
 
   if (type === "reset") {
-    const SITE_URL = Deno.env.get("SITE_URL") ?? "https://energyforward.com";
-    const redirectTo = `${SITE_URL.replace(/\/$/, "")}/reset-password`;
+    const redirectTo = getResetRedirectUrl();
     // generateLink returns a recovery action_link WITHOUT sending the default Supabase email.
     const { data, error } = await admin.auth.admin.generateLink({
       type: "recovery",
@@ -106,7 +118,7 @@ Deno.serve(async (req) => {
 
     const tpl = resetEmail({
       name: displayName || "Investor",
-      resetUrl: actionLink,
+      resetUrl: forceEnergyForwardResetUrl(actionLink),
       expirationMinutes: 60,
     });
     const result = await sendBrandedEmail(RESEND_API_KEY, {
