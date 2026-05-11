@@ -59,6 +59,9 @@ import {
   Search,
   CalendarDays,
   Pencil,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
 } from "lucide-react";
 
 interface ProfileRow {
@@ -101,6 +104,17 @@ interface ActivityRow {
 type PortalRole = "admin" | "investor";
 type ActivityPreset = "all" | "7" | "10" | "custom";
 type BadgeVariant = ComponentProps<typeof Badge>["variant"];
+type SortDir = "asc" | "desc";
+type UserSortKey = "name" | "email" | "role" | "status";
+type ActivitySortKey =
+  | "name"
+  | "email"
+  | "role"
+  | "login"
+  | "logout"
+  | "duration"
+  | "path"
+  | "page";
 
 type UserListRow = {
   key: string;
@@ -148,6 +162,14 @@ export default function AdminDashboard() {
   const [editNameUser, setEditNameUser] = useState<UserListRow | null>(null);
   const [editNameValue, setEditNameValue] = useState("");
   const [pendingDeleteSignup, setPendingDeleteSignup] = useState<UserListRow | null>(null);
+  const [userSort, setUserSort] = useState<{ key: UserSortKey; dir: SortDir }>({
+    key: "name",
+    dir: "asc",
+  });
+  const [activitySort, setActivitySort] = useState<{ key: ActivitySortKey; dir: SortDir }>({
+    key: "login",
+    dir: "desc",
+  });
 
   useEffect(() => {
     if (!loading && !isAdmin) navigate("/");
@@ -265,6 +287,37 @@ export default function AdminDashboard() {
     return [...accountRows, ...signupRows];
   }, [profiles, signups]);
 
+  const sortedUserRows = useMemo(() => {
+    const rows = [...userRows];
+    const { key, dir } = userSort;
+    const mult = dir === "asc" ? 1 : -1;
+    const roleRank = (r: UserListRow) =>
+      r.is_admin ? 0 : r.is_investor ? 1 : 2;
+    const statusRank = (r: UserListRow) =>
+      r.source === "signup" ? 2 : r.is_active ? 0 : 1;
+    rows.sort((a, b) => {
+      let av: string | number = "";
+      let bv: string | number = "";
+      if (key === "name") {
+        av = (a.full_name ?? "").toLowerCase();
+        bv = (b.full_name ?? "").toLowerCase();
+      } else if (key === "email") {
+        av = a.email.toLowerCase();
+        bv = b.email.toLowerCase();
+      } else if (key === "role") {
+        av = roleRank(a);
+        bv = roleRank(b);
+      } else if (key === "status") {
+        av = statusRank(a);
+        bv = statusRank(b);
+      }
+      if (av < bv) return -1 * mult;
+      if (av > bv) return 1 * mult;
+      return 0;
+    });
+    return rows;
+  }, [userRows, userSort]);
+
   const filteredActivity = useMemo(() => {
     const search = activitySearch.trim().toLowerCase();
     const now = Date.now();
@@ -292,6 +345,45 @@ export default function AdminDashboard() {
         .includes(search);
     });
   }, [activity, activityPreset, activitySearch, fromDate, toDate]);
+
+  const sortedActivity = useMemo(() => {
+    const rows = [...filteredActivity];
+    const { key, dir } = activitySort;
+    const mult = dir === "asc" ? 1 : -1;
+    rows.sort((a, b) => {
+      let av: string | number = "";
+      let bv: string | number = "";
+      if (key === "name") {
+        av = (a.full_name ?? "").toLowerCase();
+        bv = (b.full_name ?? "").toLowerCase();
+      } else if (key === "email") {
+        av = a.email.toLowerCase();
+        bv = b.email.toLowerCase();
+      } else if (key === "role") {
+        av = a.role;
+        bv = b.role;
+      } else if (key === "login") {
+        av = new Date(a.login_at).getTime();
+        bv = new Date(b.login_at).getTime();
+      } else if (key === "logout") {
+        av = a.logout_at ? new Date(a.logout_at).getTime() : 0;
+        bv = b.logout_at ? new Date(b.logout_at).getTime() : 0;
+      } else if (key === "duration") {
+        av = a.duration_seconds ?? 0;
+        bv = b.duration_seconds ?? 0;
+      } else if (key === "path") {
+        av = a.path;
+        bv = b.path;
+      } else if (key === "page") {
+        av = a.page_seconds;
+        bv = b.page_seconds;
+      }
+      if (av < bv) return -1 * mult;
+      if (av > bv) return 1 * mult;
+      return 0;
+    });
+    return rows;
+  }, [filteredActivity, activitySort]);
 
   const callAdmin = async (action: string, payload: Record<string, unknown>) => {
     setBusy(true);
@@ -393,6 +485,35 @@ export default function AdminDashboard() {
     return `${m}m ${sec}s`;
   };
 
+  const formatCompact = (iso: string | null | undefined) => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    return d.toLocaleString(undefined, {
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
+
+  const toggleUserSort = (key: UserSortKey) =>
+    setUserSort((p) =>
+      p.key === key ? { key, dir: p.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
+    );
+  const toggleActivitySort = (key: ActivitySortKey) =>
+    setActivitySort((p) =>
+      p.key === key ? { key, dir: p.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
+    );
+
+  const SortIcon = ({ active, dir }: { active: boolean; dir: SortDir }) => {
+    if (!active) return <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />;
+    return dir === "asc" ? (
+      <ArrowUp className="w-3.5 h-3.5" />
+    ) : (
+      <ArrowDown className="w-3.5 h-3.5" />
+    );
+  };
+
   const copyCred = async () => {
     if (!tempCred) return;
     await navigator.clipboard.writeText(
@@ -405,7 +526,7 @@ export default function AdminDashboard() {
   if (!isAdmin) return null;
 
   return (
-    <main className="container mx-auto px-4 py-8 max-w-7xl">
+    <main className="container mx-auto px-4 py-8 max-w-[1600px]">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2 flex items-center gap-2">
           <ShieldCheck className="w-8 h-8 text-primary" /> Admin Dashboard
@@ -518,17 +639,33 @@ export default function AdminDashboard() {
           <div className="rounded-md border overflow-hidden">
             <div className="max-h-[32rem] overflow-auto always-scrollbar">
               <Table>
-            <TableHeader className="sticky top-0 z-10 bg-card">
+            <TableHeader className="sticky top-0 z-20 bg-card [&_th]:bg-card [&_th]:shadow-[inset_0_-1px_0_hsl(var(--border))]">
               <TableRow>
-                <TableHead className="min-w-[220px]">Name</TableHead>
-                <TableHead className="min-w-[260px]">Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="min-w-[220px]">
+                  <button type="button" onClick={() => toggleUserSort("name")} className="flex items-center gap-1 hover:text-foreground">
+                    Name <SortIcon active={userSort.key === "name"} dir={userSort.dir} />
+                  </button>
+                </TableHead>
+                <TableHead className="min-w-[260px]">
+                  <button type="button" onClick={() => toggleUserSort("email")} className="flex items-center gap-1 hover:text-foreground">
+                    Email <SortIcon active={userSort.key === "email"} dir={userSort.dir} />
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button type="button" onClick={() => toggleUserSort("role")} className="flex items-center gap-1 hover:text-foreground">
+                    Role <SortIcon active={userSort.key === "role"} dir={userSort.dir} />
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button type="button" onClick={() => toggleUserSort("status")} className="flex items-center gap-1 hover:text-foreground">
+                    Status <SortIcon active={userSort.key === "status"} dir={userSort.dir} />
+                  </button>
+                </TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {userRows.map((row) => {
+              {sortedUserRows.map((row) => {
                 const role = getRoleLabel(row);
                 void role;
                 return (
@@ -708,36 +845,68 @@ export default function AdminDashboard() {
           </div>
 
           <div className="rounded-md border overflow-hidden">
-            <div className="max-h-[34rem] overflow-auto always-scrollbar">
-              <Table>
-                <TableHeader className="sticky top-0 z-10 bg-card">
+            <div className="max-h-[34rem] overflow-y-auto always-scrollbar">
+              <Table className="w-full table-fixed">
+                <TableHeader className="sticky top-0 z-20 bg-card [&_th]:bg-card [&_th]:shadow-[inset_0_-1px_0_hsl(var(--border))]">
                   <TableRow>
-                    <TableHead className="min-w-[180px]">Name</TableHead>
-                    <TableHead className="min-w-[240px]">Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Login</TableHead>
-                    <TableHead>Logout</TableHead>
-                    <TableHead>Session Duration</TableHead>
-                    <TableHead className="min-w-[180px]">Page</TableHead>
-                    <TableHead className="text-right">Time on Page</TableHead>
+                    <TableHead className="w-[12%]">
+                      <button type="button" onClick={() => toggleActivitySort("name")} className="flex items-center gap-1 hover:text-foreground">
+                        Name <SortIcon active={activitySort.key === "name"} dir={activitySort.dir} />
+                      </button>
+                    </TableHead>
+                    <TableHead className="w-[18%]">
+                      <button type="button" onClick={() => toggleActivitySort("email")} className="flex items-center gap-1 hover:text-foreground">
+                        Email <SortIcon active={activitySort.key === "email"} dir={activitySort.dir} />
+                      </button>
+                    </TableHead>
+                    <TableHead className="w-[9%]">
+                      <button type="button" onClick={() => toggleActivitySort("role")} className="flex items-center gap-1 hover:text-foreground">
+                        Role <SortIcon active={activitySort.key === "role"} dir={activitySort.dir} />
+                      </button>
+                    </TableHead>
+                    <TableHead className="w-[12%]">
+                      <button type="button" onClick={() => toggleActivitySort("login")} className="flex items-center gap-1 hover:text-foreground">
+                        Login <SortIcon active={activitySort.key === "login"} dir={activitySort.dir} />
+                      </button>
+                    </TableHead>
+                    <TableHead className="w-[12%]">
+                      <button type="button" onClick={() => toggleActivitySort("logout")} className="flex items-center gap-1 hover:text-foreground">
+                        Logout <SortIcon active={activitySort.key === "logout"} dir={activitySort.dir} />
+                      </button>
+                    </TableHead>
+                    <TableHead className="w-[10%]">
+                      <button type="button" onClick={() => toggleActivitySort("duration")} className="flex items-center gap-1 hover:text-foreground">
+                        Duration <SortIcon active={activitySort.key === "duration"} dir={activitySort.dir} />
+                      </button>
+                    </TableHead>
+                    <TableHead className="w-[17%]">
+                      <button type="button" onClick={() => toggleActivitySort("path")} className="flex items-center gap-1 hover:text-foreground">
+                        Page <SortIcon active={activitySort.key === "path"} dir={activitySort.dir} />
+                      </button>
+                    </TableHead>
+                    <TableHead className="w-[10%] text-right">
+                      <button type="button" onClick={() => toggleActivitySort("page")} className="flex items-center gap-1 ml-auto hover:text-foreground">
+                        Time on Page <SortIcon active={activitySort.key === "page"} dir={activitySort.dir} />
+                      </button>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredActivity.map((r) => (
+                  {sortedActivity.map((r) => (
                     <TableRow key={r.key}>
-                      <TableCell className="whitespace-nowrap">{r.full_name || "—"}</TableCell>
-                      <TableCell className="whitespace-nowrap">{r.email}</TableCell>
+                      <TableCell className="truncate">{r.full_name || "—"}</TableCell>
+                      <TableCell className="truncate" title={r.email}>{r.email}</TableCell>
                       <TableCell>
                         <Badge variant={getRoleBadgeVariant(r.role)}>{r.role}</Badge>
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {new Date(r.login_at).toLocaleString()}
+                      <TableCell className="whitespace-nowrap text-sm">
+                        {formatCompact(r.login_at)}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {r.logout_at ? new Date(r.logout_at).toLocaleString() : "Active"}
+                      <TableCell className="whitespace-nowrap text-sm">
+                        {r.logout_at ? formatCompact(r.logout_at) : "Active"}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">{formatDuration(r.duration_seconds)}</TableCell>
-                      <TableCell>
+                      <TableCell className="truncate" title={r.path}>
                         <code className="text-xs">{r.path}</code>
                       </TableCell>
                       <TableCell className="text-right whitespace-nowrap">
@@ -745,7 +914,7 @@ export default function AdminDashboard() {
                       </TableCell>
                     </TableRow>
                   ))}
-                  {filteredActivity.length === 0 && (
+                  {sortedActivity.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                         No activity matches the selected filters.
