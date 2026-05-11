@@ -148,8 +148,11 @@ Deno.serve(async (req) => {
     if (action === "send_reset") {
       const { email } = body;
       if (!email) return json({ error: "Missing email" }, 400);
-      const origin = req.headers.get("origin") ?? "";
-      const redirectTo = `${origin || "https://energyforward.com"}/reset-password`;
+      // Always use the production app URL — never the caller's origin
+      // (which may be localhost or a preview URL when admins reset from dev).
+      const SITE_URL =
+        Deno.env.get("SITE_URL") ?? "https://energyforward-launchpad.lovable.app";
+      const redirectTo = `${SITE_URL.replace(/\/$/, "")}/reset-password`;
       // Generate the recovery link without triggering Supabase's default email.
       const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
         type: "recovery",

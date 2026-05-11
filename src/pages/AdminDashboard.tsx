@@ -758,12 +758,7 @@ export default function AdminDashboard() {
                               <DropdownMenuItem
                                 onClick={() => callAdmin("send_reset", { email: row.email })}
                               >
-                                Send Reset Email
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => row.user_id && handleSetPassword(row.user_id, row.email)}
-                              >
-                                Set Password
+                                Reset Password
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
