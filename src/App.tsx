@@ -25,7 +25,19 @@ function AppContent() {
   const prevSession = useRef<boolean>(!!session);
   useEffect(() => {
     if (!loading && session && !prevSession.current) {
-      navigate('/mission');
+      // Check if user must change password (temporary password from invite)
+      (async () => {
+        const { data } = await supabase
+          .from('profiles')
+          .select('must_change_password')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+        if (data?.must_change_password) {
+          navigate('/reset-password');
+        } else {
+          navigate('/mission');
+        }
+      })();
     }
     prevSession.current = !!session;
   }, [session, loading, navigate]);
