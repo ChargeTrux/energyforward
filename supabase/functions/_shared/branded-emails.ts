@@ -5,7 +5,7 @@ export const EF_FROM = "Energy Forward Investor Portal <investor@energyforward.c
 export const EF_REPLY_TO = "investor@energyforward.com";
 export const EF_LOGO_URL = "https://energyforward.com/favicon.png";
 export const EF_SITE_URL = "https://energyforward.com";
-export const EF_PORTAL_URL = "https://energyforward.com/p/investor";
+export const EF_PORTAL_URL = "https://energyforward-launchpad.lovable.app/?login=1";
 
 const NAVY = "#0F172A";
 const BLUE = "#2563EB";
@@ -124,7 +124,9 @@ export function welcomeEmail(args: {
   const name = escapeHtml(args.name || "Investor");
   const email = escapeHtml(args.email);
   const pwd = escapeHtml(args.tempPassword);
-  const loginUrl = args.loginUrl || EF_PORTAL_URL;
+  const baseLogin = args.loginUrl || "https://energyforward-launchpad.lovable.app/";
+  const sep = baseLogin.includes("?") ? "&" : "?";
+  const loginUrl = `${baseLogin}${sep}login=1&email=${encodeURIComponent(args.email)}`;
   const body = `
     <p style="margin:0 0 14px;">Dear ${name},</p>
     <p style="margin:0 0 14px;">Welcome to the <strong>Energy Forward Investor Portal</strong>. Your access has been approved and your account is now active.</p>

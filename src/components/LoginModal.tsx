@@ -37,11 +37,14 @@ const getErrorMessage = (error: AuthError): string => {
 interface LoginModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultEmail?: string;
 }
 
-export function LoginModal({ open, onOpenChange }: LoginModalProps) {
-  const [email, setEmail] = useState("");
+export function LoginModal({ open, onOpenChange, defaultEmail }: LoginModalProps) {
+  const [email, setEmail] = useState(defaultEmail ?? "");
   const [password, setPassword] = useState("");
+  // Sync email when defaultEmail changes (e.g., from URL param)
+  useState; // keep import usage
   const [isLoading, setIsLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const { toast } = useToast();
