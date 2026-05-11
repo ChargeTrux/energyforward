@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate, useParams, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -10,7 +10,9 @@ const TITLES: Record<string, string> = {
 };
 
 export default function GatedPage() {
-  const { slug = "" } = useParams();
+  const params = useParams();
+  const location = useLocation();
+  const slug = params.slug ?? location.pathname.replace(/^\/+/, "").split("/")[0] ?? "";
   const { user, isAdmin, loading } = useAuth();
   const [allowed, setAllowed] = useState<boolean | null>(null);
 
