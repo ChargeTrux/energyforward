@@ -58,6 +58,18 @@ Deno.serve(async (req) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
+  if (type === "check_account") {
+    const { data: prof } = await admin
+      .from("profiles")
+      .select("user_id, is_active")
+      .eq("email", email)
+      .maybeSingle();
+    return json({
+      exists: !!prof,
+      isActive: prof ? prof.is_active !== false : false,
+    });
+  }
+
   if (type === "access_request") {
     // Anti-abuse: only send if a recent signup exists in the DB for this email.
     const { data: signup } = await admin

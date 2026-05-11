@@ -71,6 +71,23 @@ export function EmailSignupModal({ open, onOpenChange }: EmailSignupModalProps) 
     setIsLoading(true);
 
     try {
+      // First, check if this email already has an active investor account.
+      try {
+        const { data: check } = await supabase.functions.invoke("send-investor-email", {
+          body: { type: "check_account", email: validation.data.email },
+        });
+        if (check?.exists) {
+          setAlreadyExists(true);
+          setIsLoading(false);
+          // Auto-send the reset link for convenience.
+          await handleSendReset();
+          return;
+        }
+      } catch (checkErr) {
+        console.error("Account check failed:", checkErr);
+        // Fall through to normal signup flow.
+      }
+
       const { error } = await supabase
         .from('email_signups')
         .insert([{
@@ -82,6 +99,8 @@ export function EmailSignupModal({ open, onOpenChange }: EmailSignupModalProps) 
         // Handle duplicate email error gracefully
         if (error.code === '23505') {
           setAlreadyExists(true);
+          // Auto-send reset link as a courtesy.
+          handleSendReset();
         } else {
           toast({
             title: "Signup Failed",
