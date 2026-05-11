@@ -76,8 +76,8 @@ Deno.serve(async (req) => {
   }
 
   if (type === "reset") {
-    const origin = req.headers.get("origin") ?? "https://energyforward.com";
-    const redirectTo = `${origin}/reset-password`;
+    const SITE_URL = Deno.env.get("SITE_URL") ?? "https://energyforward.com";
+    const redirectTo = `${SITE_URL.replace(/\/$/, "")}/reset-password`;
     // generateLink returns a recovery action_link WITHOUT sending the default Supabase email.
     const { data, error } = await admin.auth.admin.generateLink({
       type: "recovery",

@@ -24,6 +24,12 @@ function AppContent() {
   const { session, loading, signOut } = useAuth();
   const navigate = useNavigate();
   usePageTracking();
+  useEffect(() => {
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    if (hashParams.get("type") === "recovery" && window.location.pathname !== "/reset-password") {
+      navigate(`/reset-password${window.location.hash}`, { replace: true });
+    }
+  }, [navigate]);
   // Auto-open login modal when arriving from email CTA: ?login=1&email=...
   useEffect(() => {
     if (loading) return;
