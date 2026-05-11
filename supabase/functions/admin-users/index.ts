@@ -1,4 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  welcomeEmail,
+  resetEmail,
+  sendBrandedEmail,
+  EF_PORTAL_URL,
+} from "../_shared/branded-emails.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -81,6 +87,23 @@ Deno.serve(async (req) => {
           .upsert({ user_id: newUserId, role }, { onConflict: "user_id,role" });
       }
 
+      // Send branded welcome email with credentials.
+      const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+      if (RESEND_API_KEY) {
+        const tpl = welcomeEmail({
+          name: full_name ?? "",
+          email,
+          tempPassword,
+          loginUrl: EF_PORTAL_URL,
+        });
+        const r = await sendBrandedEmail(RESEND_API_KEY, {
+          to: email,
+          subject: tpl.subject,
+          html: tpl.html,
+        });
+        if (!r.ok) console.error("Welcome email failed:", r.error);
+      }
+
       return json({ ok: true, user: data.user, temp_password: tempPassword });
     }
 
@@ -126,10 +149,38 @@ Deno.serve(async (req) => {
       const { email } = body;
       if (!email) return json({ error: "Missing email" }, 400);
       const origin = req.headers.get("origin") ?? "";
-      const { error } = await admin.auth.resetPasswordForEmail(email, {
-        redirectTo: `${origin}/reset-password`,
+      const redirectTo = `${origin || "https://energyforward.com"}/reset-password`;
+      // Generate the recovery link without triggering Supabase's default email.
+      const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+        type: "recovery",
+        email,
+        options: { redirectTo },
       });
-      if (error) return json({ error: error.message }, 400);
+      if (linkErr) return json({ error: linkErr.message }, 400);
+      const actionLink =
+        (linkData?.properties as { action_link?: string } | undefined)?.action_link;
+      if (!actionLink) return json({ error: "Could not generate reset link" }, 500);
+
+      // Look up profile name for personalization.
+      const { data: prof } = await admin
+        .from("profiles")
+        .select("full_name")
+        .eq("email", email)
+        .maybeSingle();
+
+      const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+      if (!RESEND_API_KEY) return json({ error: "Email provider not configured" }, 500);
+      const tpl = resetEmail({
+        name: (prof?.full_name as string | null) ?? "Investor",
+        resetUrl: actionLink,
+        expirationMinutes: 60,
+      });
+      const r = await sendBrandedEmail(RESEND_API_KEY, {
+        to: email,
+        subject: tpl.subject,
+        html: tpl.html,
+      });
+      if (!r.ok) return json({ error: r.error }, 502);
       return json({ ok: true });
     }
 
