@@ -104,14 +104,17 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
       return;
     }
     setIsLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/reset-password`,
+    const { error } = await supabase.functions.invoke("send-investor-email", {
+      body: { type: "reset", email: email.trim() },
     });
     setIsLoading(false);
     if (error) {
       toast({ title: "Could not send reset email", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Check your inbox", description: "Password reset email sent." });
+      toast({
+        title: "Check your inbox",
+        description: "If an account exists for this email, a password reset link has been sent.",
+      });
       setShowForgot(false);
     }
   };
