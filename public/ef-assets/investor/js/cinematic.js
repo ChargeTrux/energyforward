@@ -14,11 +14,11 @@
   if (LenisCtor) {
     try {
       lenis = new LenisCtor({
-        duration: 1.0,
+        duration: 0.9,
         easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
         smoothWheel: true,
         smoothTouch: false,
-        wheelMultiplier: 1.0,
+        wheelMultiplier: 1.1,
         touchMultiplier: 1.5,
       });
       function raf(time) { lenis.raf(time); requestAnimationFrame(raf); }
@@ -165,5 +165,62 @@
     });
 
     ScrollTrigger.refresh();
+  }
+
+  // ── 5. Section snap scrolling ────────────────
+  // Snap to each <section> so the viewport always lands aligned to a section top.
+  if (window.gsap && window.ScrollTrigger) {
+    const sections = Array.from(document.querySelectorAll('section'));
+    if (sections.length > 1) {
+      const computeSnapPoints = () => {
+        const max = (document.documentElement.scrollHeight - window.innerHeight) || 1;
+        const pts = sections.map(s => Math.max(0, Math.min(1, s.offsetTop / max)));
+        // ensure unique + sorted
+        return Array.from(new Set(pts)).sort((a, b) => a - b);
+      };
+      let snapPoints = computeSnapPoints();
+      window.addEventListener('resize', () => { snapPoints = computeSnapPoints(); });
+
+      let snapTimer = null;
+      let isSnapping = false;
+      const nearestPoint = (p) => {
+        let best = snapPoints[0], dist = Math.abs(p - best);
+        for (const sp of snapPoints) {
+          const d = Math.abs(p - sp);
+          if (d < dist) { dist = d; best = sp; }
+        }
+        return best;
+      };
+
+      const scheduleSnap = () => {
+        if (snapTimer) clearTimeout(snapTimer);
+        snapTimer = setTimeout(() => {
+          if (isSnapping) return;
+          const max = (document.documentElement.scrollHeight - window.innerHeight) || 1;
+          const cur = window.scrollY / max;
+          const target = nearestPoint(cur);
+          const targetY = target * max;
+          if (Math.abs(targetY - window.scrollY) < 4) return;
+          isSnapping = true;
+          if (lenis) {
+            lenis.scrollTo(targetY, {
+              duration: 0.9,
+              easing: (t) => 1 - Math.pow(1 - t, 3),
+              onComplete: () => { isSnapping = false; },
+            });
+            setTimeout(() => { isSnapping = false; }, 1200);
+          } else {
+            window.scrollTo({ top: targetY, behavior: 'smooth' });
+            setTimeout(() => { isSnapping = false; }, 800);
+          }
+        }, 140);
+      };
+
+      window.addEventListener('wheel', scheduleSnap, { passive: true });
+      window.addEventListener('touchend', scheduleSnap, { passive: true });
+      window.addEventListener('keyup', (e) => {
+        if (['ArrowDown','ArrowUp','PageDown','PageUp','Space','Home','End'].includes(e.code)) scheduleSnap();
+      });
+    }
   }
 })();
