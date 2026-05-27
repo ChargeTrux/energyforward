@@ -2,8 +2,6 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { ShieldCheck, Home as HomeIcon } from "lucide-react";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 
 interface HeaderProps {
   onLoginClick: () => void;
@@ -13,28 +11,7 @@ interface HeaderProps {
 
 export function Header({ onLoginClick, onLogout, isLoggedIn }: HeaderProps) {
   const navigate = useNavigate();
-  const { isAdmin, user } = useAuth();
-  const [pages, setPages] = useState<{ slug: string; title: string }[]>([]);
-
-  useEffect(() => {
-    if (!user) {
-      setPages([]);
-      return;
-    }
-    (async () => {
-      const { data: allPages } = await supabase.from("pages").select("slug, title").order("title");
-      if (isAdmin) {
-        setPages(allPages ?? []);
-        return;
-      }
-      const { data: access } = await supabase
-        .from("page_access")
-        .select("page_slug")
-        .eq("user_id", user.id);
-      const allowed = new Set((access ?? []).map((a) => a.page_slug));
-      setPages((allPages ?? []).filter((p) => allowed.has(p.slug)));
-    })();
-  }, [user, isAdmin]);
+  const { isAdmin } = useAuth();
 
   return (
     <header className="w-full bg-background/95 backdrop-blur-sm border-b border-border shadow-card sticky top-0 z-50">
@@ -57,16 +34,6 @@ export function Header({ onLoginClick, onLogout, isLoggedIn }: HeaderProps) {
               <HomeIcon className="w-4 h-4" /> Home
             </Button>
           )}
-          {isLoggedIn && pages.map((p) => (
-            <Button
-              key={p.slug}
-              variant="ghost"
-              onClick={() => navigate(`/p/${p.slug}`)}
-              className="hidden md:inline-flex"
-            >
-              {p.title}
-            </Button>
-          ))}
           {isLoggedIn && isAdmin && (
             <Button variant="outline" onClick={() => navigate('/admin')} className="gap-1">
               <ShieldCheck className="w-4 h-4" /> Admin
