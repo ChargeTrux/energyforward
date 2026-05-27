@@ -96,7 +96,7 @@ interface ContactSubmissionRow {
   company: string | null;
   interest: "customer" | "investor" | "both" | "other";
   message: string | null;
-  status: "new" | "contacted" | "granted" | "dismissed";
+  status: "new" | "contacted" | "granted" | "dismissed" | "invited" | "resolved";
   created_at: string;
 }
 
@@ -575,11 +575,11 @@ export default function AdminDashboard() {
     if (data) {
       await supabase
         .from("contact_submissions")
-        .update({ status: "granted" })
+        .update({ status: "invited" })
         .eq("id", row.id);
       toast({
-        title: "Access granted",
-        description: `${row.email} invited (${rolesArr.join(", ") || "no portal"}).`,
+        title: "Invite sent",
+        description: `${row.email} invited (${rolesArr.join(", ") || "no portal"}). Status will update to resolved once they sign in.`,
       });
       await load();
     }
@@ -1020,7 +1020,8 @@ export default function AdminDashboard() {
           <CardTitle className="flex items-center gap-2">
             <Mail className="w-5 h-5" /> Contact Inquiries{" "}
             <span className="text-sm font-normal text-muted-foreground">
-              ({contacts.length} total · {contacts.filter((c) => c.status === "new").length} new)
+              ({contacts.filter((c) => c.status !== "resolved").length} open ·{" "}
+              {contacts.filter((c) => c.status === "new").length} new)
             </span>
           </CardTitle>
         </CardHeader>
@@ -1040,7 +1041,7 @@ export default function AdminDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {contacts.map((c) => (
+                  {contacts.filter((c) => c.status !== "resolved").map((c) => (
                     <TableRow key={c.id}>
                       <TableCell className="whitespace-nowrap">
                         <div className="font-medium">{c.full_name}</div>
@@ -1079,7 +1080,9 @@ export default function AdminDashboard() {
                         <span
                           className={
                             "ef-badge " +
-                            (c.status === "granted"
+                            (c.status === "invited" || c.status === "granted"
+                              ? "ef-badge--investor"
+                              : c.status === "resolved"
                               ? "ef-badge--active"
                               : c.status === "dismissed"
                               ? "ef-badge--off"
@@ -1088,7 +1091,9 @@ export default function AdminDashboard() {
                               : "ef-badge--signup")
                           }
                         >
-                          {c.status === "granted" ? "active" : c.status}
+                          {c.status === "invited" || c.status === "granted"
+                            ? "invite sent"
+                            : c.status}
                         </span>
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm" style={{ color: "var(--ef-muted)" }}>
@@ -1125,14 +1130,8 @@ export default function AdminDashboard() {
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuLabel>Status</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => updateContactStatus(c, "contacted")}>
-                              Mark contacted
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => updateContactStatus(c, "dismissed")}>
-                              Mark dismissed
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => updateContactStatus(c, "new")}>
-                              Reset to new
+                            <DropdownMenuItem onClick={() => updateContactStatus(c, "resolved")}>
+                              Mark resolved
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
