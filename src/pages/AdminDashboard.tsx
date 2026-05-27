@@ -1385,6 +1385,42 @@ export default function AdminDashboard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!viewContact} onOpenChange={(o) => !o && setViewContact(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Contact inquiry</DialogTitle>
+            <DialogDescription>
+              Submitted{" "}
+              {viewContact &&
+                new Date(viewContact.created_at).toLocaleString()}
+            </DialogDescription>
+          </DialogHeader>
+          {viewContact && (
+            <div className="space-y-3 text-sm">
+              <div><strong>Name:</strong> {viewContact.full_name}</div>
+              {viewContact.role_position && (
+                <div><strong>Role:</strong> {viewContact.role_position}</div>
+              )}
+              <div><strong>Email:</strong> {viewContact.email}</div>
+              {viewContact.phone && <div><strong>Phone:</strong> {viewContact.phone}</div>}
+              {viewContact.company && <div><strong>Company:</strong> {viewContact.company}</div>}
+              <div><strong>Interest:</strong> {viewContact.interest}</div>
+              {viewContact.message && (
+                <div>
+                  <strong>Message:</strong>
+                  <p className="mt-1 whitespace-pre-wrap" style={{ color: "var(--ef-muted)" }}>
+                    {viewContact.message}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewContact(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
     </div>
   );
