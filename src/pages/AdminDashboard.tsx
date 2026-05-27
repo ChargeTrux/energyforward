@@ -112,11 +112,12 @@ interface ActivityRow {
   full_name: string | null;
   email: string;
   role: string;
-  login_at: string;
+  login_at: string | null;
   logout_at: string | null;
   duration_seconds: number | null;
   path: string;
   page_seconds: number;
+  invite_status?: "invite_sent" | "logged_in";
 }
 
 type PortalRole = "admin" | "investor" | "customer";
@@ -254,7 +255,9 @@ export default function AdminDashboard() {
     });
 
     const rows: ActivityRow[] = [];
+    const loggedInUserIds = new Set<string>();
     (sess ?? []).forEach((s) => {
+      loggedInUserIds.add(s.user_id);
       const prof = profileMap.get(s.user_id);
       const role = prof ? getRoleLabel(prof) : "No portal role";
       const sessionViews = viewsBySession.get(s.id) ?? [];
@@ -269,6 +272,7 @@ export default function AdminDashboard() {
           duration_seconds: s.duration_seconds,
           path: "—",
           page_seconds: 0,
+          invite_status: "logged_in",
         });
       } else {
         const byPath = new Map<string, number>();
@@ -288,9 +292,26 @@ export default function AdminDashboard() {
               duration_seconds: s.duration_seconds,
               path,
               page_seconds: secs,
+              invite_status: "logged_in",
             });
           });
       }
+    });
+    // Add invited users (have an account but never logged in)
+    enrichedProfiles.forEach((p) => {
+      if (loggedInUserIds.has(p.user_id)) return;
+      rows.push({
+        key: `invite-${p.user_id}`,
+        full_name: p.full_name,
+        email: p.email,
+        role: getRoleLabel(p),
+        login_at: null,
+        logout_at: null,
+        duration_seconds: null,
+        path: "—",
+        page_seconds: 0,
+        invite_status: "invite_sent",
+      });
     });
     setActivity(rows);
   };
@@ -378,9 +399,14 @@ export default function AdminDashboard() {
         : null;
 
     return activity.filter((row) => {
-      const loginTs = new Date(row.login_at).getTime();
-      if (fromTs && loginTs < fromTs) return false;
-      if (toTs && loginTs > toTs) return false;
+      if (row.login_at) {
+        const loginTs = new Date(row.login_at).getTime();
+        if (fromTs && loginTs < fromTs) return false;
+        if (toTs && loginTs > toTs) return false;
+      } else {
+        // Invite-sent rows: only include when no custom date filter is active
+        if (activityPreset === "custom" && (fromTs || toTs)) return false;
+      }
       if (!search) return true;
       return [row.full_name ?? "", row.email, row.role, row.path]
         .join(" ")
@@ -406,8 +432,8 @@ export default function AdminDashboard() {
         av = a.role;
         bv = b.role;
       } else if (key === "login") {
-        av = new Date(a.login_at).getTime();
-        bv = new Date(b.login_at).getTime();
+        av = a.login_at ? new Date(a.login_at).getTime() : 0;
+        bv = b.login_at ? new Date(b.login_at).getTime() : 0;
       } else if (key === "logout") {
         av = a.logout_at ? new Date(a.logout_at).getTime() : 0;
         bv = b.logout_at ? new Date(b.logout_at).getTime() : 0;
@@ -666,7 +692,7 @@ export default function AdminDashboard() {
           <span className="ef-stat-label">Control</span>
         </div>
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Admin Dashboard</h1>
-        <p className="mt-2" style={{color:"var(--ef-muted)"}}>Manage admins, administration &amp; customer portal access, website signups, and activity.</p>
+        <p className="mt-2" style={{color:"var(--ef-muted)"}}>Manage admins, investor portal &amp; customer portal access, website signups, and activity.</p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-4 mb-8">
@@ -1010,7 +1036,7 @@ export default function AdminDashboard() {
                               : "ef-badge--none")
                           }
                         >
-                           {c.interest === "investor" ? "administration" : c.interest}
+                           {c.interest === "investor" ? "investor" : c.interest}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -1026,7 +1052,7 @@ export default function AdminDashboard() {
                               : "ef-badge--signup")
                           }
                         >
-                          {c.status}
+                          {c.status === "granted" ? "active" : c.status}
                         </span>
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm" style={{ color: "var(--ef-muted)" }}>
@@ -1222,10 +1248,27 @@ export default function AdminDashboard() {
                         </span>
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm">
-                        {formatCompact(r.login_at)}
+                        {r.login_at ? formatCompact(r.login_at) : "—"}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm">
-                        {r.logout_at ? formatCompact(r.logout_at) : "Active"}
+                        {r.invite_status === "invite_sent" ? (
+                          <div className="flex items-center gap-2">
+                            <span className="ef-badge ef-badge--signup">Invite sent</span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-6 px-2 text-xs"
+                              disabled={busy}
+                              onClick={() => callAdmin("send_reset", { email: r.email })}
+                            >
+                              Resend
+                            </Button>
+                          </div>
+                        ) : r.logout_at ? (
+                          formatCompact(r.logout_at)
+                        ) : (
+                          <span className="ef-badge ef-badge--active">Active</span>
+                        )}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">{formatDuration(r.duration_seconds)}</TableCell>
                       <TableCell className="truncate" title={r.path}>
