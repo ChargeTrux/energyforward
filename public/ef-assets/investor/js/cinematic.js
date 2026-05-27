@@ -167,60 +167,86 @@
     ScrollTrigger.refresh();
   }
 
-  // ── 5. Section snap scrolling ────────────────
-  // Snap to each <section> so the viewport always lands aligned to a section top.
-  if (window.gsap && window.ScrollTrigger) {
+  // ── 5. Section-by-section navigation ─────────
+  // Each wheel/swipe/key advances exactly one section; an auto-advance
+  // timer cycles forward while the user is idle so the deck plays itself.
+  (function sectionNav() {
     const sections = Array.from(document.querySelectorAll('section'));
-    if (sections.length > 1) {
-      const computeSnapPoints = () => {
-        const max = (document.documentElement.scrollHeight - window.innerHeight) || 1;
-        const pts = sections.map(s => Math.max(0, Math.min(1, s.offsetTop / max)));
-        // ensure unique + sorted
-        return Array.from(new Set(pts)).sort((a, b) => a - b);
-      };
-      let snapPoints = computeSnapPoints();
-      window.addEventListener('resize', () => { snapPoints = computeSnapPoints(); });
+    if (sections.length < 2) return;
 
-      let snapTimer = null;
-      let isSnapping = false;
-      const nearestPoint = (p) => {
-        let best = snapPoints[0], dist = Math.abs(p - best);
-        for (const sp of snapPoints) {
-          const d = Math.abs(p - sp);
-          if (d < dist) { dist = d; best = sp; }
-        }
-        return best;
-      };
+    let current = 0;
+    let locked = false;
+    const AUTO_MS = 6000;       // dwell time per section
+    const LOCK_MS = 900;        // animation duration / cooldown
+    let autoTimer = null;
 
-      const scheduleSnap = () => {
-        if (snapTimer) clearTimeout(snapTimer);
-        snapTimer = setTimeout(() => {
-          if (isSnapping) return;
-          const max = (document.documentElement.scrollHeight - window.innerHeight) || 1;
-          const cur = window.scrollY / max;
-          const target = nearestPoint(cur);
-          const targetY = target * max;
-          if (Math.abs(targetY - window.scrollY) < 4) return;
-          isSnapping = true;
-          if (lenis) {
-            lenis.scrollTo(targetY, {
-              duration: 0.9,
-              easing: (t) => 1 - Math.pow(1 - t, 3),
-              onComplete: () => { isSnapping = false; },
-            });
-            setTimeout(() => { isSnapping = false; }, 1200);
-          } else {
-            window.scrollTo({ top: targetY, behavior: 'smooth' });
-            setTimeout(() => { isSnapping = false; }, 800);
-          }
-        }, 140);
-      };
+    const sectionTop = (i) => sections[i].getBoundingClientRect().top + window.scrollY;
 
-      window.addEventListener('wheel', scheduleSnap, { passive: true });
-      window.addEventListener('touchend', scheduleSnap, { passive: true });
-      window.addEventListener('keyup', (e) => {
-        if (['ArrowDown','ArrowUp','PageDown','PageUp','Space','Home','End'].includes(e.code)) scheduleSnap();
-      });
-    }
-  }
+    const goTo = (i) => {
+      i = Math.max(0, Math.min(sections.length - 1, i));
+      current = i;
+      locked = true;
+      const y = sectionTop(i);
+      if (lenis && typeof lenis.scrollTo === 'function') {
+        lenis.scrollTo(y, { duration: 0.9, easing: (t) => 1 - Math.pow(1 - t, 3) });
+      } else {
+        window.scrollTo({ top: y, behavior: 'smooth' });
+      }
+      setTimeout(() => { locked = false; }, LOCK_MS);
+      scheduleAuto();
+    };
+
+    const findCurrent = () => {
+      const y = window.scrollY + window.innerHeight * 0.4;
+      let idx = 0;
+      for (let i = 0; i < sections.length; i++) {
+        if (sectionTop(i) <= y) idx = i;
+      }
+      return idx;
+    };
+
+    const scheduleAuto = () => {
+      if (autoTimer) clearTimeout(autoTimer);
+      autoTimer = setTimeout(() => {
+        if (document.hidden) { scheduleAuto(); return; }
+        const next = current + 1;
+        if (next < sections.length) goTo(next);
+      }, AUTO_MS);
+    };
+
+    // Wheel → discrete advance
+    window.addEventListener('wheel', (e) => {
+      if (locked) { e.preventDefault && e.preventDefault(); return; }
+      const dir = e.deltaY > 0 ? 1 : (e.deltaY < 0 ? -1 : 0);
+      if (!dir) return;
+      current = findCurrent();
+      goTo(current + dir);
+    }, { passive: false });
+
+    // Keyboard
+    window.addEventListener('keydown', (e) => {
+      if (locked) return;
+      if (['ArrowDown', 'PageDown', 'Space'].includes(e.code)) { e.preventDefault(); current = findCurrent(); goTo(current + 1); }
+      else if (['ArrowUp', 'PageUp'].includes(e.code)) { e.preventDefault(); current = findCurrent(); goTo(current - 1); }
+      else if (e.code === 'Home') { e.preventDefault(); goTo(0); }
+      else if (e.code === 'End')  { e.preventDefault(); goTo(sections.length - 1); }
+    });
+
+    // Touch swipe
+    let touchY = 0;
+    window.addEventListener('touchstart', (e) => { touchY = e.touches[0].clientY; }, { passive: true });
+    window.addEventListener('touchend', (e) => {
+      if (locked) return;
+      const dy = touchY - (e.changedTouches[0]?.clientY ?? touchY);
+      if (Math.abs(dy) < 40) return;
+      current = findCurrent();
+      goTo(current + (dy > 0 ? 1 : -1));
+    }, { passive: true });
+
+    // Recompute on resize
+    window.addEventListener('resize', () => { current = findCurrent(); });
+
+    // Kick off auto-advance after first paint
+    setTimeout(() => { current = findCurrent(); scheduleAuto(); }, 600);
+  })();
 })();
