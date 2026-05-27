@@ -197,6 +197,17 @@ export default function AdminDashboard() {
     if (!loading && !isAdmin) navigate("/");
   }, [loading, isAdmin, navigate]);
 
+  useEffect(() => {
+    const prevBg = document.body.style.backgroundColor;
+    const prevColor = document.body.style.color;
+    document.body.style.backgroundColor = "#0b1220";
+    document.body.style.color = "#dfe6f1";
+    return () => {
+      document.body.style.backgroundColor = prevBg;
+      document.body.style.color = prevColor;
+    };
+  }, []);
+
   const load = async () => {
     const [{ data: profs }, { data: roles }, { data: sess }, { data: views }, { data: signupRows }, { data: contactRows }] =
       await Promise.all([
