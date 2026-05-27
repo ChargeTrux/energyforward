@@ -112,11 +112,12 @@ interface ActivityRow {
   full_name: string | null;
   email: string;
   role: string;
-  login_at: string;
+  login_at: string | null;
   logout_at: string | null;
   duration_seconds: number | null;
   path: string;
   page_seconds: number;
+  invite_status?: "invite_sent" | "logged_in";
 }
 
 type PortalRole = "admin" | "investor" | "customer";
