@@ -1130,14 +1130,8 @@ export default function AdminDashboard() {
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuLabel>Status</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => updateContactStatus(c, "contacted")}>
-                              Mark contacted
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => updateContactStatus(c, "dismissed")}>
-                              Mark dismissed
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => updateContactStatus(c, "new")}>
-                              Reset to new
+                            <DropdownMenuItem onClick={() => updateContactStatus(c, "resolved")}>
+                              Mark resolved
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
