@@ -4,6 +4,7 @@ import {
   sendBrandedEmail,
   EF_FROM,
   EF_REPLY_TO,
+  EF_ADMIN_URL,
 } from "../_shared/branded-emails.ts";
 
 const corsHeaders = {
@@ -121,7 +122,12 @@ Deno.serve(async (req) => {
           <tr><td style="padding:8px 0;font-weight:bold;color:#6b7280;vertical-align:top;">Message</td><td style="padding:8px 0;color:#111827;white-space:pre-wrap;">${safe.message}</td></tr>
         </table>
         <p style="color:#6b7280;font-size:13px;margin-top:24px;">Submitted: ${escapeHtml(submittedAt)}</p>
-        <p style="color:#6b7280;font-size:12px;margin-top:8px;">Review and grant access in the admin dashboard.</p>
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left" style="margin-top:20px;">
+          <tr><td align="center" bgcolor="#5fb4a2" style="border-radius:6px;">
+            <a href="${EF_ADMIN_URL}" target="_blank" style="display:inline-block;padding:14px 30px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#0b1220;text-decoration:none;border-radius:6px;background-color:#5fb4a2;">Open Admin Portal</a>
+          </td></tr>
+        </table>
+        <p style="color:#6b7280;font-size:12px;margin-top:16px;clear:both;">Review and grant access in the admin dashboard.</p>
       </div>
     `;
 
