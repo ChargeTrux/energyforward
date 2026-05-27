@@ -1027,7 +1027,7 @@ export default function AdminDashboard() {
                               : "ef-badge--signup")
                           }
                         >
-                          {c.status}
+                          {c.status === "granted" ? "active" : c.status}
                         </span>
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm" style={{ color: "var(--ef-muted)" }}>
