@@ -11,3 +11,5 @@ project_id = "scyqmmakqmnzpnhrrnlx"
     verify_jwt = false
   [functions.resend-test]
     verify_jwt = false
+  [functions.notify-contact]
+    verify_jwt = false

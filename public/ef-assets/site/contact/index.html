@@ -152,6 +152,20 @@
         const t = await r.text();
         throw new Error(t || "submission failed");
       }
+      // Fire-and-forget admin + confirmation email notifications.
+      try {
+        fetch(`${SUPA_URL}/functions/v1/notify-contact`, {
+          method: "POST",
+          headers: {
+            apikey: SUPA_KEY,
+            Authorization: `Bearer ${SUPA_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email: payload.email }),
+        }).catch((err) => console.error("notify-contact failed:", err));
+      } catch (notifyErr) {
+        console.error("notify-contact dispatch error:", notifyErr);
+      }
       form.hidden = true;
       success.hidden = false;
       window.scrollTo({ top: 0, behavior: "smooth" });
