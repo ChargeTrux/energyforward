@@ -26,7 +26,11 @@ export function brandingForPortals(portals?: string[] | null): {
   const hasCustomer = list.includes("customer");
   if (hasCustomer && !hasInvestor) {
     return {
-      from: EF_CUSTOMER_FROM,
+      // NOTE: customer@energyforward.com may not yet be verified at the
+      // email provider, so we send From the verified investor@ address to
+      // guarantee delivery. Reply-To still routes to the customer inbox so
+      // responses reach the right team.
+      from: EF_FROM,
       replyTo: EF_CUSTOMER_REPLY_TO,
       contactEmail: EF_CUSTOMER_REPLY_TO,
       relationsLabel: "Customer Relations",
