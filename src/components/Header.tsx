@@ -39,15 +39,15 @@ export function Header({ onLoginClick, onLogout, isLoggedIn }: HeaderProps) {
   return (
     <header className="w-full bg-background/95 backdrop-blur-sm border-b border-border shadow-card sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-        <div 
+        <div
           className="cursor-pointer transition-energy hover:scale-105"
           onClick={() => navigate('/')}
         >
-          <span 
+          <span
             className="text-xl font-bold tracking-tight"
-            style={{ fontFamily: "'Cabinet Grotesk', sans-serif", color: "var(--ef-pearl)" }}
+            style={{ fontFamily: "'Cabinet Grotesk', sans-serif" }}
           >
-            energyforward<span style={{ color: "var(--ef-amber)" }}>.</span>
+            energyforward<span className="text-[var(--ef-amber)]">.</span>
           </span>
         </div>
         
