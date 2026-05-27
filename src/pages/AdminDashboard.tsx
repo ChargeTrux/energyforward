@@ -667,7 +667,7 @@ export default function AdminDashboard() {
           <span className="ef-stat-label">Control</span>
         </div>
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Admin Dashboard</h1>
-        <p className="mt-2" style={{color:"var(--ef-muted)"}}>Manage admins, administration &amp; customer portal access, website signups, and activity.</p>
+        <p className="mt-2" style={{color:"var(--ef-muted)"}}>Manage admins, investor portal &amp; customer portal access, website signups, and activity.</p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-4 mb-8">
