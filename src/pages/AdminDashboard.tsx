@@ -2,6 +2,7 @@ import { type ComponentProps, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import "./AdminDashboard.css";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -62,7 +63,7 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
-  Home as HomeIcon,
+  LogOut,
 } from "lucide-react";
 
 interface ProfileRow {
@@ -73,6 +74,7 @@ interface ProfileRow {
   created_at: string;
   is_admin?: boolean;
   is_investor?: boolean;
+  is_customer?: boolean;
 }
 
 interface SignupRow {
@@ -94,7 +96,7 @@ interface ActivityRow {
   key: string;
   full_name: string | null;
   email: string;
-  role: "Admin" | "Investor" | "No portal role";
+  role: string;
   login_at: string;
   logout_at: string | null;
   duration_seconds: number | null;
@@ -102,7 +104,7 @@ interface ActivityRow {
   page_seconds: number;
 }
 
-type PortalRole = "admin" | "investor";
+type PortalRole = "admin" | "investor" | "customer";
 type ActivityPreset = "all" | "7" | "10" | "custom";
 type BadgeVariant = ComponentProps<typeof Badge>["variant"];
 type SortDir = "asc" | "desc";
@@ -127,18 +129,18 @@ type UserListRow = {
   is_active?: boolean;
   is_admin?: boolean;
   is_investor?: boolean;
+  is_customer?: boolean;
 };
 
-const getRoleLabel = (user: Pick<ProfileRow, "is_admin" | "is_investor">): ActivityRow["role"] => {
+const getRoleLabel = (
+  user: Pick<ProfileRow, "is_admin" | "is_investor" | "is_customer">,
+): string => {
   if (user.is_admin) return "Admin";
-  if (user.is_investor) return "Investor";
+  const parts: string[] = [];
+  if (user.is_investor) parts.push("Investor");
+  if (user.is_customer) parts.push("Customer");
+  if (parts.length) return parts.join(" + ");
   return "No portal role";
-};
-
-const getRoleBadgeVariant = (role: string): BadgeVariant => {
-  if (role === "Admin") return "roleAdmin";
-  if (role === "Investor") return "roleInvestor";
-  return "outline";
 };
 
 export default function AdminDashboard() {
