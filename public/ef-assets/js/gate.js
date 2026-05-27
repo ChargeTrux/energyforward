@@ -1,60 +1,56 @@
 /* energyforward access gate
-   stage 1 (now):  shared SHA-256-hashed password per audience
-   stage 2 (next): swap verify() for a fetch() to a real auth backend
-                   (Cloudflare Access, Auth0, Supabase, or a small FastAPI)
-                   that issues a signed token for per-email accounts.
-   the gate ui never changes — only verify() changes.
+   v2: real Supabase auth per email + role-based routing.
+   - admin       → top-level /admin
+   - investor    → unlocks /investor portal (or redirects from /customer)
+   - customer    → unlocks /customer portal (or redirects from /investor)
 */
 (function () {
   'use strict';
 
-  // ── config ─────────────────────────────────────
-  // SHA-256 hashes of the shared passwords (NOT the passwords themselves)
-  // generated with:  echo -n "PASSWORD" | shasum -a 256
-  const ROLE_HASHES = {
-    customer: 'b44f1fcff555ae5cb51849e87dccf4386204cd570ee770e0acf1e869cfd9dc1f',
-    investor: 'b44f1fcff555ae5cb51849e87dccf4386204cd570ee770e0acf1e869cfd9dc1f',
-  };
-  const SESSION_KEY = 'ef_access_token';
-  const SESSION_TTL_HOURS = 12;
+  const SUPABASE_URL = 'https://scyqmmakqmnzpnhrrnlx.supabase.co';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjeXFtbWFrcW1uenBuaHJybmx4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5OTY2NTMsImV4cCI6MjA3NDU3MjY1M30.pzSqpFJNrJVAn9wx-zSdTN7wibphuN24R2tIQMi85SA';
 
   // ── role inferred from script tag ──────────────
   const script = document.currentScript;
   const role = (script && script.dataset.role) || 'investor';
 
-  // ── helpers ────────────────────────────────────
-  async function sha256(text) {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  // Lazy-load supabase client from CDN
+  let _sbPromise = null;
+  function getSupabase() {
+    if (_sbPromise) return _sbPromise;
+    _sbPromise = import('https://esm.sh/@supabase/supabase-js@2.45.0').then((m) =>
+      m.createClient(SUPABASE_URL, SUPABASE_ANON, {
+        auth: { storage: window.localStorage, persistSession: true, autoRefreshToken: true },
+      }),
+    );
+    return _sbPromise;
   }
 
-  function readSession() {
-    try {
-      const raw = sessionStorage.getItem(SESSION_KEY);
-      if (!raw) return null;
-      const t = JSON.parse(raw);
-      if (!t || t.role !== role) return null;
-      if (Date.now() > t.expires) { sessionStorage.removeItem(SESSION_KEY); return null; }
-      return t;
-    } catch { return null; }
+  async function fetchRoles(sb, userId) {
+    const { data } = await sb.from('user_roles').select('role').eq('user_id', userId);
+    return new Set((data || []).map((r) => r.role));
   }
 
-  function writeSession(email) {
-    const t = {
-      role,
-      email: email || null,
-      expires: Date.now() + SESSION_TTL_HOURS * 3600 * 1000,
-    };
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(t));
+  function routeForRoles(roles, opts) {
+    const fromLogin = !!(opts && opts.fromLogin);
+    // admin: on fresh login send to /admin, but on revisit just unlock (admins can browse any portal)
+    if (roles.has('admin')) {
+      return fromLogin ? { kind: 'redirect', to: '/admin' } : { kind: 'unlock' };
+    }
+    // matches current portal → unlock in place
+    if (roles.has(role)) return { kind: 'unlock' };
+    // has the other portal → send them there
+    if (role === 'customer' && roles.has('investor')) return { kind: 'redirect', to: '/investor' };
+    if (role === 'investor' && roles.has('customer')) return { kind: 'redirect', to: '/customer' };
+    return { kind: 'deny', msg: 'this account has no portal access' };
   }
 
-  // verify() — swap this for a real backend call later
-  async function verify(email, password) {
-    const expected = ROLE_HASHES[role];
-    if (!expected) return { ok: false, msg: 'unknown role' };
-    const hash = await sha256(password);
-    if (hash === expected) return { ok: true, email };
-    return { ok: false, msg: 'invalid password' };
+  function applyRoute(decision) {
+    if (decision.kind === 'unlock') return unlock();
+    if (decision.kind === 'redirect') {
+      try { window.top.location.replace(decision.to); }
+      catch { window.location.replace(decision.to); }
+    }
   }
 
   // ── ui ─────────────────────────────────────────
@@ -111,16 +107,27 @@
       btn.disabled = true;
       btn.querySelector('span').textContent = 'verifying';
       const fd = new FormData(form);
-      const r = await verify(fd.get('email'), fd.get('password'));
-      btn.disabled = false;
-      btn.querySelector('span').textContent = 'enter';
-      if (r.ok) {
-        writeSession(r.email);
+      try {
+        const sb = await getSupabase();
+        const { data, error } = await sb.auth.signInWithPassword({
+          email: String(fd.get('email') || '').trim(),
+          password: String(fd.get('password') || ''),
+        });
+        if (error || !data?.user) {
+          throw new Error(error?.message || 'invalid credentials');
+        }
+        const roles = await fetchRoles(sb, data.user.id);
+        const decision = routeForRoles(roles, { fromLogin: true });
+        if (decision.kind === 'deny') {
+          await sb.auth.signOut();
+          throw new Error(decision.msg);
+        }
         msg.textContent = 'access granted';
-        msg.classList.remove('is-err');
-        setTimeout(unlock, 240);
-      } else {
-        msg.textContent = r.msg || 'invalid credentials';
+        setTimeout(() => applyRoute(decision), 220);
+      } catch (err) {
+        btn.disabled = false;
+        btn.querySelector('span').textContent = 'enter';
+        msg.textContent = (err && err.message) ? err.message.toLowerCase() : 'invalid credentials';
         msg.classList.add('is-err');
       }
     });
@@ -131,10 +138,20 @@
 
   // ── bootstrap ──────────────────────────────────
   document.documentElement.classList.add('ef-locked');
-  if (readSession()) {
-    unlock();
-  } else {
+  (async () => {
+    try {
+      const sb = await getSupabase();
+      const { data: { session } } = await sb.auth.getSession();
+      if (session?.user) {
+        const roles = await fetchRoles(sb, session.user.id);
+        const decision = routeForRoles(roles, { fromLogin: false });
+        if (decision.kind !== 'deny') {
+          applyRoute(decision);
+          return;
+        }
+      }
+    } catch (_) { /* fall through to gate */ }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountGate);
     else mountGate();
-  }
+  })();
 })();
