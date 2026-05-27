@@ -575,11 +575,11 @@ export default function AdminDashboard() {
     if (data) {
       await supabase
         .from("contact_submissions")
-        .update({ status: "granted" })
+        .update({ status: "invited" })
         .eq("id", row.id);
       toast({
-        title: "Access granted",
-        description: `${row.email} invited (${rolesArr.join(", ") || "no portal"}).`,
+        title: "Invite sent",
+        description: `${row.email} invited (${rolesArr.join(", ") || "no portal"}). Status will update to resolved once they sign in.`,
       });
       await load();
     }
