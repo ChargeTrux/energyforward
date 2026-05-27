@@ -223,14 +223,14 @@ Deno.serve(async (req) => {
       if (!RESEND_API_KEY) return json({ error: "Email provider not configured" }, 500);
       // Look up the recipient's portals so the reset email uses the right
       // sender + footer contact (customer@ vs investor@).
-      let userPortals: string[] = [];
+      const userPortals: string[] = [];
       try {
-        const { data: u } = await admin.auth.admin.getUserByEmail
-          ? await (admin.auth.admin as unknown as {
-              getUserByEmail: (e: string) => Promise<{ data: { user?: { id: string } } }>;
-            }).getUserByEmail(email)
-          : { data: { user: undefined } };
-        const uid = u?.user?.id;
+        const { data: profRow } = await admin
+          .from("profiles")
+          .select("user_id")
+          .eq("email", email)
+          .maybeSingle();
+        const uid = (profRow as { user_id?: string } | null)?.user_id;
         if (uid) {
           const { data: roleRows } = await admin
             .from("user_roles")
