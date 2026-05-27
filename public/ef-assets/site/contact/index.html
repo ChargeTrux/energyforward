@@ -144,13 +144,32 @@
           apikey: SUPA_KEY,
           Authorization: `Bearer ${SUPA_KEY}`,
           "Content-Type": "application/json",
-          Prefer: "return=minimal",
+          Prefer: "return=representation",
         },
         body: JSON.stringify(payload),
       });
       if (!r.ok) {
         const t = await r.text();
         throw new Error(t || "submission failed");
+      }
+      // Fire-and-forget admin + confirmation email notifications.
+      try {
+        const inserted = await r.json();
+        const row = Array.isArray(inserted) ? inserted[0] : inserted;
+        const submissionId = row && row.id;
+        if (submissionId) {
+          fetch(`${SUPA_URL}/functions/v1/notify-contact`, {
+            method: "POST",
+            headers: {
+              apikey: SUPA_KEY,
+              Authorization: `Bearer ${SUPA_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ submission_id: submissionId }),
+          }).catch((err) => console.error("notify-contact failed:", err));
+        }
+      } catch (notifyErr) {
+        console.error("notify-contact dispatch error:", notifyErr);
       }
       form.hidden = true;
       success.hidden = false;
