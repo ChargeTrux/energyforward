@@ -1248,10 +1248,27 @@ export default function AdminDashboard() {
                         </span>
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm">
-                        {formatCompact(r.login_at)}
+                        {r.login_at ? formatCompact(r.login_at) : "—"}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm">
-                        {r.logout_at ? formatCompact(r.logout_at) : "Active"}
+                        {r.invite_status === "invite_sent" ? (
+                          <div className="flex items-center gap-2">
+                            <span className="ef-badge ef-badge--signup">Invite sent</span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-6 px-2 text-xs"
+                              disabled={busy}
+                              onClick={() => callAdmin("send_reset", { email: r.email })}
+                            >
+                              Resend
+                            </Button>
+                          </div>
+                        ) : r.logout_at ? (
+                          formatCompact(r.logout_at)
+                        ) : (
+                          <span className="ef-badge ef-badge--active">Active</span>
+                        )}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">{formatDuration(r.duration_seconds)}</TableCell>
                       <TableCell className="truncate" title={r.path}>
