@@ -828,7 +828,7 @@ export default function AdminDashboard() {
                     <TableCell>
                       <div className="flex gap-1 flex-wrap">
                         {row.is_admin && <span className="ef-badge ef-badge--admin">Admin</span>}
-                        {row.is_investor && <span className="ef-badge ef-badge--investor">Administration</span>}
+                        {row.is_investor && <span className="ef-badge ef-badge--investor">Investor</span>}
                         {row.is_customer && <span className="ef-badge ef-badge--customer">Customer</span>}
                         {!row.is_admin && !row.is_investor && !row.is_customer && (
                           <span className="ef-badge ef-badge--none">No portal</span>
