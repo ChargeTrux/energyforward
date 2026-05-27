@@ -432,8 +432,8 @@ export default function AdminDashboard() {
         av = a.role;
         bv = b.role;
       } else if (key === "login") {
-        av = new Date(a.login_at).getTime();
-        bv = new Date(b.login_at).getTime();
+        av = a.login_at ? new Date(a.login_at).getTime() : 0;
+        bv = b.login_at ? new Date(b.login_at).getTime() : 0;
       } else if (key === "logout") {
         av = a.logout_at ? new Date(a.logout_at).getTime() : 0;
         bv = b.logout_at ? new Date(b.logout_at).getTime() : 0;
