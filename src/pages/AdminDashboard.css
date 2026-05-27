@@ -64,6 +64,19 @@
   border-radius: 10px;
 }
 .ef-admin [data-slot="card-title"] { color: var(--ef-pearl) !important; }
+.ef-admin [data-slot="card-header"],
+.ef-admin [data-slot="card-content"],
+.ef-admin [data-slot="card-description"],
+.ef-admin [data-slot="card-footer"] { background: transparent !important; color: var(--ef-text) !important; }
+.ef-admin [data-slot="card-description"] { color: var(--ef-muted) !important; }
+
+/* Neutralize utility light backgrounds inside admin */
+.ef-admin .bg-background,
+.ef-admin .bg-white,
+.ef-admin .bg-card,
+.ef-admin .bg-popover { background-color: var(--ef-surface) !important; color: var(--ef-text) !important; }
+.ef-admin .text-foreground { color: var(--ef-text) !important; }
+.ef-admin .text-muted-foreground { color: var(--ef-muted) !important; }
 
 .ef-admin label { color: var(--ef-muted) !important; font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase; font-weight: 600; }
 .ef-admin input, .ef-admin textarea, .ef-admin select,
