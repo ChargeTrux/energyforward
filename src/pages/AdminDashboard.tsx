@@ -739,8 +739,8 @@ export default function AdminDashboard() {
                 <label className={`ef-portal-card ${inviteInvestor ? "active" : ""}`}>
                   <input type="checkbox" checked={inviteInvestor} onChange={(e)=>setInviteInvestor(e.target.checked)} />
                   <div>
-                    <div className="ttl">Administration Portal</div>
-                    <div className="sub">Administration materials &amp; reports</div>
+                    <div className="ttl">Investor Portal</div>
+                    <div className="sub">Investor materials &amp; reports</div>
                   </div>
                 </label>
                 <label className={`ef-portal-card ${inviteCustomer ? "active" : ""}`}>
