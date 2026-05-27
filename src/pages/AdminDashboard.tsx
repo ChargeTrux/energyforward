@@ -942,6 +942,151 @@ export default function AdminDashboard() {
         </CardContent>
       </Card>
 
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="w-5 h-5" /> Contact Inquiries{" "}
+            <span className="text-sm font-normal text-muted-foreground">
+              ({contacts.length} total · {contacts.filter((c) => c.status === "new").length} new)
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border overflow-hidden">
+            <div className="max-h-[28rem] overflow-auto always-scrollbar">
+              <Table>
+                <TableHeader className="sticky top-0 z-20 bg-card [&_th]:bg-card [&_th]:shadow-[inset_0_-1px_0_hsl(var(--border))]">
+                  <TableRow>
+                    <TableHead className="min-w-[180px]">Name</TableHead>
+                    <TableHead className="min-w-[220px]">Email</TableHead>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Interest</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Submitted</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {contacts.map((c) => (
+                    <TableRow key={c.id}>
+                      <TableCell className="whitespace-nowrap">
+                        <div className="font-medium">{c.full_name}</div>
+                        {c.role_position && (
+                          <div className="text-xs" style={{ color: "var(--ef-muted)" }}>
+                            {c.role_position}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <div>{c.email}</div>
+                        {c.phone && (
+                          <div className="text-xs" style={{ color: "var(--ef-muted)" }}>
+                            {c.phone}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{c.company || "—"}</TableCell>
+                      <TableCell>
+                        <span
+                          className={
+                            "ef-badge " +
+                            (c.interest === "investor"
+                              ? "ef-badge--investor"
+                              : c.interest === "customer"
+                              ? "ef-badge--customer"
+                              : c.interest === "both"
+                              ? "ef-badge--admin"
+                              : "ef-badge--none")
+                          }
+                        >
+                          {c.interest}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={
+                            "ef-badge " +
+                            (c.status === "granted"
+                              ? "ef-badge--active"
+                              : c.status === "dismissed"
+                              ? "ef-badge--off"
+                              : c.status === "contacted"
+                              ? "ef-badge--investor"
+                              : "ef-badge--signup")
+                          }
+                        >
+                          {c.status}
+                        </span>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-sm" style={{ color: "var(--ef-muted)" }}>
+                        {new Date(c.created_at).toLocaleDateString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="sm" variant="outline" disabled={busy}>
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-56 bg-background">
+                            <DropdownMenuLabel>Review</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => setViewContact(c)}>
+                              View details
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel>Grant access</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => inviteFromContact(c, ["customer"])}>
+                              Invite as Customer
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => inviteFromContact(c, ["investor"])}>
+                              Invite as Investor
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => inviteFromContact(c, ["customer", "investor"])}
+                            >
+                              Invite as Both
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel>Status</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => updateContactStatus(c, "contacted")}>
+                              Mark contacted
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateContactStatus(c, "dismissed")}>
+                              Mark dismissed
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateContactStatus(c, "new")}>
+                              Reset to new
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => deleteContact(c)}
+                            >
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {contacts.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                        No contact inquiries yet.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
