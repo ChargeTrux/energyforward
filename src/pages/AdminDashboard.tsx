@@ -152,7 +152,7 @@ const getRoleLabel = (
 ): string => {
   if (user.is_admin) return "Admin";
   const parts: string[] = [];
-  if (user.is_investor) parts.push("Administration");
+  if (user.is_investor) parts.push("Investor");
   if (user.is_customer) parts.push("Customer");
   if (parts.length) return parts.join(" + ");
   return "No portal role";
@@ -739,8 +739,8 @@ export default function AdminDashboard() {
                 <label className={`ef-portal-card ${inviteInvestor ? "active" : ""}`}>
                   <input type="checkbox" checked={inviteInvestor} onChange={(e)=>setInviteInvestor(e.target.checked)} />
                   <div>
-                    <div className="ttl">Administration Portal</div>
-                    <div className="sub">Administration materials &amp; reports</div>
+                    <div className="ttl">Investor Portal</div>
+                    <div className="sub">Investor materials &amp; reports</div>
                   </div>
                 </label>
                 <label className={`ef-portal-card ${inviteCustomer ? "active" : ""}`}>
@@ -828,7 +828,7 @@ export default function AdminDashboard() {
                     <TableCell>
                       <div className="flex gap-1 flex-wrap">
                         {row.is_admin && <span className="ef-badge ef-badge--admin">Admin</span>}
-                        {row.is_investor && <span className="ef-badge ef-badge--investor">Administration</span>}
+                        {row.is_investor && <span className="ef-badge ef-badge--investor">Investor</span>}
                         {row.is_customer && <span className="ef-badge ef-badge--customer">Customer</span>}
                         {!row.is_admin && !row.is_investor && !row.is_customer && (
                           <span className="ef-badge ef-badge--none">No portal</span>
@@ -865,7 +865,7 @@ export default function AdminDashboard() {
                             <>
                               <DropdownMenuLabel>Website signup</DropdownMenuLabel>
                               <DropdownMenuItem onClick={() => handleSignupInvite(row)}>
-                                Invite as Administration
+                                Invite as Investor
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
@@ -902,7 +902,7 @@ export default function AdminDashboard() {
                                   })
                                 }
                               >
-                                {row.is_investor ? "Remove Administration" : "Make Administration"}
+                                {row.is_investor ? "Remove Investor" : "Make Investor"}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() =>
@@ -1054,7 +1054,7 @@ export default function AdminDashboard() {
                               Invite as Customer
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => inviteFromContact(c, ["investor"])}>
-                              Invite as Administration
+                              Invite as Investor
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => inviteFromContact(c, ["customer", "investor"])}
@@ -1213,7 +1213,7 @@ export default function AdminDashboard() {
                             "ef-badge " +
                             (r.role.includes("Admin")
                               ? "ef-badge--admin"
-                              : r.role.includes("Administration") || r.role.includes("Customer")
+                              : r.role.includes("Investor") || r.role.includes("Customer")
                               ? "ef-badge--investor"
                               : "ef-badge--none")
                           }
