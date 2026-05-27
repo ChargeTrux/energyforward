@@ -526,6 +526,54 @@ export default function AdminDashboard() {
     setPendingDeleteSignup(null);
   };
 
+  const inviteFromContact = async (
+    row: ContactSubmissionRow,
+    rolesArr: PortalRole[],
+  ) => {
+    const data = (await callAdmin("invite", {
+      email: row.email,
+      full_name: row.full_name,
+      roles: rolesArr,
+    })) as { temp_password?: string } | null;
+    if (data) {
+      await supabase
+        .from("contact_submissions")
+        .update({ status: "granted" })
+        .eq("id", row.id);
+      toast({
+        title: "Access granted",
+        description: `${row.email} invited (${rolesArr.join(", ") || "no portal"}).`,
+      });
+      await load();
+    }
+  };
+
+  const updateContactStatus = async (
+    row: ContactSubmissionRow,
+    status: ContactSubmissionRow["status"],
+  ) => {
+    const { error } = await supabase
+      .from("contact_submissions")
+      .update({ status })
+      .eq("id", row.id);
+    if (error) {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    await load();
+  };
+
+  const deleteContact = async (row: ContactSubmissionRow) => {
+    if (!window.confirm(`Delete inquiry from ${row.email}? This cannot be undone.`)) return;
+    const { error } = await supabase.from("contact_submissions").delete().eq("id", row.id);
+    if (error) {
+      toast({ title: "Delete failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Inquiry deleted" });
+    await load();
+  };
+
   const formatDuration = (s: number | null | undefined) => {
     if (!s) return "—";
     const m = Math.floor(s / 60);
@@ -577,7 +625,28 @@ export default function AdminDashboard() {
     <div className="ef-admin">
       <div className="ef-topbar">
         <div className="ef-brand">energyforward<span className="dot">.</span></div>
-        <div className="ef-status"><span className="ef-pulse" /> Admin Console · Operating in Stealth</div>
+        <div className="flex items-center gap-4">
+          <div className="ef-status"><span className="ef-pulse" /> Admin Console · Operating in Stealth</div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="ef-ghost-btn"
+            onClick={() => navigate("/")}
+          >
+            <ExternalLink className="w-3.5 h-3.5 mr-1" /> View Site
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="ef-ghost-btn"
+            onClick={async () => {
+              await supabase.auth.signOut();
+              navigate("/");
+            }}
+          >
+            <LogOut className="w-3.5 h-3.5 mr-1" /> Sign Out
+          </Button>
+        </div>
       </div>
     <main className="container mx-auto px-4 py-8 max-w-[1600px]">
       <div className="mb-8">
