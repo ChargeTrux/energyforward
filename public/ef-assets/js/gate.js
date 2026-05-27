@@ -117,7 +117,7 @@
       try {
         const sb = await getSupabase();
         const { data: check, error: checkErr } = await sb.functions.invoke('send-investor-email', {
-          body: { type: 'check_account', email },
+          body: { type: 'check_account', email, portal: role },
         });
         if (checkErr) throw new Error(checkErr.message || 'request failed');
         if (!check?.exists) {
