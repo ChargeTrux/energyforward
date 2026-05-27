@@ -33,9 +33,9 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const submissionId = typeof body.submission_id === "string" ? body.submission_id : null;
-    if (!submissionId) {
-      return new Response(JSON.stringify({ error: "submission_id required" }), {
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return new Response(JSON.stringify({ error: "valid email required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -48,7 +48,9 @@ Deno.serve(async (req) => {
     const { data: row, error } = await supabase
       .from("contact_submissions")
       .select("id, full_name, role_position, email, phone, company, interest, message, created_at")
-      .eq("id", submissionId)
+      .eq("email", email)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
     if (error || !row) {
       return new Response(JSON.stringify({ error: "submission not found" }), {
@@ -57,7 +59,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Reject stale notifications (replay protection).
+    // Reject stale notifications (replay protection — only notify for
+    // submissions created in the last 10 minutes).
     const createdAt = new Date(row.created_at).getTime();
     if (Date.now() - createdAt > 10 * 60 * 1000) {
       return new Response(JSON.stringify({ error: "submission too old" }), {
