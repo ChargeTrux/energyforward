@@ -662,6 +662,42 @@ export default function AdminDashboard() {
     <div className="ef-admin">
       <div className="ef-topbar">
         <div className="ef-brand">energyforward<span className="dot">.</span></div>
+        <nav
+          style={{
+            display: "flex",
+            gap: 36,
+            alignItems: "center",
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 11,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+          }}
+        >
+          <a
+            onClick={() => navigate("/customer")}
+            style={{ color: "rgba(238,234,226,0.78)", cursor: "pointer" }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#E8B14A")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(238,234,226,0.78)")}
+          >
+            customer portal
+          </a>
+          <a
+            onClick={() => navigate("/investor")}
+            style={{ color: "rgba(238,234,226,0.78)", cursor: "pointer" }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#E8B14A")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(238,234,226,0.78)")}
+          >
+            investor portal
+          </a>
+          <a
+            onClick={() => navigate("/")}
+            style={{ color: "rgba(238,234,226,0.78)", cursor: "pointer" }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#E8B14A")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(238,234,226,0.78)")}
+          >
+            home
+          </a>
+        </nav>
         <div className="flex items-center gap-4">
           <div className="ef-status"><span className="ef-pulse" /> Admin Console · Operating in Stealth</div>
           <Button
@@ -671,22 +707,6 @@ export default function AdminDashboard() {
             onClick={() => navigate("/")}
           >
             <ExternalLink className="w-3.5 h-3.5 mr-1" /> View Site
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="ef-ghost-btn"
-            onClick={() => navigate("/customer")}
-          >
-            <ExternalLink className="w-3.5 h-3.5 mr-1" /> Customer Portal
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="ef-ghost-btn"
-            onClick={() => navigate("/investor")}
-          >
-            <ExternalLink className="w-3.5 h-3.5 mr-1" /> Investor Portal
           </Button>
           <Button
             variant="outline"
