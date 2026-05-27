@@ -70,8 +70,20 @@ export default function ResetPassword() {
         .update({ must_change_password: false })
         .eq("user_id", user.id);
     }
+    // Role-based redirect
+    let dest = "/";
+    if (user) {
+      const { data: rolesData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+      const roles = new Set((rolesData ?? []).map((r) => r.role as string));
+      if (roles.has("admin")) dest = "/admin";
+      else if (roles.has("investor")) dest = "/p/investor";
+      else if (roles.has("customer")) dest = "/p/customer";
+    }
     toast({ title: "Password updated", description: "You're now signed in." });
-    navigate("/p/investor");
+    navigate(dest);
   };
 
   return (

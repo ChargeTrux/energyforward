@@ -18,6 +18,19 @@ import { supabase } from "@/integrations/supabase/client";
 
 const queryClient = new QueryClient();
 
+function SignOutRoute({ onLogout }: { onLogout: () => Promise<void> | void }) {
+  useEffect(() => {
+    (async () => {
+      await onLogout();
+    })();
+  }, [onLogout]);
+  return (
+    <div className="min-h-screen flex items-center justify-center text-muted-foreground">
+      Signing out…
+    </div>
+  );
+}
+
 function AppContent() {
   const [showLogin, setShowLogin] = useState(false);
   const [prefillEmail, setPrefillEmail] = useState<string | undefined>(undefined);
@@ -120,6 +133,7 @@ function AppContent() {
         <Route path="/investor" element={<InvestorPortal />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/home-v1" element={<Home />} />
+        <Route path="/signout" element={<SignOutRoute onLogout={handleLogout} />} />
         {session && <Route path="/admin" element={<AdminDashboard />} />}
         {session && <Route path="/p/:slug" element={<GatedPage />} />}
         <Route path="/reset-password" element={<ResetPassword />} />
