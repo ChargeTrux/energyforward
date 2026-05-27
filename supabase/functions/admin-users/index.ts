@@ -129,6 +129,8 @@ Deno.serve(async (req) => {
           to: email,
           subject: tpl.subject,
           html: tpl.html,
+          from: tpl.from,
+          replyTo: tpl.replyTo,
         });
         if (!r.ok) console.error("Welcome email failed:", r.error);
       }
@@ -219,15 +221,39 @@ Deno.serve(async (req) => {
 
       const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
       if (!RESEND_API_KEY) return json({ error: "Email provider not configured" }, 500);
+      // Look up the recipient's portals so the reset email uses the right
+      // sender + footer contact (customer@ vs investor@).
+      let userPortals: string[] = [];
+      try {
+        const { data: u } = await admin.auth.admin.getUserByEmail
+          ? await (admin.auth.admin as unknown as {
+              getUserByEmail: (e: string) => Promise<{ data: { user?: { id: string } } }>;
+            }).getUserByEmail(email)
+          : { data: { user: undefined } };
+        const uid = u?.user?.id;
+        if (uid) {
+          const { data: roleRows } = await admin
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", uid);
+          for (const row of (roleRows ?? []) as Array<{ role: string }>) {
+            if (row.role === "investor") userPortals.push("Investor");
+            if (row.role === "customer") userPortals.push("Customer");
+          }
+        }
+      } catch (_) { /* fall back to default investor branding */ }
       const tpl = resetEmail({
         name: (prof?.full_name as string | null) ?? "Investor",
         resetUrl: forceEnergyForwardResetUrl(actionLink),
         expirationMinutes: 60,
+        portals: userPortals,
       });
       const r = await sendBrandedEmail(RESEND_API_KEY, {
         to: email,
         subject: tpl.subject,
         html: tpl.html,
+        from: tpl.from,
+        replyTo: tpl.replyTo,
       });
       if (!r.ok) return json({ error: r.error }, 502);
       return json({ ok: true });
