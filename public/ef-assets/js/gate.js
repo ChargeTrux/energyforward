@@ -39,10 +39,8 @@
     }
     // matches current portal → unlock in place
     if (roles.has(role)) return { kind: 'unlock' };
-    // has the other portal → send them there
-    if (role === 'customer' && roles.has('investor')) return { kind: 'redirect', to: '/investor' };
-    if (role === 'investor' && roles.has('customer')) return { kind: 'redirect', to: '/customer' };
-    return { kind: 'deny', msg: 'this account has no portal access' };
+    // no access to this portal — deny (do not auto-redirect to the other portal)
+    return { kind: 'deny', msg: `this account does not have ${role} access` };
   }
 
   function applyRoute(decision) {
@@ -187,6 +185,8 @@
           applyRoute(decision);
           return;
         }
+        // signed in but no access to this portal — sign out so the gate can accept other credentials
+        try { await sb.auth.signOut(); } catch (_) {}
       }
     } catch (_) { /* fall through to gate */ }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountGate);
