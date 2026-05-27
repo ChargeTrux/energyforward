@@ -255,7 +255,9 @@ export default function AdminDashboard() {
     });
 
     const rows: ActivityRow[] = [];
+    const loggedInUserIds = new Set<string>();
     (sess ?? []).forEach((s) => {
+      loggedInUserIds.add(s.user_id);
       const prof = profileMap.get(s.user_id);
       const role = prof ? getRoleLabel(prof) : "No portal role";
       const sessionViews = viewsBySession.get(s.id) ?? [];
@@ -270,6 +272,7 @@ export default function AdminDashboard() {
           duration_seconds: s.duration_seconds,
           path: "—",
           page_seconds: 0,
+          invite_status: "logged_in",
         });
       } else {
         const byPath = new Map<string, number>();
@@ -289,9 +292,26 @@ export default function AdminDashboard() {
               duration_seconds: s.duration_seconds,
               path,
               page_seconds: secs,
+              invite_status: "logged_in",
             });
           });
       }
+    });
+    // Add invited users (have an account but never logged in)
+    enrichedProfiles.forEach((p) => {
+      if (loggedInUserIds.has(p.user_id)) return;
+      rows.push({
+        key: `invite-${p.user_id}`,
+        full_name: p.full_name,
+        email: p.email,
+        role: getRoleLabel(p),
+        login_at: null,
+        logout_at: null,
+        duration_seconds: null,
+        path: "—",
+        page_seconds: 0,
+        invite_status: "invite_sent",
+      });
     });
     setActivity(rows);
   };
