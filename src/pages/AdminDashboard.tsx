@@ -1054,7 +1054,7 @@ export default function AdminDashboard() {
                               Invite as Customer
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => inviteFromContact(c, ["investor"])}>
-                              Invite as Administration
+                              Invite as Investor
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => inviteFromContact(c, ["customer", "investor"])}
