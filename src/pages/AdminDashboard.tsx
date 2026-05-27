@@ -555,14 +555,19 @@ export default function AdminDashboard() {
   if (!isAdmin) return null;
 
   return (
+    <div className="ef-admin">
+      <div className="ef-topbar">
+        <div className="ef-brand">energyforward<span className="dot">.</span></div>
+        <div className="ef-status"><span className="ef-pulse" /> Admin Console · Operating in Stealth</div>
+      </div>
     <main className="container mx-auto px-4 py-8 max-w-[1600px]">
       <div className="mb-8">
-        <div className="flex items-center justify-between gap-4 mb-2">
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <ShieldCheck className="w-8 h-8 text-primary" /> Admin Dashboard
-          </h1>
+        <div className="flex items-center gap-3 mb-2">
+          <span className="ef-rule" />
+          <span className="ef-stat-label">Control</span>
         </div>
-        <p className="text-muted-foreground">Manage investors, admins, website signups, and portal activity</p>
+        <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Admin Dashboard</h1>
+        <p className="mt-2" style={{color:"var(--ef-muted)"}}>Manage admins, investor &amp; customer portal access, website signups, and activity.</p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-4 mb-8">
@@ -629,24 +634,35 @@ export default function AdminDashboard() {
                 placeholder="user@example.com"
               />
             </div>
-            <div className="md:col-span-3">
-              <Label htmlFor="irole">Role</Label>
-              <Select
-                value={inviteRole}
-                onValueChange={(v) => setInviteRole(v as PortalRole)}
-              >
-                <SelectTrigger id="irole">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="investor">Investor</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="md:col-span-5">
+              <Label>Portal Access</Label>
+              <div className="ef-portal-grid mt-1">
+                <label className={`ef-portal-card ${inviteInvestor ? "active" : ""}`}>
+                  <input type="checkbox" checked={inviteInvestor} onChange={(e)=>setInviteInvestor(e.target.checked)} />
+                  <div>
+                    <div className="ttl">Investor Portal</div>
+                    <div className="sub">Investor materials &amp; reports</div>
+                  </div>
+                </label>
+                <label className={`ef-portal-card ${inviteCustomer ? "active" : ""}`}>
+                  <input type="checkbox" checked={inviteCustomer} onChange={(e)=>setInviteCustomer(e.target.checked)} />
+                  <div>
+                    <div className="ttl">Customer Portal</div>
+                    <div className="sub">Customer-facing area</div>
+                  </div>
+                </label>
+                <label className={`ef-portal-card ${inviteAdmin ? "active" : ""}`} style={{flexBasis:"160px"}}>
+                  <input type="checkbox" checked={inviteAdmin} onChange={(e)=>setInviteAdmin(e.target.checked)} />
+                  <div>
+                    <div className="ttl" style={{color:"var(--ef-amber)"}}>Admin</div>
+                    <div className="sub">Full dashboard access</div>
+                  </div>
+                </label>
+              </div>
             </div>
-            <div className="md:col-span-2">
-              <Button type="submit" disabled={busy} variant="energy" className="w-full">
-                Create & Invite
+            <div className="md:col-span-12 flex justify-end">
+              <Button type="submit" disabled={busy} className="ef-cta px-8">
+                Create &amp; Invite
               </Button>
             </div>
           </form>
