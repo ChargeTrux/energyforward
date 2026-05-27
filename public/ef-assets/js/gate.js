@@ -87,9 +87,12 @@
           </button>
           <div class="ef-gate__msg" aria-live="polite"></div>
         </form>
+        <div class="ef-gate__foot" style="margin-top:8px">
+          <a href="#" class="ef-gate__forgot" style="color:#E8B14A;text-decoration:none">forgot password?</a>
+        </div>
         <div class="ef-gate__foot">
           <span>don't have access?</span>
-          <a href="mailto:hello@energyforward.com?subject=${role}%20access%20request">request credentials</a>
+          <a href="/contact" target="_top">request credentials</a>
         </div>
         <a class="ef-gate__back" href="/">← back to public site</a>
       </div>
@@ -99,6 +102,41 @@
     const form = gate.querySelector('.ef-gate__form');
     const msg = gate.querySelector('.ef-gate__msg');
     const btn = gate.querySelector('.ef-gate__cta');
+    const forgot = gate.querySelector('.ef-gate__forgot');
+
+    forgot.addEventListener('click', async (e) => {
+      e.preventDefault();
+      msg.classList.remove('is-err');
+      const emailInput = form.querySelector('input[name=email]');
+      const email = String(emailInput.value || '').trim().toLowerCase();
+      if (!email) {
+        msg.textContent = 'enter your email above, then click forgot password';
+        msg.classList.add('is-err');
+        emailInput.focus();
+        return;
+      }
+      msg.textContent = 'checking account…';
+      try {
+        const sb = await getSupabase();
+        const { data: check, error: checkErr } = await sb.functions.invoke('send-investor-email', {
+          body: { type: 'check_account', email },
+        });
+        if (checkErr) throw new Error(checkErr.message || 'request failed');
+        if (!check?.exists) {
+          msg.textContent = 'your account does not exist';
+          msg.classList.add('is-err');
+          return;
+        }
+        const { error: resetErr } = await sb.functions.invoke('send-investor-email', {
+          body: { type: 'reset', email },
+        });
+        if (resetErr) throw new Error(resetErr.message || 'request failed');
+        msg.textContent = 'reset link sent — check your email';
+      } catch (err) {
+        msg.textContent = (err && err.message) ? err.message.toLowerCase() : 'something went wrong';
+        msg.classList.add('is-err');
+      }
+    });
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
