@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
 
     const { data: row, error } = await supabase
       .from("contact_submissions")
-      .select("id, full_name, role_position, email, phone, company, interest, message, created_at")
+      .select("id, full_name, role_position, email, phone, company, interest, message, created_at, timezone")
       .eq("email", email)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -77,11 +77,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    const submittedAt = new Date(row.created_at).toLocaleString("en-US", {
-      timeZone: "America/New_York",
-      dateStyle: "full",
-      timeStyle: "long",
-    });
+    const tz =
+      (typeof row.timezone === "string" && row.timezone.trim()) ||
+      "America/New_York";
+    let submittedAt: string;
+    try {
+      submittedAt = new Date(row.created_at).toLocaleString("en-US", {
+        timeZone: tz,
+        dateStyle: "full",
+        timeStyle: "long",
+      });
+    } catch {
+      submittedAt = new Date(row.created_at).toLocaleString("en-US", {
+        timeZone: "America/New_York",
+        dateStyle: "full",
+        timeStyle: "long",
+      });
+    }
 
     const safe = {
       name: escapeHtml(row.full_name || ""),
