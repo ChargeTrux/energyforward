@@ -102,7 +102,8 @@ function AppContent() {
     path === "/customer" ||
     path === "/investor" ||
     path === "/contact" ||
-    path === "/admin";
+    path === "/admin" ||
+    path === "/reset-password";
 
   return (
     <>
