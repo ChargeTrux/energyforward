@@ -4,6 +4,7 @@ import {
   sendBrandedEmail,
   EF_FROM,
   EF_REPLY_TO,
+  EF_ADMIN_URL,
 } from "../_shared/branded-emails.ts";
 
 const corsHeaders = {
