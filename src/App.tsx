@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { LoginModal } from "@/components/LoginModal";
 import { Home } from "@/pages/Home";
-import LandingStealth from "@/pages/LandingStealth";
+import { LandingStealth, CustomerPortal, InvestorPortal } from "@/pages/ef/EFFrame";
 import AdminDashboard from "@/pages/AdminDashboard";
 import ResetPassword from "@/pages/ResetPassword";
 import GatedPage from "@/pages/GatedPage";
@@ -88,19 +88,25 @@ function AppContent() {
     );
   }
 
+  const path = typeof window !== "undefined" ? window.location.pathname : "/";
+  const isEFRoute = path === "/" || path === "/customer" || path === "/investor";
+
   return (
     <>
-      <Header 
-        onLoginClick={() => setShowLogin(true)} 
-        onLogout={handleLogout}
-        isLoggedIn={!!session}
-      />
+      {!isEFRoute && (
+        <Header
+          onLoginClick={() => setShowLogin(true)}
+          onLogout={handleLogout}
+          isLoggedIn={!!session}
+        />
+      )}
       <Routes>
         <Route path="/" element={<LandingStealth />} />
+        <Route path="/customer" element={<CustomerPortal />} />
+        <Route path="/investor" element={<InvestorPortal />} />
         <Route path="/home-v1" element={<Home />} />
         {session && <Route path="/admin" element={<AdminDashboard />} />}
         {session && <Route path="/p/:slug" element={<GatedPage />} />}
-        {session && <Route path="/investor" element={<GatedPage />} />}
         <Route path="/reset-password" element={<ResetPassword />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />

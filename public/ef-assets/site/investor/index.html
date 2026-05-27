@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="en">
+<head>
+<base target="_self">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>energyforward · investor portal</title>
+<meta name="description" content="energy, delivered. — series a — confidential">
+<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800&f[]=general-sans@300,400,500,600&f[]=jetbrains-mono@400,500&display=swap">
+<link rel="stylesheet" href="/ef-assets/investor/css/styles.css">
+<link rel="stylesheet" href="/ef-assets/investor/css/cinematic.css">
+<link rel="stylesheet" href="/ef-assets/css/gate.css">
+<script src="/ef-assets/js/gate.js" data-role="investor"></script>
+</head>
+<body>
+
+<!-- gate removed for v3.1 snapshot — access already controlled by asset URL -->
+
+<!-- ─────────── nav ─────────── -->
+<header class="nav">
+  <div class="nav-inner">
+    <a href="#cover" class="brand">energyforward<span class="amber-dot">.</span></a>
+    <nav class="nav-links" id="nav-links">
+      <a href="#thesis">thesis</a>
+      <a href="#platform">platform</a>
+      <a href="#traction">traction</a>
+      <a href="#scale">scale</a>
+      <a href="#advisors">board</a>
+      <a href="#ask">the ask</a>
+    </nav>
+    <a class="nav-cta" href="mailto:contact@energyforward.com">contact →</a>
+    <button class="nav-toggle" id="nav-toggle" aria-label="menu" aria-expanded="false"><span></span></button>
+  </div>
+  <div class="scroll-progress"><span id="progress"></span></div>
+</header>
+
+<!-- ─────────────────── MAIN SPINE ─────────────────── -->
+<main id="spine">
+
+<!-- 00 / HERO -->
+<section id="cover" class="hero hero--cinematic">
+  <video class="hero-video" autoplay muted loop playsinline preload="auto" poster="/ef-assets/investor/img/ef-hero-highway.png">
+    <source src="/ef-assets/investor/video/hero-cinematic.mp4" type="video/mp4">
+  </video>
+  <div class="hero-veil"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-content fade-in">
+    <div class="hero-meta">
+      <span>energyforward</span>
+      <span class="dot"></span>
+      <span>series a · confidential</span>
+      <span class="dot"></span>
+      <span>april 2026</span>
+    </div>
+    <h1 class="hero-headline">energy,<br>delivered<span class="amber-dot">.</span></h1>
+    <p class="hero-sub">energyforward is to the electrical grid what the highway and trucking system was to the railroad. we produce solar at three to five cents per kilowatt-hour, store it in mobile mwh-scale batteries, and deliver it directly to fleets, buildings, and job sites — over the highways already there. <span class="hl">speed to power</span>, decoupled from the speed of grid construction.</p>
+    <div class="hero-actions">
+      <a class="btn-line" href="#problem">read the thesis →</a>
+      <span class="scroll-hint"><span class="rule"></span> scroll</span>
+    </div>
+  </div>
+</section>
+
+<!-- 01 / PROBLEM -->
+<section id="problem" class="section">
+  <div class="section-edge"></div>
+  <div class="section-inner fade-in">
+    <div class="kicker">01 · problem</div>
+    <div class="problem-grid" style="margin-top:32px">
+      <div>
+        <h2 class="problem-claim">every customer is asking the same question<span class="amber-dot">.</span> <span class="fade">how do i get power, fast?</span></h2>
+        <p class="lede">data center developers, fleet operators, port authorities, and builders all face the same bottleneck. the grid was built like the railroad — essential, powerful, and fixed. demand is arriving faster than substations, feeders, and utility upgrades can be built.</p>
+      </div>
+
+      <div class="problem-stack">
+        <div class="problem-row" data-dive="problem-supply">
+          <span class="row-num">01</span>
+          <div class="row-body">
+            <h3>gridlocked supply<span class="amber-dot">.</span></h3>
+            <p>new generators wait 18 months to 7 years to interconnect. clean power gets built — and then sits, waiting for permission to flow.</p>
+          </div>
+          <span class="row-stat">7yr</span>
+        </div>
+        <div class="problem-row" data-dive="problem-demand">
+          <span class="row-num">02</span>
+          <div class="row-body">
+            <h3>gridlocked demand<span class="amber-dot">.</span></h3>
+            <p>fleets and sites buy electric trucks, then sit without power. no quick or reliable path to access — the queue runs in both directions.</p>
+          </div>
+          <span class="row-stat">2035</span>
+        </div>
+        <div class="problem-row" data-dive="problem-ceiling">
+          <span class="row-num">03</span>
+          <div class="row-body">
+            <h3>the grid sets the ceiling<span class="amber-dot">.</span></h3>
+            <p>autonomous fleets, data centers, new buildings — all would grow faster if power were figured out. today, capacity decides the speed.</p>
+          </div>
+          <span class="row-stat">100%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 02 / THESIS -->
+<section id="thesis" class="section thesis thesis--cinematic">
+  <video class="thesis-video" autoplay muted loop playsinline preload="metadata" poster="/ef-assets/investor/img/ef-thesis-trailer.png">
+    <source src="/ef-assets/investor/video/section-thesis.mp4" type="video/mp4">
+  </video>
+  <div class="thesis-veil"></div>
+  <div class="thesis-inner fade-in" style="padding:0 var(--gutter)">
+    <div class="kicker">02 · thesis</div>
+    <h2 class="thesis-head">energyforward is to the electrical grid<br>what the highway and trucking system<br><span class="accent">was to the railroad<span class="amber-dot">.</span></span></h2>
+
+    <div class="beats">
+      <div class="beat" data-dive="thesis-railroad">
+        <span class="beat-tag"><span class="step">01</span> first, the railroad<span class="amber-dot">.</span></span>
+        <div class="beat-body">
+          <p>the railroad was the first great infrastructure network for moving goods across america. transformative. essential. and constrained: you could only receive what the railroad could deliver to where the tracks ran. no track, no commerce. the railroad defined the geography of economic possibility.</p>
+        </div>
+      </div>
+      <div class="beat" data-dive="thesis-highway">
+        <span class="beat-tag"><span class="step">02</span> then, the highway<span class="amber-dot">.</span></span>
+        <div class="beat-body">
+          <p>the highway didn't replace the railroad — it complemented it. but the truck did something the railroad never could. it went to the demand. it brought supply to wherever supply was needed, on any timeline, at any scale, without waiting for track to be laid. together, they unlocked commerce at a speed and scale neither could achieve alone.</p>
+        </div>
+      </div>
+      <div class="beat beat--accent" data-dive="thesis-apply">
+        <span class="beat-tag"><span class="step">03</span> now, apply it to energy<span class="amber-dot">.</span></span>
+        <div class="beat-body">
+          <p>the grid is the backbone. it moves enormous volumes of electricity efficiently across long distances. it is essential. it is not going away. but it has the same fundamental constraint the railroad always had — you can only receive power where the wires run, and getting new wire to new places takes years.</p>
+          <p class="beat-claim">energyforward is to the electrical grid what the highway and trucking system was to the railroad<span class="amber-dot">.</span></p>
+          <p>we use the same highway infrastructure already in place to move electrons. produce solar at three to five cents per kwh in california's high-irradiance zones. store it in mobile mwh-scale batteries. deliver it over the interstate to fleet depots, port terminals, data centers, and construction sites that need power now.</p>
+        </div>
+      </div>
+    </div>
+
+    <p class="thesis-close">we don't need the grid to extend itself. we deliver power ourselves. <span class="hl">speed to power, decoupled from the speed of grid construction.</span></p>
+  </div>
+</section>
+
+<!-- 03 / PLATFORM -->
+<section id="platform" class="section section--cinematic">
+  <video class="section-video" autoplay muted loop playsinline preload="metadata">
+    <source src="/ef-assets/investor/video/section-platform.mp4" type="video/mp4">
+  </video>
+  <div class="section-veil"></div>
+  <div class="section-edge"></div>
+  <div class="section-inner fade-in">
+    <div class="split">
+      <div class="split-l">
+        <div class="kicker">03 · platform</div>
+        <h2 class="section-head">one electron<span class="amber-dot">.</span> three layers<span class="amber-dot">.</span> six entities<span class="amber-dot">.</span></h2>
+        <p class="lede">a logistics framework, not a flat product list. produce off-grid. move long-haul. distribute through last-mile meeting points. deliver to the load. every entity is clickable. four of them open a live journey from the energyhub to a real destination.</p>
+      </div>
+      <div>
+        <div class="platform-vis">
+          <img src="/ef-assets/investor/img/ef-platform-schematic.png" alt="platform schematic">
+          <span class="vis-cap">— schematic · solar → battery → highway</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="platform-rail" style="margin-top:80px">
+      <button class="entity" data-dive="energyhubs">
+        <span class="entity-num">01</span>
+        <span class="entity-meta">
+          <span class="entity-tag">layer 01 · production</span>
+          <span class="entity-name">energyhubs<span class="amber-dot">.</span></span>
+          <span class="entity-blurb">off-grid solar + battery production sites. $0.03–$0.05 per kwh delivered.</span>
+        </span>
+        <span class="plus">+</span>
+      </button>
+      <button class="entity" data-dive="energytrux" data-journey="1">
+        <span class="entity-num">02</span>
+        <span class="entity-meta">
+          <span class="entity-tag">layer 01 · long-haul</span>
+          <span class="entity-name">energytrux<span class="amber-dot">.</span></span>
+          <span class="entity-blurb">2.5–3.5 mwh battery trailers. hub to point of use over interstate highway.</span>
+        </span>
+        <span class="plus">+</span>
+      </button>
+      <button class="entity" data-dive="energyports">
+        <span class="entity-num">03</span>
+        <span class="entity-meta">
+          <span class="entity-tag">layer 02 · distribution</span>
+          <span class="entity-name">energyports<span class="amber-dot">.</span></span>
+          <span class="entity-blurb">last-mile meeting nodes. drop kwh, re-charge, redundancy across the network.</span>
+        </span>
+        <span class="plus">+</span>
+      </button>
+      <button class="entity" data-dive="chargetrux" data-journey="1">
+        <span class="entity-num">04</span>
+        <span class="entity-meta">
+          <span class="entity-tag">layer 03 · last mile · mobile</span>
+          <span class="entity-name">chargetrux<span class="amber-dot">.</span></span>
+          <span class="entity-blurb">mobile dispatch to scattered loads. delivered charge at the curb.</span>
+        </span>
+        <span class="plus">+</span>
+      </button>
+      <button class="entity" data-dive="chargehubs" data-journey="1">
+        <span class="entity-num">05</span>
+        <span class="entity-meta">
+          <span class="entity-tag">layer 03 · last mile · stationary</span>
+          <span class="entity-name">chargehubs<span class="amber-dot">.</span></span>
+          <span class="entity-blurb">stationary battery + charger installations at the customer site.</span>
+        </span>
+        <span class="plus">+</span>
+      </button>
+      <button class="entity" data-dive="demandhubs" data-journey="1">
+        <span class="entity-num">06</span>
+        <span class="entity-meta">
+          <span class="entity-tag">layer 03 · large load</span>
+          <span class="entity-name">demandhubs<span class="amber-dot">.</span></span>
+          <span class="entity-blurb">off-grid energy for large fixed loads. data centers, flagship buildings.</span>
+        </span>
+        <span class="plus">+</span>
+      </button>
+    </div>
+
+    <div class="metric-strip">
+      <div><span class="metric-big">80<span class="unit">%</span></span><span class="metric-label">california coverage · 2027</span></div>
+      <div><span class="metric-big">100<span class="unit">mw</span></span><span class="metric-label">generation by 2027</span></div>
+      <div><span class="metric-big">200<span class="unit">mw</span></span><span class="metric-label">by 2030</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 04 / HOW IT WORKS -->
+<section id="howitworks" class="section">
+  <div class="section-edge"></div>
+  <div class="section-inner fade-in">
+    <div class="kicker">04 · operations</div>
+    <h2 class="section-head">five steps<span class="amber-dot">.</span> one closed loop<span class="amber-dot">.</span></h2>
+    <p class="lede">an operational system, not a slide bullet. every step is dispatched, monitored, and accounted. click any step to dig into the operations.</p>
+
+    <ol class="loop">
+      <li data-dive="op-generate">
+        <span class="loop-num">01</span>
+        <span class="loop-name">generate<span class="amber-dot">.</span></span>
+        <span class="loop-desc">energyhubs produce off-grid solar + battery power at $0.03–$0.05/kwh.</span>
+        <span class="plus">+</span>
+      </li>
+      <li data-dive="op-transport" data-journey="1">
+        <span class="loop-num">02</span>
+        <span class="loop-name">transport<span class="amber-dot">.</span></span>
+        <span class="loop-desc">energytrux move 2.5–3.5 mwh battery trailers from hub to point of use.</span>
+        <span class="plus">+</span>
+      </li>
+      <li data-dive="op-meet">
+        <span class="loop-num">03</span>
+        <span class="loop-name">meet<span class="amber-dot">.</span></span>
+        <span class="loop-desc">energyports are last-mile distribution nodes. drop, swap, re-charge, redundancy.</span>
+        <span class="plus">+</span>
+      </li>
+      <li data-dive="op-deliver" data-journey="1">
+        <span class="loop-num">04</span>
+        <span class="loop-name">deliver<span class="amber-dot">.</span></span>
+        <span class="loop-desc">chargetrux to scattered loads. chargehubs at-site. demandhubs at scale.</span>
+        <span class="plus">+</span>
+      </li>
+      <li data-dive="op-return">
+        <span class="loop-num">05</span>
+        <span class="loop-name">return<span class="amber-dot">.</span></span>
+        <span class="loop-desc">depleted batteries cycle back to the hub. the grid stays the backbone, not the bottleneck.</span>
+        <span class="plus">+</span>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- 05 / MARKET -->
+<section id="market" class="section">
+  <div class="section-edge"></div>
+  <div class="section-inner fade-in">
+    <div class="kicker">05 · market</div>
+    <h2 class="section-head">the addressable market is already here<span class="amber-dot">.</span> <span class="fade">and it doubles by 2035<span class="amber-dot">.</span></span></h2>
+    <p class="lede">a stacked map across data centers, fleets, ports, off-grid industrial, and grid services. every segment is clickable — see exactly what we deliver into each.</p>
+
+    <div class="market-frame">
+      <div class="market-cell">
+        <div class="market-year">— 2030 · today's profile</div>
+        <div class="market-big">$55.1<span class="unit">b</span></div>
+        <div class="market-sub">tam · top 15 us markets</div>
+        <div class="market-mid">$9.5<span class="unit">b</span> <span class="market-label">sam</span></div>
+      </div>
+      <div class="market-cell">
+        <div class="market-year">— 2035 · five-year growth</div>
+        <div class="market-big">$85.5<span class="unit">b</span></div>
+        <div class="market-sub">tam · five-year compounding</div>
+        <div class="market-mid">$22.9<span class="unit">b</span> <span class="market-label">sam</span></div>
+      </div>
+    </div>
+
+    <div class="streams">
+      <button class="stream-tag" data-num="01" data-dive="mkt-datacenter" data-journey="1"><span>data centers</span><span class="plus">+</span></button>
+      <button class="stream-tag" data-num="02" data-dive="mkt-fleets" data-journey="1"><span>autonomous & ride-share fleets</span><span class="plus">+</span></button>
+      <button class="stream-tag" data-num="03" data-dive="mkt-ports" data-journey="1"><span>ports & drayage</span><span class="plus">+</span></button>
+      <button class="stream-tag" data-num="04" data-dive="mkt-flagship" data-journey="1"><span>off-grid flagship buildings</span><span class="plus">+</span></button>
+      <button class="stream-tag" data-num="05" data-dive="mkt-vpp"><span>grid-connected vpp</span><span class="plus">+</span></button>
+      <button class="stream-tag" data-num="06" data-dive="mkt-emergency"><span>emergency & disaster response</span><span class="plus">+</span></button>
+    </div>
+  </div>
+</section>
+
+<!-- 06 / TRACTION -->
+<section id="traction" class="section section--cinematic">
+  <video class="section-video" autoplay muted loop playsinline preload="metadata">
+    <source src="/ef-assets/investor/video/section-traction.mp4" type="video/mp4">
+  </video>
+  <div class="section-veil"></div>
+  <div class="section-edge"></div>
+  <div class="section-inner fade-in">
+    <div class="kicker">06 · traction</div>
+    <h2 class="section-head">off-grid energy<span class="amber-dot">.</span> proven in the field<span class="amber-dot">.</span></h2>
+    <p class="lede">operational for over a year — delivering 100% of avis charging needs at multiple california airports. with additional 2026 agreements, on track for <span class="hl">$24.1m external revenue in 2027</span> and <span class="hl">$67.4m in 2028</span>. click <span class="hl">uber</span> to dive into the daily charging operation.</p>
+
+    <table class="traction-table">
+      <thead>
+        <tr><th>customer</th><th>status</th><th>detail</th><th></th></tr>
+      </thead>
+      <tbody>
+        <tr class="traction-row traction-row--static">
+          <td><span class="traction-customer">avis budget group<span class="amber-dot">.</span></span></td>
+          <td><span class="pill pill--green">active · expanding</span></td>
+          <td><span class="traction-detail">100% sfo + oak + san + off-airport sf/sd. seven days a week.</span></td>
+          <td class="col-plus"></td>
+        </tr>
+        <tr class="traction-row" data-dive="cust-uber">
+          <td><span class="traction-customer">uber <span class="row-meta">(private fleet)</span></span></td>
+          <td><span class="pill">feb 2026 launch</span></td>
+          <td><span class="traction-detail">contract executed april 2026. 400 cars per day. rofr on second site.</span></td>
+          <td class="col-plus"><span class="plus">+</span><span class="dive-cue">dive deeper</span></td>
+        </tr>
+        <tr class="traction-row traction-row--static">
+          <td><span class="traction-customer">port of long beach<span class="amber-dot">.</span></span></td>
+          <td><span class="pill">q2 2026 pilot</span></td>
+          <td><span class="traction-detail">drayage charging. proof of concept. thousands of passenger-vehicle equivalents.</span></td>
+          <td class="col-plus"></td>
+        </tr>
+        <tr class="traction-row traction-row--static">
+          <td><span class="traction-customer">port of hueneme<span class="amber-dot">.</span></span></td>
+          <td><span class="pill">q2/q3 2026 pilot</span></td>
+          <td><span class="traction-detail">behind-the-fence charging. $8m ev drayage funding alignment.</span></td>
+          <td class="col-plus"></td>
+        </tr>
+        <tr class="traction-row traction-row--static">
+          <td><span class="traction-customer">ca real estate & builders<span class="amber-dot">.</span></span></td>
+          <td><span class="pill">q2 2026 pilot</span></td>
+          <td><span class="traction-detail">exclusive. 1m sq ft building off-grid. avoids 5–7 yr interconnection.</span></td>
+          <td class="col-plus"></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="metric-strip" style="margin-top:80px">
+      <div><span class="metric-big">6</span><span class="metric-label">operational trucks · 2025</span></div>
+      <div><span class="metric-big">+4</span><span class="metric-label">q2 2026</span></div>
+      <div><span class="metric-big">120</span><span class="metric-label">target statewide · 2027</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 07 / SCALE -->
+<section id="scale" class="section">
+  <div class="section-edge"></div>
+  <div class="section-inner fade-in">
+    <div class="kicker">07 · scale</div>
+    <h2 class="section-head">the math<span class="amber-dot">.</span> at scale<span class="amber-dot">.</span></h2>
+    <p class="lede">$203.5m ebitda on infrastructure assets implies a <span class="hl">multi-billion dollar platform valuation</span> by year five. every number is clickable — the build is bottom-up.</p>
+
+    <div class="scale-grid">
+      <button class="scale-stat" data-dive="scale-mw">
+        <span class="stat-tag">deployed capacity</span>
+        <div class="scale-big">538<span class="unit">mw</span></div>
+        <div class="scale-label">installed by year five</div>
+        <span class="plus">+</span>
+      </button>
+      <button class="scale-stat" data-dive="scale-revenue">
+        <span class="stat-tag">topline · y5</span>
+        <div class="scale-big">$311<span class="unit">m</span></div>
+        <div class="scale-label">annual revenue, y5</div>
+        <span class="plus">+</span>
+      </button>
+      <button class="scale-stat" data-dive="scale-ebitda">
+        <span class="stat-tag">profitability · y5</span>
+        <div class="scale-big">$203.5<span class="unit">m</span></div>
+        <div class="scale-label">annual ebitda, y5</div>
+        <span class="plus">+</span>
+      </button>
+      <button class="scale-stat" data-dive="scale-margin">
+        <span class="stat-tag">margin profile</span>
+        <div class="scale-big">65<span class="unit">%</span></div>
+        <div class="scale-label">ebitda margin at scale</div>
+        <span class="plus">+</span>
+      </button>
+      <button class="scale-stat" data-dive="scale-cash">
+        <span class="stat-tag">cash generation</span>
+        <div class="scale-big">$199<span class="unit">m</span></div>
+        <div class="scale-label">annual operating cash, y5</div>
+        <span class="plus">+</span>
+      </button>
+      <button class="scale-stat" data-dive="scale-itc">
+        <span class="stat-tag">tax assets</span>
+        <div class="scale-big">$253<span class="unit">m</span></div>
+        <div class="scale-label">cumulative itc</div>
+        <span class="plus">+</span>
+      </button>
+    </div>
+
+    <p class="foot-note">— illustrative range based on 12–18× ev/ebitda multiples for comparable contracted-infrastructure platforms. not a forecast.</p>
+  </div>
+</section>
+
+<!-- 08 / MODEL -->
+<section id="model" class="section">
+  <div class="section-edge"></div>
+  <div class="section-inner fade-in">
+    <div class="kicker">08 · model</div>
+    <h2 class="section-head">phase by phase<span class="amber-dot">.</span> then steady state<span class="amber-dot">.</span></h2>
+    <p class="lede">read as infrastructure, not as venture. zero federal income tax across the build phase. click any row to see the underlying assumptions.</p>
+
+    <div class="model-wrap"><table class="model-table">
+      <thead>
+        <tr><th>line item</th><th>y1 · 2026</th><th>y2 · 2027</th><th>y3 · 2028</th><th>y4 · 2029</th><th>y5 · 2030</th></tr>
+      </thead>
+      <tbody>
+        <tr data-dive="model-revenue"><td>external revenue</td><td>$5.0m</td><td>$24.1m</td><td>$67.4m</td><td>$163m</td><td><strong>$311m</strong></td></tr>
+        <tr data-dive="model-ebitda"><td>ebitda</td><td>($2.7m)</td><td>$2.3m</td><td>$26.9m</td><td>$92m</td><td><strong>$203.5m</strong></td></tr>
+        <tr data-dive="model-margin"><td>ebitda margin</td><td>—</td><td>10%</td><td>40%</td><td>56%</td><td><strong>65%</strong></td></tr>
+        <tr data-dive="model-cash"><td>cash</td><td>$19m</td><td>$88m</td><td>$340.5m</td><td>$283m</td><td><strong>$604m</strong></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- 09 / TEAM -->
+<section id="team" class="section">
+  <div class="section-edge"></div>
+  <div class="section-inner fade-in">
+    <div class="kicker">09 · team</div>
+    <h2 class="section-head">the founding team<span class="amber-dot">.</span> handpicked for this objective<span class="amber-dot">.</span></h2>
+    <p class="lede">not a single product, not a manufacturer — an integrated operating team that covers every step of the value chain. <span class="hl">land. solar. financing. legal. logistics. customers.</span></p>
+
+    <div class="people-grid">
+      <button class="person" data-dive="mark">
+        <span class="p-num">01</span>
+        <span class="p-name">Mark Milius<span class="amber-dot">.</span></span>
+        <span class="p-role">founder · ceo · platform architect</span>
+        <span class="p-blurb">built valta energy from scratch — one of the largest developers in ladwp's feed-in tariff program. financed hundreds of millions of solar + storage.</span>
+        <span class="plus">+</span>
+      </button>
+      <button class="person" data-dive="nate">
+        <span class="p-num">02</span>
+        <span class="p-name">Nate Schroeder<span class="amber-dot">.</span></span>
+        <span class="p-role">chief technical officer</span>
+        <span class="p-blurb">7th employee at one (our next energy). led the team behind the 752-mile gemini drive. battery systems for defense, formula e, marine, class 8 trucking.</span>
+        <span class="plus">+</span>
+      </button>
+      <button class="person" data-dive="ed">
+        <span class="p-num">03</span>
+        <span class="p-name">Ed Feo<span class="amber-dot">.</span></span>
+        <span class="p-role">chief investment officer</span>
+        <span class="p-blurb">co-led milbank's global project finance for 23 years. $35b+ of renewable transactions. co-founder, coronal energy. 3+ gw deployed.</span>
+        <span class="plus">+</span>
+      </button>
+      <button class="person" data-dive="don">
+        <span class="p-num">04</span>
+        <span class="p-name">Don Attore<span class="amber-dot">.</span></span>
+        <span class="p-role">co-founder · institutional access</span>
+        <span class="p-blurb">already in conversation with the ceos of port of long beach and port of hueneme, the coo of the city of san francisco, and senior sfo staff.</span>
+        <span class="plus">+</span>
+      </button>
+      <button class="person" data-dive="colin">
+        <span class="p-num">05</span>
+        <span class="p-name">Colin Mues<span class="amber-dot">.</span></span>
+        <span class="p-role">chief legal officer</span>
+        <span class="p-blurb">~20 yrs in corporate law, project finance, and renewable transactions. former vp legal at valta energy and new columbia solar.</span>
+        <span class="plus">+</span>
+      </button>
+      <button class="person" data-dive="scott">
+        <span class="p-num">06</span>
+        <span class="p-name">Scott Reising<span class="amber-dot">.</span></span>
+        <span class="p-role">md · fleet finance & credit</span>
+        <span class="p-blurb">created bridge bank's energy & infrastructure group from zero. $450m+ deployed into renewables. credit products that fleet cfos can sign.</span>
+        <span class="plus">+</span>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- 09b / ADVISORS -->
+<section id="advisors" class="section">
+  <div class="section-edge"></div>
+  <div class="section-inner fade-in">
+    <div class="kicker">09b · strategic board</div>
+    <h2 class="section-head">handpicked for the corners<span class="amber-dot">.</span> of the industry that influence our path<span class="amber-dot">.</span></h2>
+    <p class="lede">our strategic board is not decoration. each advisor owns a corner of the industry where the supply–demand gap is widest right now — and each chose to apply their career to closing it. <span class="hl">the grid. fleet & logistics. industrial real estate. capital markets.</span></p>
+
+    <div class="corner-band">
+      <div class="corner"><span class="corner-tag">the grid</span><span class="corner-name">Jim Kelly</span><span class="corner-meta">38 yrs · sce</span></div>
+      <div class="corner"><span class="corner-tag">fleet & logistics</span><span class="corner-name">Noel Massie</span><span class="corner-meta">vp us ops · ups</span></div>
+      <div class="corner"><span class="corner-tag">flagship real estate</span><span class="corner-name">Taylor Talt</span><span class="corner-meta">svp · majestic realty</span></div>
+      <div class="corner"><span class="corner-tag">west-coast pipeline</span><span class="corner-name">Scott Morse</span><span class="corner-meta">evp · hillwood</span></div>
+      <div class="corner"><span class="corner-tag">capital markets</span><span class="corner-name">Rob Hagg</span><span class="corner-meta">cgo · fortis capital</span></div>
+    </div>
+
+    <div class="people-grid" style="margin-top:48px">
+      <button class="person" data-dive="adv-kelly">
+        <span class="p-num">01</span>
+        <span class="p-name">Jim Kelly<span class="amber-dot">.</span></span>
+        <span class="p-role">former svp t&d · sce</span>
+        <span class="p-blurb">38 years at sce. ran t&d for 14m people across 5m accounts — 12,000 mi of transmission, 100,000 mi of distribution, $2b+ annual capex.</span>
+        <span class="plus">+</span>
+      </button>
+      <button class="person" data-dive="adv-massie">
+        <span class="p-num">02</span>
+        <span class="p-name">Noel Massie<span class="amber-dot">.</span></span>
+        <span class="p-role">former vp us operations · ups</span>
+        <span class="p-blurb">at peak, responsible for 200,000+ employees. as district president: 19,600 employees, 245m packages, $3.14b in annual revenue.</span>
+        <span class="plus">+</span>
+      </button>
+      <button class="person" data-dive="adv-talt">
+        <span class="p-num">03</span>
+        <span class="p-name">Taylor Talt<span class="amber-dot">.</span></span>
+        <span class="p-role">svp · majestic realty co.</span>
+        <span class="p-blurb">$1b+ in real-estate transactions. directly connected to a flagship 1m sq ft off-grid building project that aligns with our energyhub model.</span>
+        <span class="plus">+</span>
+      </button>
+      <button class="person" data-dive="adv-morse">
+        <span class="p-num">04</span>
+        <span class="p-name">Scott Morse<span class="amber-dot">.</span></span>
+        <span class="p-role">evp west · hillwood</span>
+        <span class="p-blurb">$10b+ in closed transactions, 10m+ sq ft of class a industrial. directed speedway commerce center — hillwood's largest project.</span>
+        <span class="plus">+</span>
+      </button>
+      <button class="person" data-dive="adv-hagg">
+        <span class="p-num">05</span>
+        <span class="p-name">Rob Hagg<span class="amber-dot">.</span></span>
+        <span class="p-role">cgo · fortis capital advisors</span>
+        <span class="p-blurb">private capital executive. family offices, rias, and growth strategy. structures rounds that read as infrastructure, not venture.</span>
+        <span class="plus">+</span>
+      </button>
+    </div>
+
+    <p class="lede" style="margin-top:48px;max-width:64ch">every person here put their name and reputation behind energyforward. together, they're the people who already understand exactly why <span class="hl">speed to power</span> is the bottleneck — and why a highway-to-the-grid model is the answer.</p>
+  </div>
+</section>
+
+<!-- 10 / ASK -->
+<section id="ask" class="section ask">
+  <div class="section-inner fade-in" style="position:relative;z-index:2">
+    <div class="kicker">10 · the ask</div>
+    <h2 class="ask-head">we are moving energy<br>forward<span class="amber-dot">.</span></h2>
+
+    <div class="ask-math">
+      <div class="ask-cell">
+        <span class="ask-tag">venture equity · phase 1</span>
+        <div class="ask-big">$45<span class="unit">m</span></div>
+      </div>
+      <div class="ask-op">+</div>
+      <div class="ask-cell">
+        <span class="ask-tag">venture debt · phase 1</span>
+        <div class="ask-big">$22.5<span class="unit">m</span></div>
+      </div>
+      <div class="ask-op">=</div>
+      <div class="ask-cell ask-cell--total">
+        <span class="ask-tag">total round · phase 1</span>
+        <div class="ask-big">$67.5<span class="unit">m</span></div>
+      </div>
+    </div>
+
+    <div class="use-of-funds">
+      <div class="uof-row" data-dive="uof-energyhubs">
+        <span class="uof-amt">$24m</span>
+        <span class="uof-desc">first 20 mw of energyhubs construction (all equity)</span>
+        <span class="plus">+</span>
+      </div>
+      <div class="uof-row" data-dive="uof-drayage">
+        <span class="uof-amt">$25m</span>
+        <span class="uof-desc">drayage / logistics acquisition ($20m debt + $5m equity)</span>
+        <span class="plus">+</span>
+      </div>
+      <div class="uof-row" data-dive="uof-evfinance">
+        <span class="uof-amt">$2.5m</span>
+        <span class="uof-desc">ev truck financing program · 10 trucks · ca hvip rebate</span>
+        <span class="plus">+</span>
+      </div>
+      <div class="uof-row" data-dive="uof-team">
+        <span class="uof-amt">$7.5m</span>
+        <span class="uof-desc">team + systems + building design + 2027 gtm tools</span>
+        <span class="plus">+</span>
+      </div>
+      <div class="uof-row" data-dive="uof-wc">
+        <span class="uof-amt">$8.5m</span>
+        <span class="uof-desc">working capital + contingency reserve</span>
+        <span class="plus">+</span>
+      </div>
+    </div>
+
+    <div class="ask-foot">
+      <div class="ask-foot-claim">$67.5m today<span class="amber-dot">.</span> <span class="hl">a multi-billion dollar platform by year five<span class="amber-dot">.</span></span></div>
+      <a class="btn-line btn-line--amber" href="mailto:contact@energyforward.com">request the data room →</a>
+    </div>
+  </div>
+</section>
+
+<!-- footer -->
+<footer class="foot-band">
+  <div class="foot-inner">
+    <div class="foot-brand">energyforward<span class="amber-dot">.</span></div>
+    <div class="foot-meta">series a · april 2026 · confidential</div>
+    <div class="foot-contact"><a href="mailto:contact@energyforward.com">contact@energyforward.com</a></div>
+  </div>
+</footer>
+
+</main>
+
+<!-- ─────────────────── DIVE PANEL ─────────────────── -->
+<aside id="dive" class="dive" aria-hidden="true">
+  <div class="dive-scrim"></div>
+  <div class="dive-panel">
+    <header class="dive-head">
+      <button id="dive-close" class="dive-close" aria-label="close">← back to the story</button>
+      <div class="dive-progress"><span id="dive-progress-bar"></span></div>
+    </header>
+    <div id="dive-body" class="dive-body"></div>
+    <footer class="dive-foot">
+      <button class="dive-return" id="dive-return">return to where i was ↺</button>
+    </footer>
+  </div>
+</aside>
+
+<script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="/ef-assets/investor/js/dives.js"></script>
+<script src="/ef-assets/investor/js/app.js"></script>
+<script src="/ef-assets/investor/js/cinematic.js"></script>
+</body>
+</html>
