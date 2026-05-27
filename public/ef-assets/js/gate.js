@@ -126,7 +126,7 @@
           return;
         }
         const { error: resetErr } = await sb.functions.invoke('send-investor-email', {
-          body: { type: 'reset', email },
+          body: { type: 'reset', email, portal: role },
         });
         if (resetErr) throw new Error(resetErr.message || 'request failed');
         msg.textContent = 'reset link sent — check your email';

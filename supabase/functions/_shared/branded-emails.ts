@@ -19,6 +19,7 @@ export function brandingForPortals(portals?: string[] | null): {
   from: string;
   replyTo: string;
   contactEmail: string;
+  relationsLabel: string;
 } {
   const list = (portals ?? []).map((p) => String(p).toLowerCase());
   const hasInvestor = list.includes("investor");
@@ -28,9 +29,15 @@ export function brandingForPortals(portals?: string[] | null): {
       from: EF_CUSTOMER_FROM,
       replyTo: EF_CUSTOMER_REPLY_TO,
       contactEmail: EF_CUSTOMER_REPLY_TO,
+      relationsLabel: "Customer Relations",
     };
   }
-  return { from: EF_FROM, replyTo: EF_REPLY_TO, contactEmail: EF_REPLY_TO };
+  return {
+    from: EF_FROM,
+    replyTo: EF_REPLY_TO,
+    contactEmail: EF_REPLY_TO,
+    relationsLabel: "Investor Relations",
+  };
 }
 
 // EnergyForward stealth palette
@@ -61,9 +68,11 @@ function shell(opts: {
   ctaUrl?: string;
   securityNote?: string;
   contactEmail?: string;
+  relationsLabel?: string;
 }): string {
   const { preheader, heading, bodyHtml, ctaLabel, ctaUrl, securityNote } = opts;
   const contactEmail = opts.contactEmail || EF_REPLY_TO;
+  const relationsLabel = opts.relationsLabel || "Investor Relations";
   const cta = ctaLabel && ctaUrl
     ? `<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:32px auto;">
          <tr><td align="center" bgcolor="${TEAL}" style="border-radius:6px;">
@@ -102,7 +111,7 @@ function shell(opts: {
         <tr><td style="padding:24px 32px 8px;"><div style="height:1px;background:${BORDER};"></div></td></tr>
         <tr><td align="center" style="padding:22px 32px 30px;background:${SURFACE};">
           <div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:800;color:${PEARL};">energyforward<span style="color:${AMBER};">.</span></div>
-          <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${MUTED};margin:6px 0 12px;letter-spacing:2px;text-transform:uppercase;">Investor Relations</div>
+          <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${MUTED};margin:6px 0 12px;letter-spacing:2px;text-transform:uppercase;">${escapeHtml(relationsLabel)}</div>
           <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.7;color:${MUTED};">
             <a href="${EF_SITE_URL}" style="color:${TEAL};text-decoration:none;">energyforward.com</a> &nbsp;·&nbsp;
             <a href="${EF_PORTAL_URL}" style="color:${TEAL};text-decoration:none;">Sign in</a> &nbsp;·&nbsp;
@@ -191,6 +200,7 @@ export function welcomeEmail(args: {
       ctaLabel: "Sign in to EnergyForward",
       ctaUrl: loginUrl,
       contactEmail: branding.contactEmail,
+      relationsLabel: branding.relationsLabel,
       securityNote:
         "For your security, please change your password immediately after your first sign-in. Keep your credentials confidential. If you need assistance, contact <a href=\"mailto:" +
         branding.contactEmail +
@@ -228,6 +238,7 @@ export function resetEmail(args: {
       ctaLabel: "Reset Password",
       ctaUrl: args.resetUrl,
       contactEmail: branding.contactEmail,
+      relationsLabel: branding.relationsLabel,
       securityNote:
         "If you did not request this password reset, you may safely ignore this email \u2014 your password will remain unchanged. Energy Forward will never ask for your password by email.",
     }),
