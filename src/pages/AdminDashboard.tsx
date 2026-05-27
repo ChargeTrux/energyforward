@@ -399,9 +399,14 @@ export default function AdminDashboard() {
         : null;
 
     return activity.filter((row) => {
-      const loginTs = new Date(row.login_at).getTime();
-      if (fromTs && loginTs < fromTs) return false;
-      if (toTs && loginTs > toTs) return false;
+      if (row.login_at) {
+        const loginTs = new Date(row.login_at).getTime();
+        if (fromTs && loginTs < fromTs) return false;
+        if (toTs && loginTs > toTs) return false;
+      } else {
+        // Invite-sent rows: only include when no custom date filter is active
+        if (activityPreset === "custom" && (fromTs || toTs)) return false;
+      }
       if (!search) return true;
       return [row.full_name ?? "", row.email, row.role, row.path]
         .join(" ")
