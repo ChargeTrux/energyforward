@@ -1041,7 +1041,7 @@ export default function AdminDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {contacts.map((c) => (
+                  {contacts.filter((c) => c.status !== "resolved").map((c) => (
                     <TableRow key={c.id}>
                       <TableCell className="whitespace-nowrap">
                         <div className="font-medium">{c.full_name}</div>
