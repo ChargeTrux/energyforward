@@ -865,7 +865,7 @@ export default function AdminDashboard() {
                             <>
                               <DropdownMenuLabel>Website signup</DropdownMenuLabel>
                               <DropdownMenuItem onClick={() => handleSignupInvite(row)}>
-                                Invite as Administration
+                                Invite as Investor
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
