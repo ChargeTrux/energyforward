@@ -18,21 +18,6 @@ import { supabase } from "@/integrations/supabase/client";
 
 const queryClient = new QueryClient();
 
-const efBtnStyle: React.CSSProperties = {
-  background: "#f5a524",
-  color: "#0b1220",
-  border: "none",
-  padding: "10px 18px",
-  fontFamily: "'Cabinet Grotesk', 'General Sans', system-ui, sans-serif",
-  fontWeight: 600,
-  fontSize: 13,
-  letterSpacing: "0.05em",
-  textTransform: "uppercase",
-  cursor: "pointer",
-  borderRadius: 2,
-  boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
-};
-
 function AppContent() {
   const [showLogin, setShowLogin] = useState(false);
   const [prefillEmail, setPrefillEmail] = useState<string | undefined>(undefined);
@@ -75,24 +60,16 @@ function AppContent() {
       }
       // Check if user must change password (temporary password from invite)
       (async () => {
-        const { data: profile } = await supabase
+        const { data } = await supabase
           .from('profiles')
           .select('must_change_password')
           .eq('user_id', session.user.id)
           .maybeSingle();
-        if (profile?.must_change_password) {
+        if (data?.must_change_password) {
           navigate('/reset-password');
-          return;
+        } else {
+          navigate('/p/investor');
         }
-        const { data: roles } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', session.user.id);
-        const roleSet = new Set((roles ?? []).map((r: any) => r.role));
-        if (roleSet.has('admin')) navigate('/admin');
-        else if (roleSet.has('customer')) navigate('/p/customer');
-        else if (roleSet.has('investor')) navigate('/p/investor');
-        else navigate('/');
       })();
     }
     prevSession.current = !!session;
@@ -122,34 +99,6 @@ function AppContent() {
           onLogout={handleLogout}
           isLoggedIn={!!session}
         />
-      )}
-      {isEFRoute && (
-        <div
-          style={{
-            position: "fixed",
-            top: 16,
-            right: 16,
-            zIndex: 100,
-            display: "flex",
-            gap: 8,
-          }}
-        >
-          {session ? (
-            <button
-              onClick={handleLogout}
-              style={efBtnStyle}
-            >
-              Sign out
-            </button>
-          ) : (
-            <button
-              onClick={() => setShowLogin(true)}
-              style={efBtnStyle}
-            >
-              Sign in
-            </button>
-          )}
-        </div>
       )}
       <Routes>
         <Route path="/" element={<LandingStealth />} />
