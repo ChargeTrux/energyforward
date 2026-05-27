@@ -902,7 +902,7 @@ export default function AdminDashboard() {
                                   })
                                 }
                               >
-                                {row.is_investor ? "Remove Administration" : "Make Administration"}
+                                {row.is_investor ? "Remove Investor" : "Make Investor"}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() =>
