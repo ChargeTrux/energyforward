@@ -60,16 +60,24 @@ function AppContent() {
       }
       // Check if user must change password (temporary password from invite)
       (async () => {
-        const { data } = await supabase
+        const { data: profile } = await supabase
           .from('profiles')
           .select('must_change_password')
           .eq('user_id', session.user.id)
           .maybeSingle();
-        if (data?.must_change_password) {
+        if (profile?.must_change_password) {
           navigate('/reset-password');
-        } else {
-          navigate('/p/investor');
+          return;
         }
+        const { data: rolesData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id);
+        const roles = new Set((rolesData ?? []).map((r) => r.role as string));
+        if (roles.has('admin')) navigate('/admin');
+        else if (roles.has('investor')) navigate('/investor');
+        else if (roles.has('customer')) navigate('/customer');
+        else navigate('/');
       })();
     }
     prevSession.current = !!session;
