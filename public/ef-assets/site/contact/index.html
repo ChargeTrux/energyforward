@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<base target="_self">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>energyforward · contact</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800&f[]=general-sans@300,400,500,600&f[]=jetbrains-mono@400,500&display=swap">
+<link rel="stylesheet" href="/ef-assets/css/landing.css">
+<link rel="stylesheet" href="/ef-assets/css/contact.css">
+</head>
+<body>
+
+<header class="nav">
+  <a class="brand" href="/" target="_top">energyforward<span class="amber-dot">.</span></a>
+  <div class="nav-right">
+    <div class="nav-meta">
+      <span class="dot dot--live"></span>
+      <span>operating in stealth</span>
+    </div>
+    <a class="nav-signin" href="/" target="_top">back</a>
+  </div>
+</header>
+
+<main class="contact-stage">
+  <div class="bg-veil"></div>
+  <div class="bg-grid"></div>
+
+  <section class="contact-inner">
+    <div class="act-label">contact</div>
+    <h1 class="contact-head">tell us how to reach you<span class="amber-dot">.</span></h1>
+    <p class="contact-sub">
+      energyforward is operating in stealth. share a few details and we'll route your request to the right desk —
+      customer pilots, investor inquiries, or general questions<span class="amber-dot">.</span>
+    </p>
+
+    <form id="ef-contact-form" class="contact-form" novalidate>
+      <div class="row">
+        <label>
+          <span>full name<em>*</em></span>
+          <input name="full_name" type="text" required maxlength="120" autocomplete="name" />
+        </label>
+        <label>
+          <span>role / position</span>
+          <input name="role_position" type="text" maxlength="120" autocomplete="organization-title" />
+        </label>
+      </div>
+      <div class="row">
+        <label>
+          <span>email<em>*</em></span>
+          <input name="email" type="email" required maxlength="200" autocomplete="email" />
+        </label>
+        <label>
+          <span>phone number</span>
+          <input name="phone" type="tel" maxlength="40" autocomplete="tel" />
+        </label>
+      </div>
+      <div class="row">
+        <label class="full">
+          <span>company</span>
+          <input name="company" type="text" maxlength="160" autocomplete="organization" />
+        </label>
+      </div>
+      <div class="row">
+        <label class="full">
+          <span>how can we help?<em>*</em></span>
+          <select name="interest" required>
+            <option value="">— select an interest —</option>
+            <option value="customer">showing interest as a customer</option>
+            <option value="investor">showing interest as an investor</option>
+            <option value="both">customer &amp; investor</option>
+            <option value="other">other / general inquiry</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <label class="full">
+          <span>message (optional)</span>
+          <textarea name="message" rows="4" maxlength="2000" placeholder="anything we should know up front"></textarea>
+        </label>
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="submit-btn">
+          <span class="submit-label">submit inquiry</span>
+          <span class="submit-arrow">→</span>
+        </button>
+      </div>
+
+      <p id="contact-error" class="contact-error" hidden></p>
+    </form>
+
+    <div id="contact-success" class="contact-success" hidden>
+      <div class="act-label" style="color:var(--amber)">received</div>
+      <h2 class="contact-head">thank you<span class="amber-dot">.</span></h2>
+      <p class="contact-sub">
+        your inquiry is in the queue. a member of the energyforward team will reach out shortly<span class="amber-dot">.</span>
+      </p>
+      <a class="access-link" href="/" target="_top">return to home <span>→</span></a>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div>energyforward inc<span class="amber-dot">.</span></div>
+  <div class="foot-meta">stealth · 2026</div>
+</footer>
+
+<script type="module">
+  const SUPA_URL = "https://scyqmmakqmnzpnhrrnlx.supabase.co";
+  const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjeXFtbWFrcW1uenBuaHJybmx4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5OTY2NTMsImV4cCI6MjA3NDU3MjY1M30.pzSqpFJNrJVAn9wx-zSdTN7wibphuN24R2tIQMi85SA";
+
+  const form = document.getElementById("ef-contact-form");
+  const errEl = document.getElementById("contact-error");
+  const success = document.getElementById("contact-success");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errEl.hidden = true;
+    const fd = new FormData(form);
+    const payload = {
+      full_name: String(fd.get("full_name") || "").trim(),
+      role_position: String(fd.get("role_position") || "").trim() || null,
+      email: String(fd.get("email") || "").trim().toLowerCase(),
+      phone: String(fd.get("phone") || "").trim() || null,
+      company: String(fd.get("company") || "").trim() || null,
+      interest: String(fd.get("interest") || ""),
+      message: String(fd.get("message") || "").trim() || null,
+    };
+    if (!payload.full_name || !payload.email || !payload.interest) {
+      errEl.textContent = "please complete all required fields.";
+      errEl.hidden = false;
+      return;
+    }
+    const btn = form.querySelector("button[type=submit]");
+    btn.disabled = true;
+    btn.querySelector(".submit-label").textContent = "submitting…";
+    try {
+      const r = await fetch(`${SUPA_URL}/rest/v1/contact_submissions`, {
+        method: "POST",
+        headers: {
+          apikey: SUPA_KEY,
+          Authorization: `Bearer ${SUPA_KEY}`,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!r.ok) {
+        const t = await r.text();
+        throw new Error(t || "submission failed");
+      }
+      form.hidden = true;
+      success.hidden = false;
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (err) {
+      errEl.textContent = "could not submit. please try again or email hello@energyforward.com.";
+      errEl.hidden = false;
+      btn.disabled = false;
+      btn.querySelector(".submit-label").textContent = "submit inquiry";
+    }
+  });
+</script>
+</body>
+</html>

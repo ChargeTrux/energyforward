@@ -64,6 +64,8 @@ import {
   ArrowDown,
   ArrowUpDown,
   LogOut,
+  Mail,
+  ExternalLink,
 } from "lucide-react";
 
 interface ProfileRow {
@@ -83,6 +85,19 @@ interface SignupRow {
   email: string;
   created_at: string;
   service_type: string | null;
+}
+
+interface ContactSubmissionRow {
+  id: string;
+  full_name: string;
+  role_position: string | null;
+  phone: string | null;
+  email: string;
+  company: string | null;
+  interest: "customer" | "investor" | "both" | "other";
+  message: string | null;
+  status: "new" | "contacted" | "granted" | "dismissed";
+  created_at: string;
 }
 
 interface PageViewRow {
@@ -150,6 +165,8 @@ export default function AdminDashboard() {
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [signups, setSignups] = useState<SignupRow[]>([]);
   const [activity, setActivity] = useState<ActivityRow[]>([]);
+  const [contacts, setContacts] = useState<ContactSubmissionRow[]>([]);
+  const [viewContact, setViewContact] = useState<ContactSubmissionRow | null>(null);
   const [recentLoginCount, setRecentLoginCount] = useState(0);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
@@ -181,7 +198,7 @@ export default function AdminDashboard() {
   }, [loading, isAdmin, navigate]);
 
   const load = async () => {
-    const [{ data: profs }, { data: roles }, { data: sess }, { data: views }, { data: signupRows }] =
+    const [{ data: profs }, { data: roles }, { data: sess }, { data: views }, { data: signupRows }, { data: contactRows }] =
       await Promise.all([
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
         supabase.from("user_roles").select("user_id, role"),
@@ -192,6 +209,7 @@ export default function AdminDashboard() {
           .limit(1000),
         supabase.from("page_views").select("user_id, session_id, path, duration_seconds"),
         supabase.from("email_signups").select("id, name, email, created_at, service_type").order("created_at", { ascending: false }),
+        supabase.from("contact_submissions").select("*").order("created_at", { ascending: false }),
       ]);
 
     const adminSet = new Set(
@@ -213,6 +231,7 @@ export default function AdminDashboard() {
 
     setProfiles(enrichedProfiles);
     setSignups((signupRows ?? []) as SignupRow[]);
+    setContacts((contactRows ?? []) as ContactSubmissionRow[]);
     setRecentLoginCount((sess ?? []).length);
 
     const viewsBySession = new Map<string, PageViewRow[]>();
@@ -507,6 +526,54 @@ export default function AdminDashboard() {
     setPendingDeleteSignup(null);
   };
 
+  const inviteFromContact = async (
+    row: ContactSubmissionRow,
+    rolesArr: PortalRole[],
+  ) => {
+    const data = (await callAdmin("invite", {
+      email: row.email,
+      full_name: row.full_name,
+      roles: rolesArr,
+    })) as { temp_password?: string } | null;
+    if (data) {
+      await supabase
+        .from("contact_submissions")
+        .update({ status: "granted" })
+        .eq("id", row.id);
+      toast({
+        title: "Access granted",
+        description: `${row.email} invited (${rolesArr.join(", ") || "no portal"}).`,
+      });
+      await load();
+    }
+  };
+
+  const updateContactStatus = async (
+    row: ContactSubmissionRow,
+    status: ContactSubmissionRow["status"],
+  ) => {
+    const { error } = await supabase
+      .from("contact_submissions")
+      .update({ status })
+      .eq("id", row.id);
+    if (error) {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    await load();
+  };
+
+  const deleteContact = async (row: ContactSubmissionRow) => {
+    if (!window.confirm(`Delete inquiry from ${row.email}? This cannot be undone.`)) return;
+    const { error } = await supabase.from("contact_submissions").delete().eq("id", row.id);
+    if (error) {
+      toast({ title: "Delete failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Inquiry deleted" });
+    await load();
+  };
+
   const formatDuration = (s: number | null | undefined) => {
     if (!s) return "—";
     const m = Math.floor(s / 60);
@@ -558,7 +625,28 @@ export default function AdminDashboard() {
     <div className="ef-admin">
       <div className="ef-topbar">
         <div className="ef-brand">energyforward<span className="dot">.</span></div>
-        <div className="ef-status"><span className="ef-pulse" /> Admin Console · Operating in Stealth</div>
+        <div className="flex items-center gap-4">
+          <div className="ef-status"><span className="ef-pulse" /> Admin Console · Operating in Stealth</div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="ef-ghost-btn"
+            onClick={() => navigate("/")}
+          >
+            <ExternalLink className="w-3.5 h-3.5 mr-1" /> View Site
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="ef-ghost-btn"
+            onClick={async () => {
+              await supabase.auth.signOut();
+              navigate("/");
+            }}
+          >
+            <LogOut className="w-3.5 h-3.5 mr-1" /> Sign Out
+          </Button>
+        </div>
       </div>
     <main className="container mx-auto px-4 py-8 max-w-[1600px]">
       <div className="mb-8">
@@ -848,6 +936,151 @@ export default function AdminDashboard() {
                 );
               })}
             </TableBody>
+              </Table>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="w-5 h-5" /> Contact Inquiries{" "}
+            <span className="text-sm font-normal text-muted-foreground">
+              ({contacts.length} total · {contacts.filter((c) => c.status === "new").length} new)
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border overflow-hidden">
+            <div className="max-h-[28rem] overflow-auto always-scrollbar">
+              <Table>
+                <TableHeader className="sticky top-0 z-20 bg-card [&_th]:bg-card [&_th]:shadow-[inset_0_-1px_0_hsl(var(--border))]">
+                  <TableRow>
+                    <TableHead className="min-w-[180px]">Name</TableHead>
+                    <TableHead className="min-w-[220px]">Email</TableHead>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Interest</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Submitted</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {contacts.map((c) => (
+                    <TableRow key={c.id}>
+                      <TableCell className="whitespace-nowrap">
+                        <div className="font-medium">{c.full_name}</div>
+                        {c.role_position && (
+                          <div className="text-xs" style={{ color: "var(--ef-muted)" }}>
+                            {c.role_position}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <div>{c.email}</div>
+                        {c.phone && (
+                          <div className="text-xs" style={{ color: "var(--ef-muted)" }}>
+                            {c.phone}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{c.company || "—"}</TableCell>
+                      <TableCell>
+                        <span
+                          className={
+                            "ef-badge " +
+                            (c.interest === "investor"
+                              ? "ef-badge--investor"
+                              : c.interest === "customer"
+                              ? "ef-badge--customer"
+                              : c.interest === "both"
+                              ? "ef-badge--admin"
+                              : "ef-badge--none")
+                          }
+                        >
+                          {c.interest}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={
+                            "ef-badge " +
+                            (c.status === "granted"
+                              ? "ef-badge--active"
+                              : c.status === "dismissed"
+                              ? "ef-badge--off"
+                              : c.status === "contacted"
+                              ? "ef-badge--investor"
+                              : "ef-badge--signup")
+                          }
+                        >
+                          {c.status}
+                        </span>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-sm" style={{ color: "var(--ef-muted)" }}>
+                        {new Date(c.created_at).toLocaleDateString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="sm" variant="outline" disabled={busy}>
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-56 bg-background">
+                            <DropdownMenuLabel>Review</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => setViewContact(c)}>
+                              View details
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel>Grant access</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => inviteFromContact(c, ["customer"])}>
+                              Invite as Customer
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => inviteFromContact(c, ["investor"])}>
+                              Invite as Investor
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => inviteFromContact(c, ["customer", "investor"])}
+                            >
+                              Invite as Both
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel>Status</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => updateContactStatus(c, "contacted")}>
+                              Mark contacted
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateContactStatus(c, "dismissed")}>
+                              Mark dismissed
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateContactStatus(c, "new")}>
+                              Reset to new
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => deleteContact(c)}
+                            >
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {contacts.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                        No contact inquiries yet.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
               </Table>
             </div>
           </div>
@@ -1152,6 +1385,42 @@ export default function AdminDashboard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!viewContact} onOpenChange={(o) => !o && setViewContact(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Contact inquiry</DialogTitle>
+            <DialogDescription>
+              Submitted{" "}
+              {viewContact &&
+                new Date(viewContact.created_at).toLocaleString()}
+            </DialogDescription>
+          </DialogHeader>
+          {viewContact && (
+            <div className="space-y-3 text-sm">
+              <div><strong>Name:</strong> {viewContact.full_name}</div>
+              {viewContact.role_position && (
+                <div><strong>Role:</strong> {viewContact.role_position}</div>
+              )}
+              <div><strong>Email:</strong> {viewContact.email}</div>
+              {viewContact.phone && <div><strong>Phone:</strong> {viewContact.phone}</div>}
+              {viewContact.company && <div><strong>Company:</strong> {viewContact.company}</div>}
+              <div><strong>Interest:</strong> {viewContact.interest}</div>
+              {viewContact.message && (
+                <div>
+                  <strong>Message:</strong>
+                  <p className="mt-1 whitespace-pre-wrap" style={{ color: "var(--ef-muted)" }}>
+                    {viewContact.message}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewContact(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
     </div>
   );
