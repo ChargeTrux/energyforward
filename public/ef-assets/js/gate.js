@@ -31,9 +31,12 @@
     return new Set((data || []).map((r) => r.role));
   }
 
-  function routeForRoles(roles) {
-    // admin always wins → admin dashboard
-    if (roles.has('admin')) return { kind: 'redirect', to: '/admin' };
+  function routeForRoles(roles, opts) {
+    const fromLogin = !!(opts && opts.fromLogin);
+    // admin: on fresh login send to /admin, but on revisit just unlock (admins can browse any portal)
+    if (roles.has('admin')) {
+      return fromLogin ? { kind: 'redirect', to: '/admin' } : { kind: 'unlock' };
+    }
     // matches current portal → unlock in place
     if (roles.has(role)) return { kind: 'unlock' };
     // has the other portal → send them there
@@ -114,7 +117,7 @@
           throw new Error(error?.message || 'invalid credentials');
         }
         const roles = await fetchRoles(sb, data.user.id);
-        const decision = routeForRoles(roles);
+        const decision = routeForRoles(roles, { fromLogin: true });
         if (decision.kind === 'deny') {
           await sb.auth.signOut();
           throw new Error(decision.msg);
@@ -141,7 +144,7 @@
       const { data: { session } } = await sb.auth.getSession();
       if (session?.user) {
         const roles = await fetchRoles(sb, session.user.id);
-        const decision = routeForRoles(roles);
+        const decision = routeForRoles(roles, { fromLogin: false });
         if (decision.kind !== 'deny') {
           applyRoute(decision);
           return;
