@@ -1142,5 +1142,6 @@ export default function AdminDashboard() {
         </AlertDialogContent>
       </AlertDialog>
     </main>
+    </div>
   );
 }
