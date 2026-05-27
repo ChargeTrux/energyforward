@@ -153,7 +153,9 @@ export default function AdminDashboard() {
   const [recentLoginCount, setRecentLoginCount] = useState(0);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
-  const [inviteRole, setInviteRole] = useState<PortalRole>("investor");
+  const [inviteInvestor, setInviteInvestor] = useState(true);
+  const [inviteCustomer, setInviteCustomer] = useState(false);
+  const [inviteAdmin, setInviteAdmin] = useState(false);
   const [busy, setBusy] = useState(false);
   const [tempCred, setTempCred] = useState<{ email: string; password: string } | null>(null);
   const [pendingAdminUser, setPendingAdminUser] = useState<UserListRow | null>(null);
@@ -198,10 +200,14 @@ export default function AdminDashboard() {
     const investorSet = new Set(
       (roles ?? []).filter((r) => r.role === "investor").map((r) => r.user_id),
     );
+    const customerSet = new Set(
+      (roles ?? []).filter((r) => r.role === "customer").map((r) => r.user_id),
+    );
     const enrichedProfiles = (profs ?? []).map((p) => ({
       ...(p as ProfileRow),
       is_admin: adminSet.has(p.user_id),
       is_investor: investorSet.has(p.user_id),
+      is_customer: customerSet.has(p.user_id),
     }));
     const profileMap = new Map(enrichedProfiles.map((p) => [p.user_id, p]));
 
@@ -275,6 +281,7 @@ export default function AdminDashboard() {
       is_active: p.is_active,
       is_admin: p.is_admin,
       is_investor: p.is_investor,
+      is_customer: p.is_customer,
     }));
     const signupRows: UserListRow[] = signups
       .filter((s) => !accountEmails.has(s.email.toLowerCase()))
