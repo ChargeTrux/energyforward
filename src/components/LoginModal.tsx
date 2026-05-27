@@ -125,69 +125,186 @@ export function LoginModal({ open, onOpenChange, defaultEmail }: LoginModalProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md shadow-energy">
-        <DialogHeader>
-          <DialogTitle className="text-center text-xl">Login to EnergyForward</DialogTitle>
-          <p className="text-center text-sm text-muted-foreground mt-2">
-            Access restricted to authorized users only
-          </p>
-        </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
+      <DialogContent
+        className="sm:max-w-md border-0 p-0 overflow-hidden"
+        style={{
+          background: "rgba(14, 54, 59, 0.96)",
+          color: "#EEEAE2",
+          border: "1px solid rgba(238,234,226,0.12)",
+          borderRadius: 18,
+          backdropFilter: "blur(18px)",
+          fontFamily: '"General Sans", system-ui, sans-serif',
+        }}
+      >
+        <div style={{ padding: "36px 32px 28px" }}>
+          <DialogHeader>
+            <DialogTitle
+              className="text-center"
+              style={{
+                fontFamily: '"Cabinet Grotesk", sans-serif',
+                fontWeight: 700,
+                fontSize: 28,
+                color: "#EEEAE2",
+                textTransform: "lowercase",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              login to energyforward<span style={{ color: "#E8B14A" }}>.</span>
+            </DialogTitle>
+            <p
+              className="text-center mt-2"
+              style={{
+                fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+                fontSize: 11,
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                color: "rgba(238,234,226,0.6)",
+              }}
+            >
+              access restricted
+            </p>
+          </DialogHeader>
 
-          <div className="text-right">
-            <button
-              type="button"
-              onClick={handleForgot}
-              className="text-sm text-primary hover:underline"
-              disabled={isLoading}
-            >
-              Forgot password?
-            </button>
-          </div>
-          
-          <div className="flex gap-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="energy"
-              disabled={isLoading}
-              className="flex-1"
-            >
-              {isLoading ? "Logging in..." : "Login"}
-            </Button>
-          </div>
-        </form>
+          <form onSubmit={handleSubmit} className="space-y-4 mt-6">
+            <div className="space-y-2">
+              <Label
+                htmlFor="email"
+                style={{
+                  fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+                  fontSize: 10,
+                  letterSpacing: "0.22em",
+                  textTransform: "uppercase",
+                  color: "rgba(238,234,226,0.55)",
+                }}
+              >
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@company.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                style={{
+                  background: "rgba(10,42,46,0.55)",
+                  border: "1px solid rgba(238,234,226,0.18)",
+                  color: "#EEEAE2",
+                  borderRadius: 10,
+                  height: 46,
+                }}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="password"
+                style={{
+                  fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+                  fontSize: 10,
+                  letterSpacing: "0.22em",
+                  textTransform: "uppercase",
+                  color: "rgba(238,234,226,0.55)",
+                }}
+              >
+                Password
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                style={{
+                  background: "rgba(10,42,46,0.55)",
+                  border: "1px solid rgba(238,234,226,0.18)",
+                  color: "#EEEAE2",
+                  borderRadius: 10,
+                  height: 46,
+                }}
+              />
+            </div>
+
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={handleForgot}
+                disabled={isLoading}
+                style={{
+                  fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+                  fontSize: 11,
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  color: "#E8B14A",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                forgot password?
+              </button>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                style={{
+                  flex: 1,
+                  padding: "13px 20px",
+                  background: "transparent",
+                  border: "1px solid rgba(238,234,226,0.25)",
+                  color: "#EEEAE2",
+                  borderRadius: 999,
+                  fontFamily: '"Cabinet Grotesk", sans-serif',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  textTransform: "lowercase",
+                  cursor: "pointer",
+                }}
+              >
+                cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isLoading}
+                style={{
+                  flex: 1,
+                  padding: "13px 20px",
+                  background: "#E8B14A",
+                  border: "none",
+                  color: "#0A2A2E",
+                  borderRadius: 999,
+                  fontFamily: '"Cabinet Grotesk", sans-serif',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  textTransform: "lowercase",
+                  cursor: isLoading ? "wait" : "pointer",
+                  opacity: isLoading ? 0.7 : 1,
+                }}
+              >
+                {isLoading ? "verifying…" : "enter →"}
+              </button>
+            </div>
+
+            <div style={{ textAlign: "center", paddingTop: 8 }}>
+              <a
+                href="/?public=1"
+                style={{
+                  fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+                  fontSize: 10,
+                  letterSpacing: "0.18em",
+                  textTransform: "uppercase",
+                  color: "rgba(238,234,226,0.5)",
+                  textDecoration: "none",
+                }}
+              >
+                ← back to homepage
+              </a>
+            </div>
+          </form>
+        </div>
       </DialogContent>
     </Dialog>
   );
