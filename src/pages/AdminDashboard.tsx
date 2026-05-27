@@ -999,7 +999,7 @@ export default function AdminDashboard() {
                               : "ef-badge--none")
                           }
                         >
-                          {c.interest}
+                           {c.interest === "investor" ? "administration" : c.interest}
                         </span>
                       </TableCell>
                       <TableCell>
