@@ -18,6 +18,19 @@ import { supabase } from "@/integrations/supabase/client";
 
 const queryClient = new QueryClient();
 
+function SignOutRoute({ onLogout }: { onLogout: () => Promise<void> | void }) {
+  useEffect(() => {
+    (async () => {
+      await onLogout();
+    })();
+  }, [onLogout]);
+  return (
+    <div className="min-h-screen flex items-center justify-center text-muted-foreground">
+      Signing out…
+    </div>
+  );
+}
+
 function AppContent() {
   const [showLogin, setShowLogin] = useState(false);
   const [prefillEmail, setPrefillEmail] = useState<string | undefined>(undefined);
