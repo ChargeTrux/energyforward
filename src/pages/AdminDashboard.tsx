@@ -152,7 +152,7 @@ const getRoleLabel = (
 ): string => {
   if (user.is_admin) return "Admin";
   const parts: string[] = [];
-  if (user.is_investor) parts.push("Administration");
+  if (user.is_investor) parts.push("Investor");
   if (user.is_customer) parts.push("Customer");
   if (parts.length) return parts.join(" + ");
   return "No portal role";
