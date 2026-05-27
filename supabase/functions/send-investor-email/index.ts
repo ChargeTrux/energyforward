@@ -51,6 +51,9 @@ Deno.serve(async (req) => {
   const type = String(body.type ?? "");
   const email = String(body.email ?? "").trim().toLowerCase();
   const name = typeof body.name === "string" ? body.name.trim().slice(0, 200) : "";
+  const portalParam = typeof body.portal === "string"
+    ? body.portal.trim().toLowerCase()
+    : "";
 
   if (!email || !EMAIL_RE.test(email) || email.length > 255) {
     return json({ error: "Invalid email" }, 400);
@@ -132,11 +135,14 @@ Deno.serve(async (req) => {
       name: displayName || "Investor",
       resetUrl: forceEnergyForwardResetUrl(actionLink),
       expirationMinutes: 60,
+      portals: portalParam ? [portalParam] : undefined,
     });
     const result = await sendBrandedEmail(RESEND_API_KEY, {
       to: email,
       subject: tpl.subject,
       html: tpl.html,
+      from: tpl.from,
+      replyTo: tpl.replyTo,
     });
     if (!result.ok) {
       console.error("Resend error:", result.error);
