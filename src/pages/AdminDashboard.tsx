@@ -1080,7 +1080,9 @@ export default function AdminDashboard() {
                         <span
                           className={
                             "ef-badge " +
-                            (c.status === "granted"
+                            (c.status === "invited" || c.status === "granted"
+                              ? "ef-badge--investor"
+                              : c.status === "resolved"
                               ? "ef-badge--active"
                               : c.status === "dismissed"
                               ? "ef-badge--off"
@@ -1089,7 +1091,9 @@ export default function AdminDashboard() {
                               : "ef-badge--signup")
                           }
                         >
-                          {c.status === "granted" ? "active" : c.status}
+                          {c.status === "invited" || c.status === "granted"
+                            ? "invite sent"
+                            : c.status}
                         </span>
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm" style={{ color: "var(--ef-muted)" }}>
