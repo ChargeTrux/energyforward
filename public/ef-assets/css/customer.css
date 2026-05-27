@@ -1,0 +1,92 @@
+/* customer portal additions on top of landing.css */
+.cust-stage {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  padding: 110px var(--gutter) 96px;
+}
+.cust-hero {
+  position: relative; z-index: 3;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+.cust-hero .head { font-size: clamp(38px, 5.6vw, 84px); margin-bottom: 6px; }
+.cust-hero .head .line2 { font-size: 0.5em; }
+
+.cust-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+  margin: 12px 0 56px;
+}
+.cust-card {
+  background: rgba(14,54,59,0.55);
+  border: 1px solid rgba(238,234,226,0.10);
+  border-radius: 14px;
+  padding: 26px 24px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.cust-card__num {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px; letter-spacing: 0.2em; color: var(--amber);
+  margin-bottom: 14px;
+}
+.cust-card__title {
+  font-family: "Cabinet Grotesk", sans-serif;
+  font-weight: 700; font-size: 20px;
+  text-transform: lowercase;
+  letter-spacing: -0.015em;
+  margin-bottom: 14px;
+}
+.cust-card ul {
+  list-style: none; padding: 0;
+  font-size: 14.5px; line-height: 1.7;
+  color: var(--pearl-dim);
+}
+.cust-card ul li {
+  padding-left: 16px; position: relative;
+}
+.cust-card ul li::before {
+  content: ''; position: absolute; left: 0; top: 11px;
+  width: 6px; height: 1px; background: var(--amber);
+}
+
+.cust-cta {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 32px;
+  align-items: center;
+  padding: 36px 36px;
+  background: linear-gradient(135deg, rgba(232,177,74,0.10), rgba(14,54,59,0.55));
+  border: 1px solid rgba(232,177,74,0.30);
+  border-radius: 16px;
+}
+.cust-cta__kicker {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 10px;
+}
+.cust-cta__head {
+  font-family: "Cabinet Grotesk", sans-serif;
+  font-weight: 700; font-size: clamp(26px, 3vw, 38px);
+  text-transform: lowercase; letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+.cust-cta p { color: var(--pearl-dim); font-size: 15px; }
+.cust-cta .cta { white-space: nowrap; }
+
+.cust-back {
+  display: inline-block;
+  margin-top: 36px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--pearl-faint);
+  text-decoration: none;
+}
+.cust-back:hover { color: var(--amber); }
+
+@media (max-width: 720px) {
+  .cust-cta { grid-template-columns: 1fr; }
+}
