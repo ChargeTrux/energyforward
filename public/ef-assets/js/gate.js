@@ -117,7 +117,7 @@
       try {
         const sb = await getSupabase();
         const { data: check, error: checkErr } = await sb.functions.invoke('send-investor-email', {
-          body: { type: 'check_account', email, portal: role },
+          body: { type: 'check_account', email, portal: role, origin: window.location.origin },
         });
         if (checkErr) throw new Error(checkErr.message || 'request failed');
         if (!check?.exists) {
@@ -126,7 +126,7 @@
           return;
         }
         const { error: resetErr } = await sb.functions.invoke('send-investor-email', {
-          body: { type: 'reset', email, portal: role },
+          body: { type: 'reset', email, portal: role, origin: window.location.origin },
         });
         if (resetErr) throw new Error(resetErr.message || 'request failed');
         msg.textContent = 'reset link sent — check your email';
