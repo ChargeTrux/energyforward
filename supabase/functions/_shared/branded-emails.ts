@@ -200,6 +200,7 @@ export function welcomeEmail(args: {
       ctaLabel: "Sign in to EnergyForward",
       ctaUrl: loginUrl,
       contactEmail: branding.contactEmail,
+      relationsLabel: branding.relationsLabel,
       securityNote:
         "For your security, please change your password immediately after your first sign-in. Keep your credentials confidential. If you need assistance, contact <a href=\"mailto:" +
         branding.contactEmail +
@@ -237,6 +238,7 @@ export function resetEmail(args: {
       ctaLabel: "Reset Password",
       ctaUrl: args.resetUrl,
       contactEmail: branding.contactEmail,
+      relationsLabel: branding.relationsLabel,
       securityNote:
         "If you did not request this password reset, you may safely ignore this email \u2014 your password will remain unchanged. Energy Forward will never ask for your password by email.",
     }),
