@@ -64,6 +64,9 @@ Deno.serve(async (req) => {
   const portalParam = typeof body.portal === "string"
     ? body.portal.trim().toLowerCase()
     : "";
+  const bodyOrigin = typeof body.origin === "string" ? body.origin : null;
+  const appOrigin = resolveAppOrigin(req, bodyOrigin);
+  const redirectTo = `${appOrigin}/reset-password`;
 
   if (!email || !EMAIL_RE.test(email) || email.length > 255) {
     return json({ error: "Invalid email" }, 400);
@@ -138,8 +141,6 @@ Deno.serve(async (req) => {
   }
 
   if (type === "reset") {
-    const redirectTo = getResetRedirectUrl();
-
     // Enforce portal scoping: only send a reset link if the user actually has
     // access to the portal they are resetting from. Always return ok to avoid
     // leaking account existence / role information.
