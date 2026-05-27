@@ -96,7 +96,7 @@ interface ContactSubmissionRow {
   company: string | null;
   interest: "customer" | "investor" | "both" | "other";
   message: string | null;
-  status: "new" | "contacted" | "granted" | "dismissed";
+  status: "new" | "contacted" | "granted" | "dismissed" | "invited" | "resolved";
   created_at: string;
 }
 
