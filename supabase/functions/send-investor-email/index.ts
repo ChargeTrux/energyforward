@@ -18,18 +18,28 @@ const json = (body: unknown, status = 200) =>
   });
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const APP_ORIGIN = "https://energyforward-launchpad.lovable.app";
+const DEFAULT_APP_ORIGIN = "https://moving-energyforward.com";
+const ALLOWED_ORIGINS = [
+  "https://moving-energyforward.com",
+  "https://www.moving-energyforward.com",
+  "https://energyforward-launchpad.lovable.app",
+];
 
-const getResetRedirectUrl = () => `${APP_ORIGIN}/reset-password`;
-
-const forceEnergyForwardResetUrl = (url: string) => {
-  try {
-    const parsed = new URL(url);
-    parsed.searchParams.set("redirect_to", getResetRedirectUrl());
-    return parsed.toString();
-  } catch {
-    return url;
+const resolveAppOrigin = (req: Request, bodyOrigin?: string | null): string => {
+  const candidates = [bodyOrigin, req.headers.get("origin"), req.headers.get("referer")];
+  for (const raw of candidates) {
+    if (!raw) continue;
+    try {
+      const u = new URL(raw);
+      const origin = `${u.protocol}//${u.host}`;
+      // Prefer custom/published domains; skip lovable preview subdomains.
+      if (origin.includes(".lovable.app") && !ALLOWED_ORIGINS.includes(origin)) continue;
+      return origin;
+    } catch {
+      continue;
+    }
   }
+  return DEFAULT_APP_ORIGIN;
 };
 
 Deno.serve(async (req) => {
