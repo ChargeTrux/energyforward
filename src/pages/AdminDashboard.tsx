@@ -64,6 +64,8 @@ import {
   ArrowDown,
   ArrowUpDown,
   LogOut,
+  Mail,
+  ExternalLink,
 } from "lucide-react";
 
 interface ProfileRow {
@@ -83,6 +85,19 @@ interface SignupRow {
   email: string;
   created_at: string;
   service_type: string | null;
+}
+
+interface ContactSubmissionRow {
+  id: string;
+  full_name: string;
+  role_position: string | null;
+  phone: string | null;
+  email: string;
+  company: string | null;
+  interest: "customer" | "investor" | "both" | "other";
+  message: string | null;
+  status: "new" | "contacted" | "granted" | "dismissed";
+  created_at: string;
 }
 
 interface PageViewRow {
@@ -150,6 +165,8 @@ export default function AdminDashboard() {
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [signups, setSignups] = useState<SignupRow[]>([]);
   const [activity, setActivity] = useState<ActivityRow[]>([]);
+  const [contacts, setContacts] = useState<ContactSubmissionRow[]>([]);
+  const [viewContact, setViewContact] = useState<ContactSubmissionRow | null>(null);
   const [recentLoginCount, setRecentLoginCount] = useState(0);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
@@ -181,7 +198,7 @@ export default function AdminDashboard() {
   }, [loading, isAdmin, navigate]);
 
   const load = async () => {
-    const [{ data: profs }, { data: roles }, { data: sess }, { data: views }, { data: signupRows }] =
+    const [{ data: profs }, { data: roles }, { data: sess }, { data: views }, { data: signupRows }, { data: contactRows }] =
       await Promise.all([
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
         supabase.from("user_roles").select("user_id, role"),
@@ -192,6 +209,7 @@ export default function AdminDashboard() {
           .limit(1000),
         supabase.from("page_views").select("user_id, session_id, path, duration_seconds"),
         supabase.from("email_signups").select("id, name, email, created_at, service_type").order("created_at", { ascending: false }),
+        supabase.from("contact_submissions").select("*").order("created_at", { ascending: false }),
       ]);
 
     const adminSet = new Set(
@@ -213,6 +231,7 @@ export default function AdminDashboard() {
 
     setProfiles(enrichedProfiles);
     setSignups((signupRows ?? []) as SignupRow[]);
+    setContacts((contactRows ?? []) as ContactSubmissionRow[]);
     setRecentLoginCount((sess ?? []).length);
 
     const viewsBySession = new Map<string, PageViewRow[]>();
