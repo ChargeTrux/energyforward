@@ -920,7 +920,18 @@ export default function AdminDashboard() {
                       <TableCell className="truncate">{r.full_name || "—"}</TableCell>
                       <TableCell className="truncate" title={r.email}>{r.email}</TableCell>
                       <TableCell>
-                        <Badge variant={getRoleBadgeVariant(r.role)}>{r.role}</Badge>
+                        <span
+                          className={
+                            "ef-badge " +
+                            (r.role.includes("Admin")
+                              ? "ef-badge--admin"
+                              : r.role.includes("Investor") || r.role.includes("Customer")
+                              ? "ef-badge--investor"
+                              : "ef-badge--none")
+                          }
+                        >
+                          {r.role}
+                        </span>
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm">
                         {formatCompact(r.login_at)}
