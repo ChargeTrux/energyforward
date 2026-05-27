@@ -1,0 +1,114 @@
+/* energyforward — contact page (extends landing palette) */
+.contact-stage {
+  position: relative;
+  min-height: 100vh;
+  padding: 140px var(--gutter) 120px;
+  background: var(--teal);
+  overflow: hidden;
+}
+.contact-stage .bg-veil {
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(232,177,74,0.06) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(10,42,46,0.0) 0%, rgba(10,42,46,1) 100%);
+}
+.contact-inner {
+  position: relative; z-index: 3;
+  max-width: 880px; margin: 0 auto;
+}
+.contact-head {
+  font-family: "Cabinet Grotesk", sans-serif;
+  font-weight: 700;
+  font-size: clamp(38px, 5.4vw, 72px);
+  line-height: 1.0;
+  letter-spacing: -0.03em;
+  text-transform: lowercase;
+  margin: 24px 0 28px;
+  color: var(--pearl);
+}
+.contact-sub {
+  font-family: "General Sans", sans-serif;
+  font-size: clamp(16px, 1.25vw, 19px);
+  line-height: 1.6;
+  color: var(--pearl-dim);
+  max-width: 60ch;
+  margin-bottom: 56px;
+}
+.contact-form { display: flex; flex-direction: column; gap: 22px; }
+.contact-form .row {
+  display: grid; gap: 22px;
+  grid-template-columns: 1fr 1fr;
+}
+.contact-form .row label.full { grid-column: 1 / -1; }
+.contact-form label {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.contact-form label > span {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--pearl-dim);
+}
+.contact-form label em { color: var(--amber); font-style: normal; margin-left: 4px; }
+.contact-form input,
+.contact-form select,
+.contact-form textarea {
+  background: transparent;
+  color: var(--pearl);
+  border: 0;
+  border-bottom: 1px solid var(--hair);
+  padding: 10px 0 12px;
+  font-family: "General Sans", sans-serif;
+  font-size: 17px;
+  outline: none;
+  transition: border-color 0.2s ease;
+  border-radius: 0;
+}
+.contact-form textarea { resize: vertical; min-height: 96px; }
+.contact-form select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--amber) 50%),
+                    linear-gradient(135deg, var(--amber) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 22px, calc(100% - 8px) 22px;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 28px;
+}
+.contact-form select option { background: var(--teal-2); color: var(--pearl); }
+.contact-form input:focus,
+.contact-form select:focus,
+.contact-form textarea:focus { border-bottom-color: var(--amber); }
+.contact-form .actions { margin-top: 12px; }
+.submit-btn {
+  display: inline-flex; align-items: center; gap: 12px;
+  background: transparent; color: var(--pearl);
+  border: 1px solid var(--amber);
+  padding: 14px 28px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.submit-btn:hover:not(:disabled) { background: var(--amber); color: var(--teal); }
+.submit-btn:disabled { opacity: 0.6; cursor: progress; }
+.submit-arrow { transition: transform 0.2s ease; }
+.submit-btn:hover .submit-arrow { transform: translateX(4px); }
+.contact-error {
+  margin-top: 12px;
+  color: #ffb3b3;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px; letter-spacing: 0.1em;
+}
+.contact-success { text-align: left; }
+.contact-success .access-link {
+  display: inline-block;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--pearl);
+  border-bottom: 1px solid var(--amber);
+  padding-bottom: 2px;
+}
+.contact-success .access-link span { margin-left: 6px; }
+
+@media (max-width: 720px) {
+  .contact-form .row { grid-template-columns: 1fr; gap: 18px; }
+  .contact-stage { padding: 110px var(--gutter) 80px; }
+}

@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { LoginModal } from "@/components/LoginModal";
 import { Home } from "@/pages/Home";
-import { LandingStealth, CustomerPortal, InvestorPortal } from "@/pages/ef/EFFrame";
+import { LandingStealth, CustomerPortal, InvestorPortal, ContactPage } from "@/pages/ef/EFFrame";
 import AdminDashboard from "@/pages/AdminDashboard";
 import ResetPassword from "@/pages/ResetPassword";
 import GatedPage from "@/pages/GatedPage";
@@ -97,7 +97,12 @@ function AppContent() {
   }
 
   const path = typeof window !== "undefined" ? window.location.pathname : "/";
-  const isEFRoute = path === "/" || path === "/customer" || path === "/investor";
+  const isEFRoute =
+    path === "/" ||
+    path === "/customer" ||
+    path === "/investor" ||
+    path === "/contact" ||
+    path === "/admin";
 
   return (
     <>
@@ -112,6 +117,7 @@ function AppContent() {
         <Route path="/" element={<LandingStealth />} />
         <Route path="/customer" element={<CustomerPortal />} />
         <Route path="/investor" element={<InvestorPortal />} />
+        <Route path="/contact" element={<ContactPage />} />
         <Route path="/home-v1" element={<Home />} />
         {session && <Route path="/admin" element={<AdminDashboard />} />}
         {session && <Route path="/p/:slug" element={<GatedPage />} />}
