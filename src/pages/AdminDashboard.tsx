@@ -676,6 +676,22 @@ export default function AdminDashboard() {
             variant="outline"
             size="sm"
             className="ef-ghost-btn"
+            onClick={() => navigate("/customer")}
+          >
+            <ExternalLink className="w-3.5 h-3.5 mr-1" /> Customer Portal
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="ef-ghost-btn"
+            onClick={() => navigate("/investor")}
+          >
+            <ExternalLink className="w-3.5 h-3.5 mr-1" /> Investor Portal
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="ef-ghost-btn"
             onClick={async () => {
               await supabase.auth.signOut();
               navigate("/");
