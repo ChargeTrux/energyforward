@@ -1,11 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import "./ResetPassword.css";
 
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
@@ -78,33 +75,66 @@ export default function ResetPassword() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-4">
-      <Card className="w-full max-w-md shadow-energy">
-        <CardHeader>
-          <CardTitle>Reset your password</CardTitle>
-        </CardHeader>
-        <CardContent>
+    <div className="ef-reset">
+      <header className="ef-reset__nav">
+        <a className="ef-reset__brand" href="/">
+          energyforward<span className="ef-reset__dot">.</span>
+        </a>
+        <div className="ef-reset__nav-right">
+          <span className="ef-reset__live"></span>
+          <span className="ef-reset__meta">operating in stealth</span>
+        </div>
+      </header>
+
+      <main className="ef-reset__main">
+        <div className="ef-reset__bg"></div>
+        <div className="ef-reset__grid"></div>
+
+        <div className="ef-reset__panel">
+          <div className="ef-reset__kicker">secure access</div>
+          <h1 className="ef-reset__head">
+            reset password<span className="ef-reset__dot">.</span>
+          </h1>
+          <p className="ef-reset__sub">
+            choose a new password to continue to your energyforward portal.
+          </p>
+
           {!ready ? (
-            <p className="text-sm text-muted-foreground">
-              Open this page from the password reset email link.
+            <p className="ef-reset__notice">
+              open this page from the password reset email link.
             </p>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="pw">New Password</Label>
-                <Input id="pw" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-              </div>
-              <div>
-                <Label htmlFor="cpw">Confirm Password</Label>
-                <Input id="cpw" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
-              </div>
-              <Button type="submit" variant="energy" className="w-full" disabled={loading}>
-                {loading ? "Updating…" : "Update Password"}
-              </Button>
+            <form onSubmit={handleSubmit} className="ef-reset__form">
+              <label className="ef-reset__field">
+                <span>new password</span>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+              </label>
+              <label className="ef-reset__field">
+                <span>confirm password</span>
+                <input
+                  type="password"
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+              </label>
+              <button type="submit" className="ef-reset__cta" disabled={loading}>
+                <span>{loading ? "updating" : "update password"}</span>
+                <span className="ef-reset__arrow">→</span>
+              </button>
             </form>
           )}
-        </CardContent>
-      </Card>
-    </main>
+
+          <a className="ef-reset__back" href="/">← back to home</a>
+        </div>
+      </main>
+    </div>
   );
 }
