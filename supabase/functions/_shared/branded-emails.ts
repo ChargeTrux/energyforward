@@ -180,9 +180,14 @@ export function welcomeEmail(args: {
         `<span style="display:inline-block;margin:0 6px 6px 0;padding:5px 12px;border:1px solid ${TEAL};color:${TEAL};border-radius:999px;font-size:12px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">${escapeHtml(p)} Portal</span>`,
     )
     .join("");
+  const portalSentence =
+    portals.length === 1
+      ? `the <strong style="color:${PEARL};">${escapeHtml(portals[0])} Portal</strong>`
+      : `the <strong style="color:${PEARL};">${escapeHtml(portals.slice(0, -1).join(", "))} and ${escapeHtml(portals[portals.length - 1])} Portals</strong>`;
+  const contactUrl = "https://energyforward.com/contact";
   const body = `
     <p style="margin:0 0 14px;">Dear ${name},</p>
-    <p style="margin:0 0 14px;">Welcome to <strong style="color:${PEARL};">energyforward<span style="color:${AMBER};">.</span></strong> — your account is active and the following portals have been unlocked for you:</p>
+    <p style="margin:0 0 14px;">Welcome to <strong style="color:${PEARL};">energyforward<span style="color:${AMBER};">.</span></strong> — your access request has been reviewed and <strong style="color:${PEARL};">approved</strong>. You are now authorized to access ${portalSentence}.</p>
     <div style="margin:6px 0 16px;">${portalsHtml}</div>
     <p style="margin:0 0 10px;">Use the credentials below to sign in for the first time:</p>
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:6px 0 4px;border:1px solid ${BORDER};border-radius:8px;background:#0d1730;">
@@ -194,12 +199,21 @@ export function welcomeEmail(args: {
         <div style="color:${AMBER};font-family:Consolas,Menlo,monospace;font-weight:700;font-size:15px;margin-top:2px;letter-spacing:0.5px;">${pwd}</div>
       </td></tr>
     </table>
+    <div style="margin:22px 0 0;padding:14px 16px;background:#2a1410;border-left:3px solid #e85d3a;border-radius:4px;">
+      <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;color:#f4b5a3;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">Confidential — Do Not Share</div>
+      <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:${TEXT};">
+        Your credentials are personal, non-transferable, and strictly confidential. Sharing your login, password, or any portal content with another person is <strong style="color:#f4b5a3;">prohibited</strong> and may result in immediate revocation of access.
+      </p>
+      <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:${TEXT};">
+        Need access for a colleague or additional team member? Please direct them to submit a request through our <a href="${contactUrl}" style="color:${TEAL};text-decoration:none;font-weight:600;">Contact Us</a> page so we can review and authorize them individually.
+      </p>
+    </div>
   `;
   return {
     subject: "Welcome to EnergyForward",
     html: shell({
       preheader: "Your EnergyForward access has been approved.",
-      heading: "Welcome to EnergyForward",
+      heading: "Your EnergyForward access is approved",
       bodyHtml: body,
       ctaLabel: "Sign in to EnergyForward",
       ctaUrl: loginUrl,
