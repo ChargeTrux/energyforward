@@ -1213,7 +1213,7 @@ export default function AdminDashboard() {
                             "ef-badge " +
                             (r.role.includes("Admin")
                               ? "ef-badge--admin"
-                              : r.role.includes("Administration") || r.role.includes("Customer")
+                              : r.role.includes("Investor") || r.role.includes("Customer")
                               ? "ef-badge--investor"
                               : "ef-badge--none")
                           }
