@@ -417,32 +417,42 @@ export default function AdminDashboard() {
     return data;
   };
 
-  const createInvite = async (role: PortalRole, email = inviteEmail, fullName = inviteName) => {
+  const createInvite = async (
+    rolesArr: PortalRole[],
+    email = inviteEmail,
+    fullName = inviteName,
+  ) => {
     if (!email) return;
     const data = (await callAdmin("invite", {
       email,
       full_name: fullName,
-      role,
+      roles: rolesArr,
     })) as { temp_password?: string } | null;
     if (data) {
+      const list = rolesArr.length ? rolesArr.join(", ") : "no portal";
       toast({
         title: "Welcome email sent",
-        description: `An invitation email has been sent to ${email}.`,
+        description: `Invited ${email} (${list}).`,
       });
       setInviteEmail("");
       setInviteName("");
-      setInviteRole("investor");
+      setInviteInvestor(true);
+      setInviteCustomer(false);
+      setInviteAdmin(false);
     }
   };
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail) return;
-    if (inviteRole === "admin") {
+    if (inviteAdmin) {
       setConfirmAdminInvite(true);
       return;
     }
-    await createInvite("investor");
+    const rolesArr: PortalRole[] = [];
+    if (inviteInvestor) rolesArr.push("investor");
+    if (inviteCustomer) rolesArr.push("customer");
+    await createInvite(rolesArr);
   };
 
   const handleSignupInvite = async (row: UserListRow) => {
@@ -1008,7 +1018,10 @@ export default function AdminDashboard() {
             <AlertDialogAction
               onClick={async () => {
                 setConfirmAdminInvite(false);
-                await createInvite("admin");
+                const rolesArr: PortalRole[] = ["admin"];
+                if (inviteInvestor) rolesArr.push("investor");
+                if (inviteCustomer) rolesArr.push("customer");
+                await createInvite(rolesArr);
               }}
             >
               Invite Admin
