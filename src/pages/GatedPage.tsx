@@ -21,6 +21,7 @@ import {
 
 const TITLES: Record<string, string> = {
   investor: "Investor",
+  customer: "Customer",
 };
 
 const DASHBOARD_SECTIONS = [
