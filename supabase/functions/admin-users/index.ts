@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     const { action } = body;
 
     if (action === "invite") {
-      const { email, full_name, role } = body;
+      const { email, full_name, role, roles } = body;
       if (!email || typeof email !== "string") return json({ error: "Invalid email" }, 400);
 
       // Generate a strong temporary password
@@ -99,15 +99,31 @@ Deno.serve(async (req) => {
           .from("user_roles")
           .upsert({ user_id: newUserId, role }, { onConflict: "user_id,role" });
       }
+      // Optional multi-role assignment (customer + investor portals)
+      if (Array.isArray(roles)) {
+        const valid = (roles as unknown[]).filter(
+          (r): r is "admin" | "investor" | "customer" =>
+            r === "admin" || r === "investor" || r === "customer",
+        );
+        for (const r of valid) {
+          await admin
+            .from("user_roles")
+            .upsert({ user_id: newUserId, role: r }, { onConflict: "user_id,role" });
+        }
+      }
 
       // Send branded welcome email with credentials.
       const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
       if (RESEND_API_KEY) {
+        const portals: string[] = [];
+        if (role === "investor" || (Array.isArray(roles) && roles.includes("investor"))) portals.push("Investor");
+        if (Array.isArray(roles) && roles.includes("customer")) portals.push("Customer");
         const tpl = welcomeEmail({
           name: full_name ?? "",
           email,
           tempPassword,
           loginUrl: EF_PORTAL_URL,
+          portals,
         });
         const r = await sendBrandedEmail(RESEND_API_KEY, {
           to: email,
@@ -153,6 +169,25 @@ Deno.serve(async (req) => {
           .delete()
           .eq("user_id", user_id)
           .eq("role", "investor");
+        if (error) return json({ error: error.message }, 400);
+      }
+      return json({ ok: true });
+    }
+
+    if (action === "set_customer") {
+      const { user_id, make_customer } = body;
+      if (!user_id) return json({ error: "Missing user_id" }, 400);
+      if (make_customer) {
+        const { error } = await admin
+          .from("user_roles")
+          .upsert({ user_id, role: "customer" }, { onConflict: "user_id,role" });
+        if (error) return json({ error: error.message }, 400);
+      } else {
+        const { error } = await admin
+          .from("user_roles")
+          .delete()
+          .eq("user_id", user_id)
+          .eq("role", "customer");
         if (error) return json({ error: error.message }, 400);
       }
       return json({ ok: true });

@@ -2,6 +2,7 @@ import { type ComponentProps, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import "./AdminDashboard.css";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -62,7 +63,7 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
-  Home as HomeIcon,
+  LogOut,
 } from "lucide-react";
 
 interface ProfileRow {
@@ -73,6 +74,7 @@ interface ProfileRow {
   created_at: string;
   is_admin?: boolean;
   is_investor?: boolean;
+  is_customer?: boolean;
 }
 
 interface SignupRow {
@@ -94,7 +96,7 @@ interface ActivityRow {
   key: string;
   full_name: string | null;
   email: string;
-  role: "Admin" | "Investor" | "No portal role";
+  role: string;
   login_at: string;
   logout_at: string | null;
   duration_seconds: number | null;
@@ -102,7 +104,7 @@ interface ActivityRow {
   page_seconds: number;
 }
 
-type PortalRole = "admin" | "investor";
+type PortalRole = "admin" | "investor" | "customer";
 type ActivityPreset = "all" | "7" | "10" | "custom";
 type BadgeVariant = ComponentProps<typeof Badge>["variant"];
 type SortDir = "asc" | "desc";
@@ -127,18 +129,18 @@ type UserListRow = {
   is_active?: boolean;
   is_admin?: boolean;
   is_investor?: boolean;
+  is_customer?: boolean;
 };
 
-const getRoleLabel = (user: Pick<ProfileRow, "is_admin" | "is_investor">): ActivityRow["role"] => {
+const getRoleLabel = (
+  user: Pick<ProfileRow, "is_admin" | "is_investor" | "is_customer">,
+): string => {
   if (user.is_admin) return "Admin";
-  if (user.is_investor) return "Investor";
+  const parts: string[] = [];
+  if (user.is_investor) parts.push("Investor");
+  if (user.is_customer) parts.push("Customer");
+  if (parts.length) return parts.join(" + ");
   return "No portal role";
-};
-
-const getRoleBadgeVariant = (role: string): BadgeVariant => {
-  if (role === "Admin") return "roleAdmin";
-  if (role === "Investor") return "roleInvestor";
-  return "outline";
 };
 
 export default function AdminDashboard() {
@@ -151,7 +153,9 @@ export default function AdminDashboard() {
   const [recentLoginCount, setRecentLoginCount] = useState(0);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
-  const [inviteRole, setInviteRole] = useState<PortalRole>("investor");
+  const [inviteInvestor, setInviteInvestor] = useState(true);
+  const [inviteCustomer, setInviteCustomer] = useState(false);
+  const [inviteAdmin, setInviteAdmin] = useState(false);
   const [busy, setBusy] = useState(false);
   const [tempCred, setTempCred] = useState<{ email: string; password: string } | null>(null);
   const [pendingAdminUser, setPendingAdminUser] = useState<UserListRow | null>(null);
@@ -196,10 +200,14 @@ export default function AdminDashboard() {
     const investorSet = new Set(
       (roles ?? []).filter((r) => r.role === "investor").map((r) => r.user_id),
     );
+    const customerSet = new Set(
+      (roles ?? []).filter((r) => r.role === "customer").map((r) => r.user_id),
+    );
     const enrichedProfiles = (profs ?? []).map((p) => ({
       ...(p as ProfileRow),
       is_admin: adminSet.has(p.user_id),
       is_investor: investorSet.has(p.user_id),
+      is_customer: customerSet.has(p.user_id),
     }));
     const profileMap = new Map(enrichedProfiles.map((p) => [p.user_id, p]));
 
@@ -273,6 +281,7 @@ export default function AdminDashboard() {
       is_active: p.is_active,
       is_admin: p.is_admin,
       is_investor: p.is_investor,
+      is_customer: p.is_customer,
     }));
     const signupRows: UserListRow[] = signups
       .filter((s) => !accountEmails.has(s.email.toLowerCase()))
@@ -408,32 +417,42 @@ export default function AdminDashboard() {
     return data;
   };
 
-  const createInvite = async (role: PortalRole, email = inviteEmail, fullName = inviteName) => {
+  const createInvite = async (
+    rolesArr: PortalRole[],
+    email = inviteEmail,
+    fullName = inviteName,
+  ) => {
     if (!email) return;
     const data = (await callAdmin("invite", {
       email,
       full_name: fullName,
-      role,
+      roles: rolesArr,
     })) as { temp_password?: string } | null;
     if (data) {
+      const list = rolesArr.length ? rolesArr.join(", ") : "no portal";
       toast({
         title: "Welcome email sent",
-        description: `An invitation email has been sent to ${email}.`,
+        description: `Invited ${email} (${list}).`,
       });
       setInviteEmail("");
       setInviteName("");
-      setInviteRole("investor");
+      setInviteInvestor(true);
+      setInviteCustomer(false);
+      setInviteAdmin(false);
     }
   };
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail) return;
-    if (inviteRole === "admin") {
+    if (inviteAdmin) {
       setConfirmAdminInvite(true);
       return;
     }
-    await createInvite("investor");
+    const rolesArr: PortalRole[] = [];
+    if (inviteInvestor) rolesArr.push("investor");
+    if (inviteCustomer) rolesArr.push("customer");
+    await createInvite(rolesArr);
   };
 
   const handleSignupInvite = async (row: UserListRow) => {
@@ -536,14 +555,19 @@ export default function AdminDashboard() {
   if (!isAdmin) return null;
 
   return (
+    <div className="ef-admin">
+      <div className="ef-topbar">
+        <div className="ef-brand">energyforward<span className="dot">.</span></div>
+        <div className="ef-status"><span className="ef-pulse" /> Admin Console · Operating in Stealth</div>
+      </div>
     <main className="container mx-auto px-4 py-8 max-w-[1600px]">
       <div className="mb-8">
-        <div className="flex items-center justify-between gap-4 mb-2">
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <ShieldCheck className="w-8 h-8 text-primary" /> Admin Dashboard
-          </h1>
+        <div className="flex items-center gap-3 mb-2">
+          <span className="ef-rule" />
+          <span className="ef-stat-label">Control</span>
         </div>
-        <p className="text-muted-foreground">Manage investors, admins, website signups, and portal activity</p>
+        <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Admin Dashboard</h1>
+        <p className="mt-2" style={{color:"var(--ef-muted)"}}>Manage admins, investor &amp; customer portal access, website signups, and activity.</p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-4 mb-8">
@@ -610,24 +634,35 @@ export default function AdminDashboard() {
                 placeholder="user@example.com"
               />
             </div>
-            <div className="md:col-span-3">
-              <Label htmlFor="irole">Role</Label>
-              <Select
-                value={inviteRole}
-                onValueChange={(v) => setInviteRole(v as PortalRole)}
-              >
-                <SelectTrigger id="irole">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="investor">Investor</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="md:col-span-5">
+              <Label>Portal Access</Label>
+              <div className="ef-portal-grid mt-1">
+                <label className={`ef-portal-card ${inviteInvestor ? "active" : ""}`}>
+                  <input type="checkbox" checked={inviteInvestor} onChange={(e)=>setInviteInvestor(e.target.checked)} />
+                  <div>
+                    <div className="ttl">Investor Portal</div>
+                    <div className="sub">Investor materials &amp; reports</div>
+                  </div>
+                </label>
+                <label className={`ef-portal-card ${inviteCustomer ? "active" : ""}`}>
+                  <input type="checkbox" checked={inviteCustomer} onChange={(e)=>setInviteCustomer(e.target.checked)} />
+                  <div>
+                    <div className="ttl">Customer Portal</div>
+                    <div className="sub">Customer-facing area</div>
+                  </div>
+                </label>
+                <label className={`ef-portal-card ${inviteAdmin ? "active" : ""}`} style={{flexBasis:"160px"}}>
+                  <input type="checkbox" checked={inviteAdmin} onChange={(e)=>setInviteAdmin(e.target.checked)} />
+                  <div>
+                    <div className="ttl" style={{color:"var(--ef-amber)"}}>Admin</div>
+                    <div className="sub">Full dashboard access</div>
+                  </div>
+                </label>
+              </div>
             </div>
-            <div className="md:col-span-2">
-              <Button type="submit" disabled={busy} variant="energy" className="w-full">
-                Create & Invite
+            <div className="md:col-span-12 flex justify-end">
+              <Button type="submit" disabled={busy} className="ef-cta px-8">
+                Create &amp; Invite
               </Button>
             </div>
           </form>
@@ -693,20 +728,21 @@ export default function AdminDashboard() {
                     <TableCell className="whitespace-nowrap">{row.email}</TableCell>
                     <TableCell>
                       <div className="flex gap-1 flex-wrap">
-                        {row.is_admin && <Badge variant="roleAdmin">Admin</Badge>}
-                        {row.is_investor && <Badge variant="roleInvestor">Investor</Badge>}
-                        {!row.is_admin && !row.is_investor && (
-                          <Badge variant="outline">No portal role</Badge>
+                        {row.is_admin && <span className="ef-badge ef-badge--admin">Admin</span>}
+                        {row.is_investor && <span className="ef-badge ef-badge--investor">Investor</span>}
+                        {row.is_customer && <span className="ef-badge ef-badge--customer">Customer</span>}
+                        {!row.is_admin && !row.is_investor && !row.is_customer && (
+                          <span className="ef-badge ef-badge--none">No portal</span>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
                       {row.source === "signup" ? (
-                        <Badge variant="secondary">Website signup</Badge>
+                        <span className="ef-badge ef-badge--signup">Website signup</span>
                       ) : (
-                        <Badge variant={row.is_active ? "default" : "destructive"}>
+                        <span className={`ef-badge ${row.is_active ? "ef-badge--active" : "ef-badge--off"}`}>
                           {row.is_active ? "Active" : "Disabled"}
-                        </Badge>
+                        </span>
                       )}
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
@@ -768,6 +804,16 @@ export default function AdminDashboard() {
                                 }
                               >
                                 {row.is_investor ? "Remove Investor" : "Make Investor"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  callAdmin("set_customer", {
+                                    user_id: row.user_id,
+                                    make_customer: !row.is_customer,
+                                  })
+                                }
+                              >
+                                {row.is_customer ? "Remove Customer" : "Make Customer"}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuLabel>Account</DropdownMenuLabel>
@@ -918,7 +964,18 @@ export default function AdminDashboard() {
                       <TableCell className="truncate">{r.full_name || "—"}</TableCell>
                       <TableCell className="truncate" title={r.email}>{r.email}</TableCell>
                       <TableCell>
-                        <Badge variant={getRoleBadgeVariant(r.role)}>{r.role}</Badge>
+                        <span
+                          className={
+                            "ef-badge " +
+                            (r.role.includes("Admin")
+                              ? "ef-badge--admin"
+                              : r.role.includes("Investor") || r.role.includes("Customer")
+                              ? "ef-badge--investor"
+                              : "ef-badge--none")
+                          }
+                        >
+                          {r.role}
+                        </span>
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm">
                         {formatCompact(r.login_at)}
@@ -988,7 +1045,10 @@ export default function AdminDashboard() {
             <AlertDialogAction
               onClick={async () => {
                 setConfirmAdminInvite(false);
-                await createInvite("admin");
+                const rolesArr: PortalRole[] = ["admin"];
+                if (inviteInvestor) rolesArr.push("investor");
+                if (inviteCustomer) rolesArr.push("customer");
+                await createInvite(rolesArr);
               }}
             >
               Invite Admin
@@ -1093,5 +1153,6 @@ export default function AdminDashboard() {
         </AlertDialogContent>
       </AlertDialog>
     </main>
+    </div>
   );
 }

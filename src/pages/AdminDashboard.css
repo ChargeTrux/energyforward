@@ -1,0 +1,144 @@
+/* EnergyForward admin — scoped dark stealth theme */
+.ef-admin {
+  --ef-navy: #0b1220;
+  --ef-surface: #111a2e;
+  --ef-surface-2: #0d1730;
+  --ef-border: #1f2a44;
+  --ef-pearl: #f4f1ea;
+  --ef-text: #dfe6f1;
+  --ef-muted: #8a99b3;
+  --ef-teal: #5fb4a2;
+  --ef-amber: #f5a524;
+
+  background: var(--ef-navy);
+  color: var(--ef-text);
+  min-height: 100vh;
+  font-family: 'General Sans', 'Inter', system-ui, sans-serif;
+}
+.ef-admin h1, .ef-admin h2, .ef-admin h3, .ef-admin .ef-display {
+  font-family: 'Cabinet Grotesk', 'General Sans', sans-serif;
+  color: var(--ef-pearl);
+  letter-spacing: -0.01em;
+}
+.ef-admin .ef-mono { font-family: 'JetBrains Mono', Consolas, monospace; }
+
+/* Top bar */
+.ef-admin .ef-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--ef-border);
+  background: rgba(11,18,32,0.9);
+  backdrop-filter: blur(10px);
+  position: sticky; top: 0; z-index: 30;
+}
+.ef-admin .ef-brand {
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-weight: 800; font-size: 20px; color: var(--ef-pearl);
+  letter-spacing: -0.5px;
+}
+.ef-admin .ef-brand .dot { color: var(--ef-amber); }
+.ef-admin .ef-status {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase;
+  color: var(--ef-muted); font-weight: 600;
+}
+.ef-admin .ef-pulse {
+  width: 8px; height: 8px; border-radius: 999px;
+  background: var(--ef-teal);
+  box-shadow: 0 0 0 0 rgba(95,180,162,0.6);
+  animation: ef-pulse 2s infinite;
+}
+@keyframes ef-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(95,180,162,0.6); }
+  70% { box-shadow: 0 0 0 12px rgba(95,180,162,0); }
+  100% { box-shadow: 0 0 0 0 rgba(95,180,162,0); }
+}
+
+/* Shadcn surface overrides scoped to admin */
+.ef-admin [data-slot="card"],
+.ef-admin .ef-card {
+  background: var(--ef-surface) !important;
+  border: 1px solid var(--ef-border) !important;
+  color: var(--ef-text) !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.25);
+  border-radius: 10px;
+}
+.ef-admin [data-slot="card-title"] { color: var(--ef-pearl) !important; }
+
+.ef-admin label { color: var(--ef-muted) !important; font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase; font-weight: 600; }
+.ef-admin input, .ef-admin textarea, .ef-admin select,
+.ef-admin [data-slot="select-trigger"] {
+  background: var(--ef-surface-2) !important;
+  border: 1px solid var(--ef-border) !important;
+  color: var(--ef-pearl) !important;
+}
+.ef-admin input::placeholder { color: var(--ef-muted); }
+.ef-admin input:focus, .ef-admin [data-slot="select-trigger"]:focus {
+  outline: none !important;
+  border-color: var(--ef-teal) !important;
+  box-shadow: 0 0 0 3px rgba(95,180,162,0.18) !important;
+}
+
+/* Buttons */
+.ef-admin .ef-cta {
+  background: var(--ef-teal) !important; color: var(--ef-navy) !important;
+  font-weight: 700; letter-spacing: 1px; text-transform: uppercase; font-size: 12px;
+  border: none !important;
+}
+.ef-admin .ef-cta:hover { background: #6fc7b3 !important; }
+.ef-admin .ef-ghost-btn {
+  background: transparent !important; color: var(--ef-pearl) !important;
+  border: 1px solid var(--ef-border) !important;
+}
+.ef-admin .ef-ghost-btn:hover { border-color: var(--ef-teal) !important; color: var(--ef-teal) !important; }
+
+/* Stat number */
+.ef-admin .ef-stat { font-family: 'Cabinet Grotesk', sans-serif; font-size: 40px; font-weight: 800; color: var(--ef-pearl); line-height: 1; }
+.ef-admin .ef-stat-label { color: var(--ef-muted); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; font-weight: 600; }
+
+/* Table */
+.ef-admin table { color: var(--ef-text); }
+.ef-admin thead th { background: var(--ef-surface-2) !important; color: var(--ef-muted) !important; text-transform: uppercase; font-size: 11px; letter-spacing: 1.5px; box-shadow: inset 0 -1px 0 var(--ef-border) !important; }
+.ef-admin tbody tr { border-bottom: 1px solid var(--ef-border); }
+.ef-admin tbody tr:hover { background: rgba(95,180,162,0.04); }
+.ef-admin .rounded-md.border { border-color: var(--ef-border) !important; background: var(--ef-surface) !important; }
+
+/* Badges (semantic colors) */
+.ef-admin .ef-badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; border: 1px solid; }
+.ef-admin .ef-badge--admin   { color: var(--ef-amber); border-color: rgba(245,165,36,0.5); background: rgba(245,165,36,0.08); }
+.ef-admin .ef-badge--investor{ color: var(--ef-teal);  border-color: rgba(95,180,162,0.5); background: rgba(95,180,162,0.08); }
+.ef-admin .ef-badge--customer{ color: #8ab4ff; border-color: rgba(138,180,255,0.5); background: rgba(138,180,255,0.08); }
+.ef-admin .ef-badge--none    { color: var(--ef-muted); border-color: var(--ef-border); }
+.ef-admin .ef-badge--active  { color: var(--ef-teal); border-color: rgba(95,180,162,0.5); background: rgba(95,180,162,0.08); }
+.ef-admin .ef-badge--off     { color: #ff8a8a; border-color: rgba(255,138,138,0.5); background: rgba(255,138,138,0.08); }
+.ef-admin .ef-badge--signup  { color: var(--ef-muted); border-color: var(--ef-border); background: var(--ef-surface-2); }
+
+/* Dropdown / dialog dark */
+.ef-admin [data-slot="dropdown-menu-content"],
+.ef-admin [data-slot="dialog-content"],
+.ef-admin [data-slot="alert-dialog-content"] {
+  background: var(--ef-surface) !important; color: var(--ef-text) !important;
+  border: 1px solid var(--ef-border) !important;
+}
+.ef-admin [data-slot="dropdown-menu-item"]:hover,
+.ef-admin [data-slot="dropdown-menu-item"][data-highlighted] {
+  background: rgba(95,180,162,0.08) !important; color: var(--ef-pearl) !important;
+}
+
+/* Section heading rule */
+.ef-admin .ef-rule { display: inline-block; width: 36px; height: 1px; background: var(--ef-teal); vertical-align: middle; margin-right: 12px; }
+
+/* Portal checkbox group */
+.ef-admin .ef-portal-grid { display: flex; gap: 12px; flex-wrap: wrap; }
+.ef-admin .ef-portal-card {
+  flex: 1 1 180px; padding: 14px 16px;
+  border: 1px solid var(--ef-border); border-radius: 8px;
+  background: var(--ef-surface-2);
+  display: flex; align-items: center; gap: 12px; cursor: pointer;
+  transition: all 0.15s ease;
+}
+.ef-admin .ef-portal-card:hover { border-color: var(--ef-teal); }
+.ef-admin .ef-portal-card.active { border-color: var(--ef-teal); background: rgba(95,180,162,0.08); }
+.ef-admin .ef-portal-card input { accent-color: var(--ef-teal); width: 16px; height: 16px; }
+.ef-admin .ef-portal-card .ttl { color: var(--ef-pearl); font-weight: 600; font-size: 14px; text-transform: none; letter-spacing: 0; }
+.ef-admin .ef-portal-card .sub { color: var(--ef-muted); font-size: 11px; }
