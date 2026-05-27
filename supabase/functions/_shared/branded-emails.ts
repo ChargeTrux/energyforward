@@ -3,9 +3,35 @@
 
 export const EF_FROM = "Energy Forward Investor Portal <investor@energyforward.com>";
 export const EF_REPLY_TO = "investor@energyforward.com";
+export const EF_CUSTOMER_FROM = "Energy Forward Customer Portal <customer@energyforward.com>";
+export const EF_CUSTOMER_REPLY_TO = "customer@energyforward.com";
 export const EF_LOGO_URL = "https://energyforward.com/favicon.png";
 export const EF_SITE_URL = "https://energyforward.com";
 export const EF_PORTAL_URL = "https://energyforward.com/?login=1";
+
+/**
+ * Pick the correct sender identity + footer contact email for a recipient
+ * based on which portals they have access to.
+ *   - Customer-only      → customer@energyforward.com
+ *   - Investor (or mix)  → investor@energyforward.com
+ */
+export function brandingForPortals(portals?: string[] | null): {
+  from: string;
+  replyTo: string;
+  contactEmail: string;
+} {
+  const list = (portals ?? []).map((p) => String(p).toLowerCase());
+  const hasInvestor = list.includes("investor");
+  const hasCustomer = list.includes("customer");
+  if (hasCustomer && !hasInvestor) {
+    return {
+      from: EF_CUSTOMER_FROM,
+      replyTo: EF_CUSTOMER_REPLY_TO,
+      contactEmail: EF_CUSTOMER_REPLY_TO,
+    };
+  }
+  return { from: EF_FROM, replyTo: EF_REPLY_TO, contactEmail: EF_REPLY_TO };
+}
 
 // EnergyForward stealth palette
 const NAVY = "#0b1220";          // page background
@@ -34,8 +60,10 @@ function shell(opts: {
   ctaLabel?: string;
   ctaUrl?: string;
   securityNote?: string;
+  contactEmail?: string;
 }): string {
   const { preheader, heading, bodyHtml, ctaLabel, ctaUrl, securityNote } = opts;
+  const contactEmail = opts.contactEmail || EF_REPLY_TO;
   const cta = ctaLabel && ctaUrl
     ? `<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:32px auto;">
          <tr><td align="center" bgcolor="${TEAL}" style="border-radius:6px;">
@@ -78,7 +106,7 @@ function shell(opts: {
           <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.7;color:${MUTED};">
             <a href="${EF_SITE_URL}" style="color:${TEAL};text-decoration:none;">energyforward.com</a> &nbsp;·&nbsp;
             <a href="${EF_PORTAL_URL}" style="color:${TEAL};text-decoration:none;">Sign in</a> &nbsp;·&nbsp;
-            <a href="mailto:${EF_REPLY_TO}" style="color:${TEAL};text-decoration:none;">${EF_REPLY_TO}</a>
+            <a href="mailto:${contactEmail}" style="color:${TEAL};text-decoration:none;">${contactEmail}</a>
           </div>
           <div style="margin-top:16px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${MUTED};line-height:1.6;">
             This email was sent securely by Energy Forward.<br/>
@@ -132,6 +160,7 @@ export function welcomeEmail(args: {
   const sep = baseLogin.includes("?") ? "&" : "?";
   const loginUrl = `${baseLogin}${sep}login=1&email=${encodeURIComponent(args.email)}`;
   const portals = (args.portals && args.portals.length > 0) ? args.portals : ["Investor"];
+  const branding = brandingForPortals(portals);
   const portalsHtml = portals
     .map(
       (p) =>
@@ -161,15 +190,18 @@ export function welcomeEmail(args: {
       bodyHtml: body,
       ctaLabel: "Sign in to EnergyForward",
       ctaUrl: loginUrl,
+      contactEmail: branding.contactEmail,
       securityNote:
         "For your security, please change your password immediately after your first sign-in. Keep your credentials confidential. If you need assistance, contact <a href=\"mailto:" +
-        EF_REPLY_TO +
+        branding.contactEmail +
         "\" style=\"color:" +
         TEAL +
         ";\">" +
-        EF_REPLY_TO +
+        branding.contactEmail +
         "</a>.",
     }),
+    from: branding.from,
+    replyTo: branding.replyTo,
   };
 }
 
@@ -177,9 +209,11 @@ export function resetEmail(args: {
   name?: string;
   resetUrl: string;
   expirationMinutes?: number;
+  portals?: string[];
 }) {
   const name = escapeHtml(args.name || "Investor");
   const minutes = args.expirationMinutes ?? 60;
+  const branding = brandingForPortals(args.portals);
   const body = `
     <p style="margin:0 0 14px;">Dear ${name},</p>
     <p style="margin:0 0 14px;">We received a request to reset the password for your Energy Forward Investor Portal account. Click the button below to set a new password.</p>
@@ -193,15 +227,18 @@ export function resetEmail(args: {
       bodyHtml: body,
       ctaLabel: "Reset Password",
       ctaUrl: args.resetUrl,
+      contactEmail: branding.contactEmail,
       securityNote:
         "If you did not request this password reset, you may safely ignore this email \u2014 your password will remain unchanged. Energy Forward will never ask for your password by email.",
     }),
+    from: branding.from,
+    replyTo: branding.replyTo,
   };
 }
 
 export async function sendBrandedEmail(
   resendApiKey: string,
-  args: { to: string | string[]; subject: string; html: string; replyTo?: string },
+  args: { to: string | string[]; subject: string; html: string; replyTo?: string; from?: string },
 ): Promise<{ ok: boolean; id?: string; error?: string }> {
   try {
     const res = await fetch("https://api.resend.com/emails", {
@@ -211,7 +248,7 @@ export async function sendBrandedEmail(
         Authorization: `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
-        from: EF_FROM,
+        from: args.from ?? EF_FROM,
         to: Array.isArray(args.to) ? args.to : [args.to],
         subject: args.subject,
         html: args.html,

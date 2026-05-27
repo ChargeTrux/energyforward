@@ -118,25 +118,8 @@ const handler = async (req: Request): Promise<Response> => {
     const safeName = escapeHtml(name!);
     const safeEmail = escapeHtml(email!);
 
-    // Look up admin emails dynamically so notifications go to portal admins
-    const { data: adminRoles } = await supabase
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "admin");
-    const adminUserIds = (adminRoles ?? []).map((r: { user_id: string }) => r.user_id);
-    let adminEmails: string[] = [];
-    if (adminUserIds.length > 0) {
-      const { data: adminProfiles } = await supabase
-        .from("profiles")
-        .select("email")
-        .in("user_id", adminUserIds);
-      adminEmails = (adminProfiles ?? [])
-        .map((p: { email: string }) => p.email)
-        .filter((e: string) => !!e);
-    }
-    if (adminEmails.length === 0) {
-      adminEmails = ["arahimi@energyforward.com"];
-    }
+    // All new-signup notifications go to the submissions inbox.
+    const adminEmails: string[] = ["submission@energyforward.com"];
 
     const emailResponse = await resend.emails.send({
       from: EF_FROM,
