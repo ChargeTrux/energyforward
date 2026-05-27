@@ -61,10 +61,19 @@ function AppContent() {
   useEffect(() => {
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
     const searchParams = new URLSearchParams(window.location.search);
+    const isPublicSiteRequest = window.location.pathname === "/" && searchParams.get("public") === "1";
     const isPasswordRecovery =
       window.location.pathname === "/reset-password" ||
       hashParams.get("type") === "recovery" ||
       searchParams.get("type") === "recovery";
+
+    if (!loading && isPublicSiteRequest) {
+      prevSession.current = !!session;
+      searchParams.delete("public");
+      const qs = searchParams.toString();
+      window.history.replaceState({}, "", `/${qs ? `?${qs}` : ""}${window.location.hash}`);
+      return;
+    }
 
     if (!loading && session && !prevSession.current) {
       if (isPasswordRecovery) {

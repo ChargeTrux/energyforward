@@ -94,7 +94,7 @@
           <span>don't have access?</span>
           <a href="/contact" target="_top">request credentials</a>
         </div>
-        <a class="ef-gate__back" href="/">← back to public site</a>
+        <a class="ef-gate__back" href="/?public=1" target="_top">← back to public site</a>
       </div>
     `;
     document.body.appendChild(gate);
