@@ -71,14 +71,46 @@ Deno.serve(async (req) => {
       const tempPassword =
         Array.from(bytes, (b) => b.toString(36).padStart(2, "0")).join("") + "A1!";
 
+      let newUserId: string | undefined;
+      let userAlreadyExisted = false;
       const { data, error } = await admin.auth.admin.createUser({
         email,
         password: tempPassword,
         email_confirm: true,
         user_metadata: { full_name: full_name ?? "" },
       });
-      if (error) return json({ error: error.message }, 400);
-      const newUserId = data.user?.id;
+      if (error) {
+        // If the user already exists, look them up and proceed by adding
+        // the requested roles + sending a password-reset welcome instead
+        // of failing the whole invite.
+        const msg = (error.message || "").toLowerCase();
+        const alreadyExists =
+          msg.includes("already") ||
+          msg.includes("registered") ||
+          msg.includes("exists") ||
+          msg.includes("duplicate");
+        if (!alreadyExists) return json({ error: error.message }, 400);
+        userAlreadyExisted = true;
+        // Find existing user id via profiles, fall back to listUsers.
+        const { data: prof } = await admin
+          .from("profiles")
+          .select("user_id")
+          .eq("email", email)
+          .maybeSingle();
+        newUserId = (prof as { user_id?: string } | null)?.user_id;
+        if (!newUserId) {
+          const { data: list } = await admin.auth.admin.listUsers({
+            page: 1,
+            perPage: 200,
+          });
+          newUserId = list?.users?.find(
+            (u) => (u.email || "").toLowerCase() === email.toLowerCase(),
+          )?.id;
+        }
+        if (!newUserId) return json({ error: error.message }, 400);
+      } else {
+        newUserId = data.user?.id;
+      }
       if (!newUserId) return json({ error: "User creation failed" }, 500);
 
       // Ensure profile + must_change_password flag
@@ -87,7 +119,7 @@ Deno.serve(async (req) => {
           user_id: newUserId,
           email,
           full_name: full_name ?? "",
-          must_change_password: true,
+          must_change_password: !userAlreadyExisted,
           is_active: true,
         },
         { onConflict: "user_id" },
@@ -118,24 +150,60 @@ Deno.serve(async (req) => {
         const portals: string[] = [];
         if (role === "investor" || (Array.isArray(roles) && roles.includes("investor"))) portals.push("Investor");
         if (Array.isArray(roles) && roles.includes("customer")) portals.push("Customer");
-        const tpl = welcomeEmail({
-          name: full_name ?? "",
-          email,
-          tempPassword,
-          loginUrl: EF_PORTAL_URL,
-          portals,
-        });
-        const r = await sendBrandedEmail(RESEND_API_KEY, {
-          to: email,
-          subject: tpl.subject,
-          html: tpl.html,
-          from: tpl.from,
-          replyTo: tpl.replyTo,
-        });
-        if (!r.ok) console.error("Welcome email failed:", r.error);
+        if (userAlreadyExisted) {
+          // Existing user — send a password reset link instead of a temp password.
+          try {
+            const { data: linkData } = await admin.auth.admin.generateLink({
+              type: "recovery",
+              email,
+              options: { redirectTo: getResetRedirectUrl() },
+            });
+            const actionLink =
+              (linkData?.properties as { action_link?: string } | undefined)?.action_link;
+            if (actionLink) {
+              const tpl = resetEmail({
+                name: full_name ?? "",
+                resetUrl: forceEnergyForwardResetUrl(actionLink),
+                expirationMinutes: 60,
+                portals,
+              });
+              const r = await sendBrandedEmail(RESEND_API_KEY, {
+                to: email,
+                subject: "Your Energy Forward Access Has Been Updated",
+                html: tpl.html,
+                from: tpl.from,
+                replyTo: tpl.replyTo,
+              });
+              if (!r.ok) console.error("Reset email failed:", r.error);
+            }
+          } catch (e) {
+            console.error("Generate reset link failed:", (e as Error).message);
+          }
+        } else {
+          const tpl = welcomeEmail({
+            name: full_name ?? "",
+            email,
+            tempPassword,
+            loginUrl: EF_PORTAL_URL,
+            portals,
+          });
+          const r = await sendBrandedEmail(RESEND_API_KEY, {
+            to: email,
+            subject: tpl.subject,
+            html: tpl.html,
+            from: tpl.from,
+            replyTo: tpl.replyTo,
+          });
+          if (!r.ok) console.error("Welcome email failed:", r.error);
+        }
       }
 
-      return json({ ok: true, user: data.user, temp_password: tempPassword });
+      return json({
+        ok: true,
+        user_id: newUserId,
+        temp_password: userAlreadyExisted ? null : tempPassword,
+        already_existed: userAlreadyExisted,
+      });
     }
 
     if (action === "set_role") {
