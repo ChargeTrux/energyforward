@@ -728,20 +728,21 @@ export default function AdminDashboard() {
                     <TableCell className="whitespace-nowrap">{row.email}</TableCell>
                     <TableCell>
                       <div className="flex gap-1 flex-wrap">
-                        {row.is_admin && <Badge variant="roleAdmin">Admin</Badge>}
-                        {row.is_investor && <Badge variant="roleInvestor">Investor</Badge>}
-                        {!row.is_admin && !row.is_investor && (
-                          <Badge variant="outline">No portal role</Badge>
+                        {row.is_admin && <span className="ef-badge ef-badge--admin">Admin</span>}
+                        {row.is_investor && <span className="ef-badge ef-badge--investor">Investor</span>}
+                        {row.is_customer && <span className="ef-badge ef-badge--customer">Customer</span>}
+                        {!row.is_admin && !row.is_investor && !row.is_customer && (
+                          <span className="ef-badge ef-badge--none">No portal</span>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
                       {row.source === "signup" ? (
-                        <Badge variant="secondary">Website signup</Badge>
+                        <span className="ef-badge ef-badge--signup">Website signup</span>
                       ) : (
-                        <Badge variant={row.is_active ? "default" : "destructive"}>
+                        <span className={`ef-badge ${row.is_active ? "ef-badge--active" : "ef-badge--off"}`}>
                           {row.is_active ? "Active" : "Disabled"}
-                        </Badge>
+                        </span>
                       )}
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
@@ -803,6 +804,16 @@ export default function AdminDashboard() {
                                 }
                               >
                                 {row.is_investor ? "Remove Investor" : "Make Investor"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  callAdmin("set_customer", {
+                                    user_id: row.user_id,
+                                    make_customer: !row.is_customer,
+                                  })
+                                }
+                              >
+                                {row.is_customer ? "Remove Customer" : "Make Customer"}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuLabel>Account</DropdownMenuLabel>
