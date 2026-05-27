@@ -1020,7 +1020,8 @@ export default function AdminDashboard() {
           <CardTitle className="flex items-center gap-2">
             <Mail className="w-5 h-5" /> Contact Inquiries{" "}
             <span className="text-sm font-normal text-muted-foreground">
-              ({contacts.length} total · {contacts.filter((c) => c.status === "new").length} new)
+              ({contacts.filter((c) => c.status !== "resolved").length} open ·{" "}
+              {contacts.filter((c) => c.status === "new").length} new)
             </span>
           </CardTitle>
         </CardHeader>
