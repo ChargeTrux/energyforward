@@ -218,7 +218,9 @@
 
       window.addEventListener('wheel', scheduleSnap, { passive: true });
       window.addEventListener('touchend', scheduleSnap, { passive: true });
-      window.addEventListener('scroll', scheduleSnap, { passive: true });
+      window.addEventListener('keyup', (e) => {
+        if (['ArrowDown','ArrowUp','PageDown','PageUp','Space','Home','End'].includes(e.code)) scheduleSnap();
+      });
     }
   }
 })();
