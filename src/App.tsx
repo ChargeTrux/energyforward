@@ -120,6 +120,7 @@ function AppContent() {
         <Route path="/investor" element={<InvestorPortal />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/home-v1" element={<Home />} />
+        <Route path="/signout" element={<SignOutRoute onLogout={handleLogout} />} />
         {session && <Route path="/admin" element={<AdminDashboard />} />}
         {session && <Route path="/p/:slug" element={<GatedPage />} />}
         <Route path="/reset-password" element={<ResetPassword />} />
