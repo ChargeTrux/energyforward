@@ -133,8 +133,56 @@
     ScrollTrigger.refresh();
   }
 
-  // ── 5. Section-by-section navigation ─────────
-  // Section snap + auto-advance removed: it caused the page to feel like it
-  // was locking up and jumping. Native + Lenis smooth scroll handles motion
-  // fluidly now; users control pacing with the wheel / trackpad / keys.
+  // ── 5. Gentle auto-advance flow ──────────────
+  // Glides to the next section every few seconds using native smooth
+  // scrolling. Never hijacks input: the moment the user scrolls, touches,
+  // or presses a key, auto-advance stops for good and manual scrolling
+  // takes over completely.
+  (function autoFlow() {
+    const sections = Array.from(document.querySelectorAll('section[id]'));
+    if (sections.length < 2) return;
+
+    const HOLD_MS = 7000;          // time on each section before advancing
+    let idx = 0;
+    let timer = null;
+    let stopped = false;
+    let autoScrolling = false;
+
+    function stop() {
+      if (stopped) return;
+      stopped = true;
+      if (timer) clearTimeout(timer);
+    }
+
+    function schedule() {
+      if (stopped) return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(advance, HOLD_MS);
+    }
+
+    function advance() {
+      if (stopped) return;
+      idx += 1;
+      if (idx >= sections.length) { stop(); return; }
+      autoScrolling = true;
+      sections[idx].scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // allow the smooth scroll to finish before listening for user input again
+      setTimeout(() => { autoScrolling = false; schedule(); }, 1600);
+    }
+
+    // any real user input cancels the auto flow permanently
+    ['wheel', 'touchstart', 'pointerdown', 'keydown'].forEach((evt) => {
+      window.addEventListener(evt, stop, { passive: true });
+    });
+    // scroll events fired by the user (not our own smooth scroll) also cancel
+    window.addEventListener('scroll', () => { if (!autoScrolling) stop(); }, { passive: true });
+
+    // don't advance while the tab is hidden
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { if (timer) clearTimeout(timer); }
+      else schedule();
+    });
+
+    schedule();
+  })();
 })();
