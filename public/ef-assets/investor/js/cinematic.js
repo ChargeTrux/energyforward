@@ -39,11 +39,12 @@
       });
     });
 
-    // hero video gentle scale + fade out as you scroll past
+    // hero video gentle scale as you scroll past (no y-shift — a vertical
+    // offset larger than the scale buffer exposed a dark gap at the top)
     if (heroVid) {
       gsap.to(heroVid, {
-        scale: 1.08,
-        y: 80,
+        scale: 1.1,
+        transformOrigin: 'center center',
         ease: 'none',
         scrollTrigger: {
           trigger: '#cover',
@@ -134,55 +135,58 @@
   }
 
   // ── 5. Gentle auto-advance flow ──────────────
-  // Glides to the next section every few seconds using native smooth
-  // scrolling. Never hijacks input: the moment the user scrolls, touches,
-  // or presses a key, auto-advance stops for good and manual scrolling
-  // takes over completely.
+  // Glides to the next section every few seconds. Manual scrolling always
+  // works: user input just pauses the flow, which resumes from wherever the
+  // user is after a few seconds of inactivity.
   (function autoFlow() {
     const sections = Array.from(document.querySelectorAll('section[id]'));
     if (sections.length < 2) return;
 
-    const HOLD_MS = 7000;          // time on each section before advancing
-    let idx = 0;
+    const HOLD_MS = 7000;     // time on each section before advancing
+    const RESUME_MS = 9000;   // idle time after user input before resuming
+    const NAV_OFFSET = 64;    // fixed header height
     let timer = null;
-    let stopped = false;
     let autoScrolling = false;
 
-    function stop() {
-      if (stopped) return;
-      stopped = true;
-      if (timer) clearTimeout(timer);
+    function currentIndex() {
+      const y = window.scrollY + NAV_OFFSET + 10;
+      let i = 0;
+      for (let s = 0; s < sections.length; s++) {
+        if (sections[s].offsetTop <= y) i = s;
+      }
+      return i;
     }
 
-    function schedule() {
-      if (stopped) return;
+    function schedule(delay) {
       if (timer) clearTimeout(timer);
-      timer = setTimeout(advance, HOLD_MS);
+      timer = setTimeout(advance, delay);
     }
 
     function advance() {
-      if (stopped) return;
-      idx += 1;
-      if (idx >= sections.length) { stop(); return; }
+      const idx = currentIndex() + 1;
+      if (idx >= sections.length) return; // reached the end — stay put
+      const maxY = document.documentElement.scrollHeight - window.innerHeight;
+      const target = Math.min(sections[idx].offsetTop - NAV_OFFSET, maxY);
       autoScrolling = true;
-      sections[idx].scrollIntoView({ behavior: 'smooth', block: 'start' });
-      // allow the smooth scroll to finish before listening for user input again
-      setTimeout(() => { autoScrolling = false; schedule(); }, 1600);
+      window.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+      setTimeout(() => { autoScrolling = false; schedule(HOLD_MS); }, 1600);
     }
 
-    // any real user input cancels the auto flow permanently
+    // user input pauses the flow; it resumes after a longer idle period
+    function pause() {
+      schedule(RESUME_MS);
+    }
     ['wheel', 'touchstart', 'pointerdown', 'keydown'].forEach((evt) => {
-      window.addEventListener(evt, stop, { passive: true });
+      window.addEventListener(evt, pause, { passive: true });
     });
-    // scroll events fired by the user (not our own smooth scroll) also cancel
-    window.addEventListener('scroll', () => { if (!autoScrolling) stop(); }, { passive: true });
+    window.addEventListener('scroll', () => { if (!autoScrolling) pause(); }, { passive: true });
 
     // don't advance while the tab is hidden
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) { if (timer) clearTimeout(timer); }
-      else schedule();
+      else schedule(HOLD_MS);
     });
 
-    schedule();
+    schedule(HOLD_MS);
   })();
 })();

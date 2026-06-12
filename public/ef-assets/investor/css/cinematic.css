@@ -160,3 +160,6 @@
     font-size: clamp(56px, 16vw, 96px);
   }
 }
+
+/* anchor / auto-advance scroll lands below the fixed nav */
+section[id] { scroll-margin-top: 64px; }
