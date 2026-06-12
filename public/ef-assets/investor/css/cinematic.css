@@ -163,3 +163,10 @@
 
 /* anchor / auto-advance scroll lands below the fixed nav */
 section[id] { scroll-margin-top: 64px; }
+
+/* tighten the top of each section so content fills the viewport
+   instead of starting near the middle of the screen */
+.section {
+  padding-top: clamp(40px, 6vh, 80px) !important;
+  padding-bottom: clamp(48px, 8vh, 100px) !important;
+}
