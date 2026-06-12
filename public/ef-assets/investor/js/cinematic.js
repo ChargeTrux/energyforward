@@ -187,6 +187,27 @@
       }, 200);
     }
 
+    // jump to a neighboring section immediately (for swipe / wheel flicks)
+    function jump(dir) {
+      const idx = Math.max(0, Math.min(sections.length - 1, currentIndex() + dir));
+      const maxY = document.documentElement.scrollHeight - window.innerHeight;
+      const target = Math.min(sections[idx].offsetTop - NAV_OFFSET, maxY);
+      if (timer) clearTimeout(timer);
+      autoScrolling = true;
+      window.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+      let lastY = -1, stable = 0;
+      if (settleTimer) clearInterval(settleTimer);
+      settleTimer = setInterval(() => {
+        if (Math.abs(window.scrollY - lastY) < 2) stable++; else stable = 0;
+        lastY = window.scrollY;
+        if (stable >= 3) {
+          clearInterval(settleTimer); settleTimer = null;
+          autoScrolling = false;
+          schedule(RESUME_MS);
+        }
+      }, 200);
+    }
+
     // user input pauses the flow; it resumes after a longer idle period
     function pause() {
       if (autoScrolling) {
@@ -201,6 +222,35 @@
       window.addEventListener(evt, pause, { passive: true });
     });
     window.addEventListener('scroll', () => { if (!autoScrolling) pause(); }, { passive: true });
+
+    // ── swipe / wheel flick = snap to next section immediately ──
+    let touchStartY = null;
+    let touchStartT = 0;
+    window.addEventListener('touchstart', (e) => {
+      if (!e.touches || !e.touches[0]) return;
+      touchStartY = e.touches[0].clientY;
+      touchStartT = Date.now();
+    }, { passive: true });
+    window.addEventListener('touchend', (e) => {
+      if (touchStartY == null) return;
+      const endY = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientY : touchStartY;
+      const dy = touchStartY - endY;
+      const dt = Date.now() - touchStartT;
+      touchStartY = null;
+      // quick flick (short time, decent distance) → snap to neighbor section
+      if (dt < 500 && Math.abs(dy) > 60) {
+        jump(dy > 0 ? 1 : -1);
+      }
+    }, { passive: true });
+
+    let wheelCooldown = 0;
+    window.addEventListener('wheel', (e) => {
+      const now = Date.now();
+      if (now < wheelCooldown) return;
+      if (Math.abs(e.deltaY) < 40) return;
+      wheelCooldown = now + 900;
+      jump(e.deltaY > 0 ? 1 : -1);
+    }, { passive: true });
 
     // don't advance while the tab is hidden
     document.addEventListener('visibilitychange', () => {
