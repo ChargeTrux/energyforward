@@ -7,44 +7,10 @@
 (function () {
   'use strict';
 
-  // ── 1. Lenis smooth scroll ───────────────────
-  // ── Lenis smooth scroll (re-enabled) ─────────
-  const LenisCtor = window.Lenis && (window.Lenis.default || window.Lenis);
-  let lenis = null;
-  if (LenisCtor) {
-    try {
-      lenis = new LenisCtor({
-        duration: 0.9,
-        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-        smoothWheel: true,
-        smoothTouch: false,
-        wheelMultiplier: 1.1,
-        touchMultiplier: 1.5,
-      });
-      function raf(time) { lenis.raf(time); requestAnimationFrame(raf); }
-      requestAnimationFrame(raf);
-
-      if (window.gsap && window.ScrollTrigger) {
-        lenis.on('scroll', ScrollTrigger.update);
-        gsap.ticker.add((time) => { lenis.raf(time * 1000); });
-        gsap.ticker.lagSmoothing(0);
-      }
-
-      // anchor links → smooth scroll via Lenis
-      document.querySelectorAll('a[href^="#"]').forEach((a) => {
-        a.addEventListener('click', (e) => {
-          const id = a.getAttribute('href');
-          if (id && id.length > 1) {
-            const t = document.querySelector(id);
-            if (t) { e.preventDefault(); lenis.scrollTo(t, { offset: -40, duration: 1.2 }); }
-          }
-        });
-      });
-    } catch (err) {
-      console.warn('Lenis init failed, falling back to native scroll', err);
-      lenis = null;
-    }
-  }
+  // ── 1. Scrolling ─────────────────────────────
+  // Lenis smooth-scroll removed: it conflicted with the page's native
+  // `scroll-behavior: smooth` and could freeze scrolling entirely.
+  // Native scrolling (already smooth via CSS) drives everything now.
 
   // ── 2. Hero video ready fade-in ──────────────
   const heroVid = document.querySelector('.hero-video');
