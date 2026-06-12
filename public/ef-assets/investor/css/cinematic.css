@@ -170,3 +170,11 @@ section[id] { scroll-margin-top: 64px; }
   padding-top: clamp(40px, 6vh, 80px) !important;
   padding-bottom: clamp(48px, 8vh, 100px) !important;
 }
+
+/* lift hero content higher so it sits in the upper-middle of the screen
+   instead of hugging the bottom edge */
+.hero--cinematic {
+  align-items: center !important;
+  padding-top: clamp(80px, 10vh, 140px) !important;
+  padding-bottom: clamp(160px, 22vh, 280px) !important;
+}
