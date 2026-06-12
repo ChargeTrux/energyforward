@@ -143,10 +143,11 @@
     if (sections.length < 2) return;
 
     const HOLD_MS = 7000;     // time on each section before advancing
-    const RESUME_MS = 9000;   // idle time after user input before resuming
+    const RESUME_MS = 14000;  // idle time after user input before resuming
     const NAV_OFFSET = 64;    // fixed header height
     let timer = null;
     let autoScrolling = false;
+    let settleTimer = null;
 
     function currentIndex() {
       const y = window.scrollY + NAV_OFFSET + 10;
@@ -169,11 +170,31 @@
       const target = Math.min(sections[idx].offsetTop - NAV_OFFSET, maxY);
       autoScrolling = true;
       window.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
-      setTimeout(() => { autoScrolling = false; schedule(HOLD_MS); }, 1600);
+      // wait until the smooth scroll actually settles before re-arming
+      let lastY = -1;
+      let stable = 0;
+      if (settleTimer) clearInterval(settleTimer);
+      settleTimer = setInterval(() => {
+        if (!autoScrolling) { clearInterval(settleTimer); settleTimer = null; return; }
+        if (Math.abs(window.scrollY - lastY) < 2) stable++;
+        else stable = 0;
+        lastY = window.scrollY;
+        if (stable >= 3) {
+          clearInterval(settleTimer); settleTimer = null;
+          autoScrolling = false;
+          schedule(HOLD_MS);
+        }
+      }, 200);
     }
 
     // user input pauses the flow; it resumes after a longer idle period
     function pause() {
+      if (autoScrolling) {
+        // hand control back instantly: cancel the in-flight smooth scroll
+        autoScrolling = false;
+        if (settleTimer) { clearInterval(settleTimer); settleTimer = null; }
+        window.scrollTo({ top: window.scrollY, behavior: 'auto' });
+      }
       schedule(RESUME_MS);
     }
     ['wheel', 'touchstart', 'pointerdown', 'keydown'].forEach((evt) => {
