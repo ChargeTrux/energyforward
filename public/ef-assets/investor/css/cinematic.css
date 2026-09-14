@@ -207,6 +207,7 @@ section[id] { scroll-margin-top: 0; scroll-snap-align: start; scroll-snap-stop: 
 
 @media (min-width: 981px) {
   :root { --max: 1440px; --gutter: clamp(24px, 3.5vw, 56px); }
+  .section, .hero--cinematic { padding-bottom: 12px !important; }
 
   .problem-grid { gap: 56px; }
   .problem-row { padding: 18px 0; }
