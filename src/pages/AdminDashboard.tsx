@@ -907,6 +907,41 @@ export default function AdminDashboard() {
                 </label>
               </div>
             </div>
+            {inviteInvestor && investorProfiles.length > 0 && (
+              <div className="md:col-span-12">
+                <Label>Investor Document Profiles</Label>
+                <div className="ef-portal-grid mt-1">
+                  {investorProfiles.map((p) => {
+                    const on = selectedProfileIds.includes(p.id);
+                    return (
+                      <label key={p.id} className={`ef-portal-card ${on ? "active" : ""}`}>
+                        <input
+                          type="checkbox"
+                          checked={on}
+                          onChange={(e) =>
+                            setSelectedProfileIds((prev) =>
+                              e.target.checked
+                                ? [...prev, p.id]
+                                : prev.filter((id) => id !== p.id),
+                            )
+                          }
+                        />
+                        <div>
+                          <div className="ttl">{p.name}</div>
+                          <div className="sub">
+                            {p.description || "No description"}
+                            {p.drive_url ? "" : " · folder link missing"}
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  The selected profiles and their shared folder links are listed in the welcome email.
+                </p>
+              </div>
+            )}
             <div className="md:col-span-12 flex justify-end">
               <Button type="submit" disabled={busy} className="ef-cta px-8">
                 Create &amp; Invite
