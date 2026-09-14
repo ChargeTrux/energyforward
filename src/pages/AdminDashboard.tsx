@@ -228,7 +228,16 @@ export default function AdminDashboard() {
   }, []);
 
   const load = async () => {
-    const [{ data: profs }, { data: roles }, { data: sess }, { data: views }, { data: signupRows }, { data: contactRows }] =
+    const [
+      { data: profs },
+      { data: roles },
+      { data: sess },
+      { data: views },
+      { data: signupRows },
+      { data: contactRows },
+      { data: invProfileRows },
+      { data: invAccessRows },
+    ] =
       await Promise.all([
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
         supabase.from("user_roles").select("user_id, role"),
@@ -240,7 +249,21 @@ export default function AdminDashboard() {
         supabase.from("page_views").select("user_id, session_id, path, duration_seconds"),
         supabase.from("email_signups").select("id, name, email, created_at, service_type").order("created_at", { ascending: false }),
         supabase.from("contact_submissions").select("*").order("created_at", { ascending: false }),
+        supabase.from("investor_profiles").select("*").order("sort_order"),
+        supabase.from("investor_profile_access").select("user_id, profile_id"),
       ]);
+
+    const invProfiles = (invProfileRows ?? []) as InvestorProfile[];
+    setInvestorProfiles(invProfiles);
+    setInvestorAccess((invAccessRows ?? []) as InvestorAccessRow[]);
+    setProfileDrafts(
+      Object.fromEntries(
+        invProfiles.map((p) => [
+          p.id,
+          { name: p.name, description: p.description ?? "", drive_url: p.drive_url ?? "" },
+        ]),
+      ),
+    );
 
     const adminSet = new Set(
       (roles ?? []).filter((r) => r.role === "admin").map((r) => r.user_id),
