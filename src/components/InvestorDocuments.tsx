@@ -50,6 +50,35 @@ export function InvestorDocuments() {
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ name: string; url: string; mime: string } | null>(null);
   const previewUrlRef = useRef<string | null>(null);
+  const dragRef = useRef<{ startX: number; startY: number; right: number; bottom: number; moved: boolean } | null>(null);
+  const suppressClickRef = useRef(false);
+  const [launcherPosition, setLauncherPosition] = useState({ right: 22, bottom: 22 });
+
+  const moveLauncher = useCallback((clientX: number, clientY: number) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const nextRight = Math.max(10, Math.min(window.innerWidth - 182, drag.right - (clientX - drag.startX)));
+    const nextBottom = Math.max(10, Math.min(window.innerHeight - 66, drag.bottom - (clientY - drag.startY)));
+    if (Math.abs(clientX - drag.startX) > 4 || Math.abs(clientY - drag.startY) > 4) drag.moved = true;
+    setLauncherPosition({ right: nextRight, bottom: nextBottom });
+  }, []);
+
+  const endLauncherDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
+    suppressClickRef.current = Boolean(dragRef.current?.moved);
+    dragRef.current = null;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  };
+
+  const startLauncherDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      right: launcherPosition.right,
+      bottom: launcherPosition.bottom,
+      moved: false,
+    };
+  };
 
   const revokePreview = useCallback(() => {
     if (previewUrlRef.current) {
@@ -158,11 +187,23 @@ export function InvestorDocuments() {
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        aria-label="Open secure documents. Drag to move this button."
+        title="Drag to move · Click to open"
+        onPointerDown={startLauncherDrag}
+        onPointerMove={(event) => moveLauncher(event.clientX, event.clientY)}
+        onPointerUp={endLauncherDrag}
+        onPointerCancel={endLauncherDrag}
+        onClick={() => {
+          if (suppressClickRef.current) {
+            suppressClickRef.current = false;
+            return;
+          }
+          setOpen(true);
+        }}
         style={{
           position: "fixed",
-          right: 22,
-          bottom: 22,
+          right: launcherPosition.right,
+          bottom: launcherPosition.bottom,
           zIndex: 60,
           minWidth: 172,
           minHeight: 56,
@@ -174,7 +215,9 @@ export function InvestorDocuments() {
           fontFamily: "'General Sans', sans-serif",
           fontSize: 14,
           fontWeight: 700,
-          cursor: "pointer",
+          cursor: "grab",
+          touchAction: "none",
+          userSelect: "none",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
