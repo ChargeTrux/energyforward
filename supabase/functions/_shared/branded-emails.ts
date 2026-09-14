@@ -170,9 +170,8 @@ export function investorProfilesHtml(profiles?: InvestorProfileInfo[] | null): s
   if (!profiles || profiles.length === 0) return "";
   const rows = profiles
     .map((p) => {
-      const link = p.drive_url
-        ? `<div style="margin-top:6px;"><a href="${escapeHtml(p.drive_url)}" style="color:${TEAL};text-decoration:none;font-weight:600;font-size:13px;">Open shared folder →</a></div>`
-        : `<div style="margin-top:6px;color:${MUTED};font-size:12px;">Folder link will follow shortly.</div>`;
+      const link = `<div style="margin-top:6px;color:${MUTED};font-size:12px;">Viewable in the investor portal under “Documents”.</div>`;
+
       return `<tr><td style="padding:12px 16px;border-top:1px solid ${BORDER};font-family:Arial,Helvetica,sans-serif;">
         <div style="color:${PEARL};font-weight:700;font-size:14px;">${escapeHtml(p.name)}</div>
         ${p.description ? `<div style="color:${TEXT};font-size:13px;margin-top:3px;">${escapeHtml(p.description)}</div>` : ""}
