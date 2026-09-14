@@ -606,6 +606,47 @@ export default function AdminDashboard() {
     setPendingDeleteSignup(null);
   };
 
+  const saveInvestorProfile = async (p: InvestorProfile) => {
+    const draft = profileDrafts[p.id];
+    if (!draft) return;
+    const { error } = await supabase
+      .from("investor_profiles")
+      .update({
+        name: draft.name.trim() || p.name,
+        description: draft.description.trim() || null,
+        drive_url: draft.drive_url.trim() || null,
+      })
+      .eq("id", p.id);
+    if (error) {
+      toast({ title: "Save failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Profile saved", description: `${draft.name} updated.` });
+    await load();
+  };
+
+  const toggleUserProfileAccess = async (
+    userId: string,
+    profileId: string,
+    grant: boolean,
+  ) => {
+    const { error } = grant
+      ? await supabase
+          .from("investor_profile_access")
+          .upsert({ user_id: userId, profile_id: profileId }, { onConflict: "user_id,profile_id" })
+      : await supabase
+          .from("investor_profile_access")
+          .delete()
+          .eq("user_id", userId)
+          .eq("profile_id", profileId);
+    if (error) {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    await load();
+  };
+
+
   const inviteFromContact = async (
     row: ContactSubmissionRow,
     rolesArr: PortalRole[],
