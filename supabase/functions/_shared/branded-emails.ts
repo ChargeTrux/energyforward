@@ -269,6 +269,7 @@ export function resetEmail(args: {
   resetUrl: string;
   expirationMinutes?: number;
   portals?: string[];
+  investorProfiles?: InvestorProfileInfo[] | null;
 }) {
   const name = escapeHtml(args.name || "Investor");
   const minutes = args.expirationMinutes ?? 60;
@@ -277,6 +278,7 @@ export function resetEmail(args: {
     <p style="margin:0 0 14px;">Dear ${name},</p>
     <p style="margin:0 0 14px;">We received a request to reset the password for your Energy Forward Investor Portal account. Click the button below to set a new password.</p>
     <p style="margin:0 0 14px;color:${MUTED};font-size:13px;">This link will expire in approximately ${minutes} minutes for your security.</p>
+    ${investorProfilesHtml(args.investorProfiles)}
   `;
   return {
     subject: "Reset Your Energy Forward Password",
