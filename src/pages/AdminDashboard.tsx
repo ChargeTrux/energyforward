@@ -609,11 +609,13 @@ export default function AdminDashboard() {
   const inviteFromContact = async (
     row: ContactSubmissionRow,
     rolesArr: PortalRole[],
+    profileIds: string[] = [],
   ) => {
     const data = (await callAdmin("invite", {
       email: row.email,
       full_name: row.full_name,
       roles: rolesArr,
+      investor_profile_ids: rolesArr.includes("investor") ? profileIds : [],
     })) as { temp_password?: string } | null;
     if (data) {
       await supabase
