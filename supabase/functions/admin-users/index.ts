@@ -192,6 +192,7 @@ Deno.serve(async (req) => {
                 resetUrl: forceEnergyForwardResetUrl(actionLink),
                 expirationMinutes: 60,
                 portals,
+                investorProfiles: grantedProfiles,
               });
               const r = await sendBrandedEmail(RESEND_API_KEY, {
                 to: email,
@@ -212,6 +213,7 @@ Deno.serve(async (req) => {
             tempPassword,
             loginUrl: EF_PORTAL_URL,
             portals,
+            investorProfiles: grantedProfiles,
           });
           const r = await sendBrandedEmail(RESEND_API_KEY, {
             to: email,
