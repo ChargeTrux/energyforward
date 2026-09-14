@@ -524,6 +524,7 @@ export default function AdminDashboard() {
       email,
       full_name: fullName,
       roles: rolesArr,
+      investor_profile_ids: rolesArr.includes("investor") ? selectedProfileIds : [],
     })) as { temp_password?: string } | null;
     if (data) {
       const list = rolesArr.length ? rolesArr.join(", ") : "no portal";
@@ -536,6 +537,7 @@ export default function AdminDashboard() {
       setInviteInvestor(true);
       setInviteCustomer(false);
       setInviteAdmin(false);
+      setSelectedProfileIds([]);
     }
   };
 
