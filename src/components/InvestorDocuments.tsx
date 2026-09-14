@@ -63,19 +63,14 @@ export function InvestorDocuments() {
     setLauncherPosition({ right: nextRight, bottom: nextBottom });
   }, []);
 
-  const endLauncherDrag = useCallback(() => {
+  const endLauncherDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
     suppressClickRef.current = Boolean(dragRef.current?.moved);
     dragRef.current = null;
-    window.removeEventListener("pointermove", handleLauncherMove);
-    window.removeEventListener("pointerup", endLauncherDrag);
-  }, []);
-
-  function handleLauncherMove(event: PointerEvent) {
-    event.preventDefault();
-    moveLauncher(event.clientX, event.clientY);
-  }
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  };
 
   const startLauncherDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
+    event.currentTarget.setPointerCapture(event.pointerId);
     dragRef.current = {
       startX: event.clientX,
       startY: event.clientY,
@@ -83,8 +78,6 @@ export function InvestorDocuments() {
       bottom: launcherPosition.bottom,
       moved: false,
     };
-    window.addEventListener("pointermove", handleLauncherMove);
-    window.addEventListener("pointerup", endLauncherDrag);
   };
 
   const revokePreview = useCallback(() => {
@@ -197,6 +190,9 @@ export function InvestorDocuments() {
         aria-label="Open secure documents. Drag to move this button."
         title="Drag to move · Click to open"
         onPointerDown={startLauncherDrag}
+        onPointerMove={(event) => moveLauncher(event.clientX, event.clientY)}
+        onPointerUp={endLauncherDrag}
+        onPointerCancel={endLauncherDrag}
         onClick={() => {
           if (suppressClickRef.current) {
             suppressClickRef.current = false;
