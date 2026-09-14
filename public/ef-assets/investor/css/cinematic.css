@@ -178,3 +178,30 @@ section[id] { scroll-margin-top: 64px; }
   padding-top: clamp(80px, 10vh, 140px) !important;
   padding-bottom: clamp(40px, 6vh, 80px) !important;
 }
+
+/* ─────────────────────────────────────────────
+   ONE-SCREEN SECTIONS (v7)
+   every section is exactly one viewport tall and its
+   content is auto-scaled by js/cinematic.js to fit.
+   ───────────────────────────────────────────── */
+.section, .hero--cinematic {
+  min-height: 100svh !important;
+  height: 100svh !important;
+  display: flex !important;
+  align-items: center !important;
+  overflow: hidden !important;
+  padding-top: 72px !important;
+  padding-bottom: clamp(24px, 4vh, 48px) !important;
+}
+.hero--cinematic { align-items: center !important; }
+
+/* the wrapper js scales */
+.section-inner, .thesis-inner, .hero-content {
+  transform-origin: center center;
+  width: 100%;
+}
+
+/* tighter type so scaling stays subtle */
+.section-head { font-size: clamp(30px, 4.4vw, 62px) !important; margin: 16px 0 20px !important; }
+.hero--cinematic .hero-headline { font-size: clamp(52px, 8.4vw, 132px) !important; }
+.lede { font-size: clamp(15px, 1.15vw, 19px) !important; margin-bottom: 24px !important; }
