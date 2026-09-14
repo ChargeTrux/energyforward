@@ -219,17 +219,18 @@ section[id] { scroll-margin-top: 0; scroll-snap-align: start; scroll-snap-stop: 
 
   .thesis-head {
     font-size: clamp(36px, 4.5vw, 64px);
-    margin: 12px 0 26px;
-    max-width: 22ch;
+    margin: 10px 0 20px;
+    max-width: 26ch;
   }
+  .thesis-head br { display: none; }
   .beats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; max-width: none; border-top: 1px solid var(--hairline-2); }
-  .beat { display: block; padding: 20px 24px 0; border-top: 0; border-right: 1px solid var(--hairline); }
+  .beat { display: block; padding: 14px 24px 0; border-top: 0; border-right: 1px solid var(--hairline); }
   .beat:first-child { padding-left: 0; }
   .beat:last-child { border-right: 0; padding-right: 0; }
   .beat--accent { margin-top: 0; border-top: 0; }
-  .beat-body p { font-size: 16px; line-height: 1.5; }
-  .beat-claim { font-size: clamp(21px, 1.8vw, 28px); padding: 14px 0 14px 16px; margin: 10px 0 14px; }
-  .thesis-close { margin-top: 24px; padding-top: 18px; font-size: clamp(21px, 2vw, 30px); max-width: 42ch; }
+  .beat-body p { font-size: 16px; line-height: 1.42; }
+  .beat-claim { font-size: clamp(20px, 1.65vw, 26px); padding: 10px 0 10px 14px; margin: 8px 0 10px; }
+  .thesis-close { margin-top: 18px; padding-top: 14px; font-size: clamp(20px, 1.8vw, 28px); max-width: 48ch; }
 
   #platform .split { grid-template-columns: 5fr 7fr; gap: 48px; }
   #platform .platform-vis { aspect-ratio: 16 / 7; }
@@ -254,7 +255,13 @@ section[id] { scroll-margin-top: 0; scroll-snap-align: start; scroll-snap-stop: 
   .person .p-name { margin-top: 10px; }
   .person .p-blurb { margin-top: 10px; }
   .corner { padding-top: 14px; padding-bottom: 14px; }
+  #advisors .corner-band { grid-template-columns: repeat(5, 1fr); }
   #advisors .people-grid { margin-top: 20px !important; }
+  #advisors .people-grid { grid-template-columns: repeat(5, 1fr); }
+  #advisors .person { padding: 16px 18px 16px 0; border-right: 1px solid var(--hairline); }
+  #advisors .person:last-child { border-right: 0; }
+  #advisors .person .p-name { font-size: clamp(20px, 1.7vw, 25px); }
+  #advisors .person .p-blurb { max-width: none; }
   #advisors .lede:last-child { margin-top: 20px !important; }
   .ask-head { font-size: clamp(42px, 5vw, 68px); margin: 12px 0 22px; }
   .ask-math { padding: 22px 0; margin-bottom: 20px; }
