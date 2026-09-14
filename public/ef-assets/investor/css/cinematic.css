@@ -294,11 +294,15 @@ section[id] { scroll-margin-top: 0; scroll-snap-align: start; scroll-snap-stop: 
   #platform .platform-vis { aspect-ratio: 16 / 6; background: rgba(6, 30, 34, 0.7); }
   #platform .platform-vis img { object-fit: contain; }
   #platform .platform-rail { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 20px !important; border-top: 1px solid var(--hairline); }
-  #platform .entity { min-width: 0; padding: 13px 14px; grid-template-columns: 30px 1fr 24px; gap: 10px; border-right: 1px solid var(--hairline); }
+  #platform .entity { min-width: 0; padding: 9px 12px; grid-template-columns: 26px 1fr 22px; gap: 8px; border-right: 1px solid var(--hairline); }
   #platform .entity:nth-child(3n) { border-right: 0; }
-  #platform .entity-name { font-size: clamp(20px, 1.8vw, 27px); }
-  #platform .metric-strip { margin-top: 16px; }
-  #platform .metric-strip > div { padding: 14px 18px; }
+  #platform .entity-name { font-size: clamp(18px, 1.55vw, 23px); }
+  #platform .entity-blurb { font-size: 13px; line-height: 1.35; margin-top: 5px; }
+  #platform .entity-tag { margin-bottom: 3px; }
+  #platform .metric-strip { margin-top: 10px; }
+  #platform .metric-strip > div { padding: 9px 16px; }
+  #platform .metric-big { font-size: clamp(30px, 3.2vw, 44px); }
+  #platform .metric-label { margin-top: 5px; }
 
   .loop li { padding-top: 24px; padding-bottom: 24px; }
   .market-cell { padding: 28px 32px; }
@@ -313,6 +317,15 @@ section[id] { scroll-margin-top: 0; scroll-snap-align: start; scroll-snap-stop: 
   .traction-table td { padding-top: 15px; padding-bottom: 15px; }
   #traction .metric-strip { margin-top: 20px !important; }
   #traction .metric-strip > div { padding-top: 14px; padding-bottom: 14px; }
+  #traction .section-head { font-size: clamp(30px, 3.2vw, 46px) !important; margin-bottom: 10px !important; }
+  #traction .lede { font-size: 16px !important; line-height: 1.4; margin-bottom: 12px !important; }
+  #traction .traction-table th { padding-top: 8px; padding-bottom: 8px; }
+  #traction .traction-table td { padding-top: 9px; padding-bottom: 9px; }
+  #traction .traction-customer { font-size: clamp(17px, 1.45vw, 21px); }
+  #traction .traction-detail { font-size: 13px; line-height: 1.35; }
+  #traction .metric-strip { margin-top: 10px !important; }
+  #traction .metric-strip > div { padding-top: 8px; padding-bottom: 8px; }
+  #traction .metric-big { font-size: clamp(30px, 3.2vw, 44px); }
   .scale-stat { padding: 26px 28px 22px; }
   .scale-big { margin-top: 16px; }
   .person { padding-top: 20px; padding-bottom: 20px; }
@@ -352,6 +365,11 @@ section[id] { scroll-margin-top: 0; scroll-snap-align: start; scroll-snap-stop: 
   .ask-big { font-size: clamp(46px, 5vw, 70px); }
   .uof-row { padding: 13px 0; }
   .ask-foot { margin-top: 22px; padding-top: 20px; }
+  #ask .ask-head { font-size: clamp(34px, 3.8vw, 52px); margin: 8px 0 12px; }
+  #ask .ask-math { padding: 12px 0; margin-bottom: 10px; }
+  #ask .ask-big { font-size: clamp(38px, 4vw, 54px); }
+  #ask .uof-row { padding: 8px 0; }
+  #ask .ask-foot { margin-top: 12px; padding-top: 10px; }
 
   /* Short laptop windows keep the chapter fixed while its content scrolls.
      This prevents either the heading or final rows from being cut off. */
