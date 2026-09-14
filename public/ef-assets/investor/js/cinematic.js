@@ -284,6 +284,8 @@
         const canScrollDown = e.deltaY > 0 && content.scrollTop + content.clientHeight < content.scrollHeight - 2;
         const canScrollUp = e.deltaY < 0 && content.scrollTop > 2;
         if (canScrollDown || canScrollUp) {
+          e.preventDefault();
+          content.scrollBy({ top: e.deltaY, behavior: 'auto' });
           schedule(RESUME_MS);
           return;
         }
@@ -293,7 +295,7 @@
       if (Math.abs(e.deltaY) < 40) return;
       wheelCooldown = now + 900;
       jump(e.deltaY > 0 ? 1 : -1);
-    }, { passive: true });
+    }, { passive: false });
 
     // don't advance while the tab is hidden
     document.addEventListener('visibilitychange', () => {
