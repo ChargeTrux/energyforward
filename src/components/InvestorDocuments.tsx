@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { FolderLock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -160,21 +161,32 @@ export function InvestorDocuments() {
         onClick={() => setOpen(true)}
         style={{
           position: "fixed",
-          right: 18,
-          bottom: 18,
+          right: 22,
+          bottom: 22,
           zIndex: 60,
-          padding: "10px 18px",
+          minWidth: 172,
+          minHeight: 56,
+          padding: "10px 20px",
           borderRadius: 999,
           border: `1px solid ${amber}`,
           background: amber,
           color: teal,
           fontFamily: "'General Sans', sans-serif",
-          fontSize: 13,
-          fontWeight: 600,
+          fontSize: 14,
+          fontWeight: 700,
           cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 10,
+          boxShadow: "0 12px 32px rgba(0,0,0,0.38), 0 0 0 4px rgba(232,177,74,0.18)",
         }}
       >
-        Documents
+        <FolderLock size={20} aria-hidden="true" />
+        <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.15, textAlign: "left" }}>
+          <span>Documents</span>
+          <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>Secure access</span>
+        </span>
       </button>
 
       {open && (

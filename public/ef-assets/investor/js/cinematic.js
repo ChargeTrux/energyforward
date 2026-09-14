@@ -148,13 +148,37 @@
     let autoScrolling = false;
     let settleTimer = null;
 
+    // Visible previous/next controls make the deck usable without relying on
+    // trackpad gesture strength or the automatic timer.
+    const chapterNav = document.createElement('nav');
+    chapterNav.className = 'chapter-nav';
+    chapterNav.setAttribute('aria-label', 'Investor presentation chapters');
+    chapterNav.innerHTML = '<button type="button" class="chapter-prev" aria-label="Previous section" title="Previous section">↑</button><span class="chapter-nav-count" aria-live="polite"></span><button type="button" class="chapter-next" aria-label="Next section" title="Next section">↓</button>';
+    document.body.appendChild(chapterNav);
+    const previousButton = chapterNav.querySelector('.chapter-prev');
+    const nextButton = chapterNav.querySelector('.chapter-next');
+    const chapterCount = chapterNav.querySelector('.chapter-nav-count');
+
     function currentIndex() {
-      const y = window.scrollY + 10;
-      let i = 0;
-      for (let s = 0; s < sections.length; s++) {
-        if (sections[s].offsetTop <= y) i = s;
-      }
-      return i;
+      const viewportCenter = window.scrollY + (window.innerHeight / 2);
+      let closest = 0;
+      let distance = Infinity;
+      sections.forEach((section, index) => {
+        const center = section.offsetTop + (section.offsetHeight / 2);
+        const nextDistance = Math.abs(center - viewportCenter);
+        if (nextDistance < distance) {
+          closest = index;
+          distance = nextDistance;
+        }
+      });
+      return closest;
+    }
+
+    function updateChapterNav() {
+      const idx = currentIndex();
+      chapterCount.textContent = (idx + 1) + ' / ' + sections.length;
+      previousButton.disabled = idx === 0;
+      nextButton.disabled = idx === sections.length - 1;
     }
 
     function schedule(delay) {
@@ -167,6 +191,8 @@
       if (idx >= sections.length) return; // reached the end — stay put
       const maxY = document.documentElement.scrollHeight - window.innerHeight;
       const target = Math.min(sections[idx].offsetTop, maxY);
+      const content = sections[idx].querySelector('.section-inner, .thesis-inner');
+      if (content) content.scrollTop = 0;
       autoScrolling = true;
       window.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
       // wait until the smooth scroll actually settles before re-arming
@@ -191,6 +217,8 @@
       const idx = Math.max(0, Math.min(sections.length - 1, currentIndex() + dir));
       const maxY = document.documentElement.scrollHeight - window.innerHeight;
       const target = Math.min(sections[idx].offsetTop, maxY);
+      const content = sections[idx].querySelector('.section-inner, .thesis-inner');
+      if (content) content.scrollTop = 0;
       if (timer) clearTimeout(timer);
       autoScrolling = true;
       window.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
@@ -207,6 +235,9 @@
       }, 200);
     }
 
+    previousButton.addEventListener('click', () => jump(-1));
+    nextButton.addEventListener('click', () => jump(1));
+
     // user input pauses the flow; it resumes after a longer idle period
     function pause() {
       if (autoScrolling) {
@@ -220,7 +251,10 @@
     ['wheel', 'touchstart', 'pointerdown', 'keydown'].forEach((evt) => {
       window.addEventListener(evt, pause, { passive: true });
     });
-    window.addEventListener('scroll', () => { if (!autoScrolling) pause(); }, { passive: true });
+    window.addEventListener('scroll', () => {
+      updateChapterNav();
+      if (!autoScrolling) pause();
+    }, { passive: true });
 
     // ── swipe / wheel flick = snap to next section immediately ──
     let touchStartY = null;
@@ -244,12 +278,24 @@
 
     let wheelCooldown = 0;
     window.addEventListener('wheel', (e) => {
+      const section = sections[currentIndex()];
+      const content = section && section.querySelector('.section-inner, .thesis-inner');
+      if (content && content.scrollHeight > content.clientHeight + 2) {
+        const canScrollDown = e.deltaY > 0 && content.scrollTop + content.clientHeight < content.scrollHeight - 2;
+        const canScrollUp = e.deltaY < 0 && content.scrollTop > 2;
+        if (canScrollDown || canScrollUp) {
+          e.preventDefault();
+          content.scrollBy({ top: e.deltaY, behavior: 'auto' });
+          schedule(RESUME_MS);
+          return;
+        }
+      }
       const now = Date.now();
       if (now < wheelCooldown) return;
       if (Math.abs(e.deltaY) < 40) return;
       wheelCooldown = now + 900;
       jump(e.deltaY > 0 ? 1 : -1);
-    }, { passive: true });
+    }, { passive: false });
 
     // don't advance while the tab is hidden
     document.addEventListener('visibilitychange', () => {
@@ -257,6 +303,7 @@
       else schedule(HOLD_MS);
     });
 
+    updateChapterNav();
     schedule(HOLD_MS);
   })();
 })();
