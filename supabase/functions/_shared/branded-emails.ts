@@ -160,12 +160,41 @@ export function accessRequestEmail(args: { name: string; requestDate?: string })
   };
 }
 
+export type InvestorProfileInfo = {
+  name: string;
+  description?: string | null;
+  drive_url?: string | null;
+};
+
+export function investorProfilesHtml(profiles?: InvestorProfileInfo[] | null): string {
+  if (!profiles || profiles.length === 0) return "";
+  const rows = profiles
+    .map((p) => {
+      const link = p.drive_url
+        ? `<div style="margin-top:6px;"><a href="${escapeHtml(p.drive_url)}" style="color:${TEAL};text-decoration:none;font-weight:600;font-size:13px;">Open shared folder →</a></div>`
+        : `<div style="margin-top:6px;color:${MUTED};font-size:12px;">Folder link will follow shortly.</div>`;
+      return `<tr><td style="padding:12px 16px;border-top:1px solid ${BORDER};font-family:Arial,Helvetica,sans-serif;">
+        <div style="color:${PEARL};font-weight:700;font-size:14px;">${escapeHtml(p.name)}</div>
+        ${p.description ? `<div style="color:${TEXT};font-size:13px;margin-top:3px;">${escapeHtml(p.description)}</div>` : ""}
+        ${link}
+      </td></tr>`;
+    })
+    .join("");
+  return `
+    <p style="margin:18px 0 8px;">Your investor access includes the following document ${profiles.length > 1 ? "profiles" : "profile"}:</p>
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:6px 0 4px;border:1px solid ${BORDER};border-radius:8px;background:#0d1730;">
+      ${rows}
+    </table>
+  `;
+}
+
 export function welcomeEmail(args: {
   name: string;
   email: string;
   tempPassword: string;
   loginUrl?: string;
   portals?: string[];
+  investorProfiles?: InvestorProfileInfo[] | null;
 }) {
   const name = escapeHtml(args.name || "Investor");
   const email = escapeHtml(args.email);
@@ -190,6 +219,7 @@ export function welcomeEmail(args: {
     <p style="margin:0 0 14px;">Dear ${name},</p>
     <p style="margin:0 0 14px;">Welcome to <strong style="color:${PEARL};">energyforward<span style="color:${AMBER};">.</span></strong> — your access request has been reviewed and <strong style="color:${PEARL};">approved</strong>. You are now authorized to access ${portalSentence}.</p>
     <div style="margin:6px 0 16px;">${portalsHtml}</div>
+    ${investorProfilesHtml(args.investorProfiles)}
     <p style="margin:0 0 10px;">Use the credentials below to sign in for the first time:</p>
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:6px 0 4px;border:1px solid ${BORDER};border-radius:8px;background:#0d1730;">
       <tr><td style="padding:14px 16px;font-family:Arial,Helvetica,sans-serif;font-size:13px;">
@@ -239,6 +269,7 @@ export function resetEmail(args: {
   resetUrl: string;
   expirationMinutes?: number;
   portals?: string[];
+  investorProfiles?: InvestorProfileInfo[] | null;
 }) {
   const name = escapeHtml(args.name || "Investor");
   const minutes = args.expirationMinutes ?? 60;
@@ -247,6 +278,7 @@ export function resetEmail(args: {
     <p style="margin:0 0 14px;">Dear ${name},</p>
     <p style="margin:0 0 14px;">We received a request to reset the password for your Energy Forward Investor Portal account. Click the button below to set a new password.</p>
     <p style="margin:0 0 14px;color:${MUTED};font-size:13px;">This link will expire in approximately ${minutes} minutes for your security.</p>
+    ${investorProfilesHtml(args.investorProfiles)}
   `;
   return {
     subject: "Reset Your Energy Forward Password",

@@ -159,6 +159,18 @@ const getRoleLabel = (
   return "No portal role";
 };
 
+type InvestorProfile = {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  drive_url: string | null;
+  sort_order: number;
+};
+
+type InvestorAccessRow = { user_id: string; profile_id: string };
+
+
 export default function AdminDashboard() {
   const { isAdmin, loading } = useAuth();
   const navigate = useNavigate();
@@ -174,6 +186,12 @@ export default function AdminDashboard() {
   const [inviteInvestor, setInviteInvestor] = useState(true);
   const [inviteCustomer, setInviteCustomer] = useState(false);
   const [inviteAdmin, setInviteAdmin] = useState(false);
+  const [investorProfiles, setInvestorProfiles] = useState<InvestorProfile[]>([]);
+  const [investorAccess, setInvestorAccess] = useState<InvestorAccessRow[]>([]);
+  const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>([]);
+  const [profileDrafts, setProfileDrafts] = useState<
+    Record<string, { name: string; description: string; drive_url: string }>
+  >({});
   const [busy, setBusy] = useState(false);
   const [tempCred, setTempCred] = useState<{ email: string; password: string } | null>(null);
   const [pendingAdminUser, setPendingAdminUser] = useState<UserListRow | null>(null);
@@ -210,7 +228,16 @@ export default function AdminDashboard() {
   }, []);
 
   const load = async () => {
-    const [{ data: profs }, { data: roles }, { data: sess }, { data: views }, { data: signupRows }, { data: contactRows }] =
+    const [
+      { data: profs },
+      { data: roles },
+      { data: sess },
+      { data: views },
+      { data: signupRows },
+      { data: contactRows },
+      { data: invProfileRows },
+      { data: invAccessRows },
+    ] =
       await Promise.all([
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
         supabase.from("user_roles").select("user_id, role"),
@@ -222,7 +249,21 @@ export default function AdminDashboard() {
         supabase.from("page_views").select("user_id, session_id, path, duration_seconds"),
         supabase.from("email_signups").select("id, name, email, created_at, service_type").order("created_at", { ascending: false }),
         supabase.from("contact_submissions").select("*").order("created_at", { ascending: false }),
+        supabase.from("investor_profiles").select("*").order("sort_order"),
+        supabase.from("investor_profile_access").select("user_id, profile_id"),
       ]);
+
+    const invProfiles = (invProfileRows ?? []) as InvestorProfile[];
+    setInvestorProfiles(invProfiles);
+    setInvestorAccess((invAccessRows ?? []) as InvestorAccessRow[]);
+    setProfileDrafts(
+      Object.fromEntries(
+        invProfiles.map((p) => [
+          p.id,
+          { name: p.name, description: p.description ?? "", drive_url: p.drive_url ?? "" },
+        ]),
+      ),
+    );
 
     const adminSet = new Set(
       (roles ?? []).filter((r) => r.role === "admin").map((r) => r.user_id),
@@ -483,6 +524,7 @@ export default function AdminDashboard() {
       email,
       full_name: fullName,
       roles: rolesArr,
+      investor_profile_ids: rolesArr.includes("investor") ? selectedProfileIds : [],
     })) as { temp_password?: string } | null;
     if (data) {
       const list = rolesArr.length ? rolesArr.join(", ") : "no portal";
@@ -495,6 +537,7 @@ export default function AdminDashboard() {
       setInviteInvestor(true);
       setInviteCustomer(false);
       setInviteAdmin(false);
+      setSelectedProfileIds([]);
     }
   };
 
@@ -563,14 +606,57 @@ export default function AdminDashboard() {
     setPendingDeleteSignup(null);
   };
 
+  const saveInvestorProfile = async (p: InvestorProfile) => {
+    const draft = profileDrafts[p.id];
+    if (!draft) return;
+    const { error } = await supabase
+      .from("investor_profiles")
+      .update({
+        name: draft.name.trim() || p.name,
+        description: draft.description.trim() || null,
+        drive_url: draft.drive_url.trim() || null,
+      })
+      .eq("id", p.id);
+    if (error) {
+      toast({ title: "Save failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Profile saved", description: `${draft.name} updated.` });
+    await load();
+  };
+
+  const toggleUserProfileAccess = async (
+    userId: string,
+    profileId: string,
+    grant: boolean,
+  ) => {
+    const { error } = grant
+      ? await supabase
+          .from("investor_profile_access")
+          .upsert({ user_id: userId, profile_id: profileId }, { onConflict: "user_id,profile_id" })
+      : await supabase
+          .from("investor_profile_access")
+          .delete()
+          .eq("user_id", userId)
+          .eq("profile_id", profileId);
+    if (error) {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    await load();
+  };
+
+
   const inviteFromContact = async (
     row: ContactSubmissionRow,
     rolesArr: PortalRole[],
+    profileIds: string[] = [],
   ) => {
     const data = (await callAdmin("invite", {
       email: row.email,
       full_name: row.full_name,
       roles: rolesArr,
+      investor_profile_ids: rolesArr.includes("investor") ? profileIds : [],
     })) as { temp_password?: string } | null;
     if (data) {
       await supabase
@@ -821,6 +907,41 @@ export default function AdminDashboard() {
                 </label>
               </div>
             </div>
+            {inviteInvestor && investorProfiles.length > 0 && (
+              <div className="md:col-span-12">
+                <Label>Investor Document Profiles</Label>
+                <div className="ef-portal-grid mt-1">
+                  {investorProfiles.map((p) => {
+                    const on = selectedProfileIds.includes(p.id);
+                    return (
+                      <label key={p.id} className={`ef-portal-card ${on ? "active" : ""}`}>
+                        <input
+                          type="checkbox"
+                          checked={on}
+                          onChange={(e) =>
+                            setSelectedProfileIds((prev) =>
+                              e.target.checked
+                                ? [...prev, p.id]
+                                : prev.filter((id) => id !== p.id),
+                            )
+                          }
+                        />
+                        <div>
+                          <div className="ttl">{p.name}</div>
+                          <div className="sub">
+                            {p.description || "No description"}
+                            {p.drive_url ? "" : " · folder link missing"}
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  The selected profiles and their shared folder links are listed in the welcome email.
+                </p>
+              </div>
+            )}
             <div className="md:col-span-12 flex justify-end">
               <Button type="submit" disabled={busy} className="ef-cta px-8">
                 Create &amp; Invite
@@ -833,6 +954,132 @@ export default function AdminDashboard() {
           </p>
         </CardContent>
       </Card>
+
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Investor Document Profiles</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {investorProfiles.map((p) => {
+              const draft = profileDrafts[p.id] ?? {
+                name: p.name,
+                description: p.description ?? "",
+                drive_url: p.drive_url ?? "",
+              };
+              const holders = investorAccess
+                .filter((a) => a.profile_id === p.id)
+                .map((a) => profiles.find((pr) => pr.user_id === a.user_id))
+                .filter(Boolean);
+              return (
+                <div key={p.id} className="rounded-lg border border-border p-4">
+                  <div className="grid gap-3 md:grid-cols-12">
+                    <div className="md:col-span-3">
+                      <Label>Profile name</Label>
+                      <Input
+                        value={draft.name}
+                        onChange={(e) =>
+                          setProfileDrafts((d) => ({ ...d, [p.id]: { ...draft, name: e.target.value } }))
+                        }
+                      />
+                    </div>
+                    <div className="md:col-span-4">
+                      <Label>Description</Label>
+                      <Input
+                        value={draft.description}
+                        onChange={(e) =>
+                          setProfileDrafts((d) => ({ ...d, [p.id]: { ...draft, description: e.target.value } }))
+                        }
+                      />
+                    </div>
+                    <div className="md:col-span-4">
+                      <Label>Shared folder link (Google Drive)</Label>
+                      <Input
+                        value={draft.drive_url}
+                        placeholder="https://drive.google.com/drive/folders/..."
+                        onChange={(e) =>
+                          setProfileDrafts((d) => ({ ...d, [p.id]: { ...draft, drive_url: e.target.value } }))
+                        }
+                      />
+                    </div>
+                    <div className="md:col-span-1 flex items-end">
+                      <Button type="button" onClick={() => saveInvestorProfile(p)} disabled={busy}>
+                        Save
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="mt-3 text-sm">
+                    <span className="text-muted-foreground">Has access ({holders.length}): </span>
+                    {holders.length === 0 ? (
+                      <span className="text-muted-foreground">nobody yet</span>
+                    ) : (
+                      holders.map((h) => (
+                        <span key={h!.user_id} className="mr-2">
+                          {h!.full_name || h!.email}
+                          <button
+                            type="button"
+                            className="ml-1 text-muted-foreground hover:text-destructive"
+                            title="Remove access"
+                            onClick={() => toggleUserProfileAccess(h!.user_id, p.id, false)}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-6 overflow-x-auto">
+            <h4 className="font-semibold mb-2">Who has access to what</h4>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-muted-foreground">
+                  <th className="py-2 pr-4">Investor</th>
+                  {investorProfiles.map((p) => (
+                    <th key={p.id} className="py-2 pr-4">{p.name}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {profiles
+                  .filter((p) => p.is_investor)
+                  .map((u) => (
+                    <tr key={u.user_id} className="border-t border-border">
+                      <td className="py-2 pr-4">
+                        {u.full_name || "—"}
+                        <div className="text-xs text-muted-foreground">{u.email}</div>
+                      </td>
+                      {investorProfiles.map((p) => {
+                        const on = investorAccess.some(
+                          (a) => a.user_id === u.user_id && a.profile_id === p.id,
+                        );
+                        return (
+                          <td key={p.id} className="py-2 pr-4">
+                            <input
+                              type="checkbox"
+                              checked={on}
+                              onChange={(e) =>
+                                toggleUserProfileAccess(u.user_id, p.id, e.target.checked)
+                              }
+                            />
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+            {profiles.filter((p) => p.is_investor).length === 0 && (
+              <p className="text-sm text-muted-foreground">No investor accounts yet.</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
 
       <Card className="mb-8">
         <CardHeader>

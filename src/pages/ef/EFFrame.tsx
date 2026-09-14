@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { InvestorDocuments } from "@/components/InvestorDocuments";
 
 export function EFFrame({ src, title }: { src: string; title: string }) {
   useEffect(() => {
@@ -32,5 +33,10 @@ export function EFFrame({ src, title }: { src: string; title: string }) {
 
 export const LandingStealth = () => <EFFrame src="/ef-assets/site/index.html" title="energyforward · in stealth" />;
 export const CustomerPortal = () => <EFFrame src="/ef-assets/site/customer/index.html" title="energyforward · customer portal" />;
-export const InvestorPortal = () => <EFFrame src="/ef-assets/site/investor/index.html" title="energyforward · investor portal" />;
+export const InvestorPortal = () => (
+  <>
+    <EFFrame src="/ef-assets/site/investor/index.html" title="energyforward · investor portal" />
+    <InvestorDocuments />
+  </>
+);
 export const ContactPage = () => <EFFrame src="/ef-assets/site/contact/index.html" title="energyforward · contact" />;

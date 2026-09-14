@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     const { action } = body;
 
     if (action === "invite") {
-      const { email, full_name, role, roles } = body;
+      const { email, full_name, role, roles, investor_profile_ids } = body;
       if (!email || typeof email !== "string") return json({ error: "Invalid email" }, 400);
 
       // Generate a strong temporary password
@@ -144,6 +144,32 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Investor document profiles (Profile A / B / C → Google Drive folders)
+      let grantedProfiles:
+        | { name: string; description: string | null; drive_url: string | null }[]
+        | null = null;
+      if (Array.isArray(investor_profile_ids) && investor_profile_ids.length > 0) {
+        const ids = (investor_profile_ids as unknown[]).filter(
+          (v): v is string => typeof v === "string",
+        );
+        if (ids.length) {
+          for (const pid of ids) {
+            await admin
+              .from("investor_profile_access")
+              .upsert(
+                { user_id: newUserId, profile_id: pid },
+                { onConflict: "user_id,profile_id" },
+              );
+          }
+          const { data: profRows } = await admin
+            .from("investor_profiles")
+            .select("name, description, drive_url")
+            .in("id", ids)
+            .order("sort_order");
+          grantedProfiles = (profRows ?? []) as typeof grantedProfiles;
+        }
+      }
+
       // Send branded welcome email with credentials.
       const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
       if (RESEND_API_KEY) {
@@ -166,6 +192,7 @@ Deno.serve(async (req) => {
                 resetUrl: forceEnergyForwardResetUrl(actionLink),
                 expirationMinutes: 60,
                 portals,
+                investorProfiles: grantedProfiles,
               });
               const r = await sendBrandedEmail(RESEND_API_KEY, {
                 to: email,
@@ -186,6 +213,7 @@ Deno.serve(async (req) => {
             tempPassword,
             loginUrl: EF_PORTAL_URL,
             portals,
+            investorProfiles: grantedProfiles,
           });
           const r = await sendBrandedEmail(RESEND_API_KEY, {
             to: email,
