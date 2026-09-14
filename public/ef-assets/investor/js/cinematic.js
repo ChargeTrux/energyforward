@@ -261,3 +261,44 @@
     schedule(HOLD_MS);
   })();
 })();
+
+/* ─────────────────────────────────────────────
+   v7 · fit every section into exactly one screen
+   Scales each section's content block down (never up)
+   so nothing is ever clipped between screens.
+   ───────────────────────────────────────────── */
+(function fitSections() {
+  'use strict';
+  const NAV = 72;
+
+  function innerOf(sec) {
+    return sec.querySelector('.section-inner, .thesis-inner, .hero-content');
+  }
+
+  function fit() {
+    const avail = window.innerHeight - NAV - 24;
+    document.querySelectorAll('section[id]').forEach((sec) => {
+      const inner = innerOf(sec);
+      if (!inner) return;
+      inner.style.transform = 'none';
+      const h = inner.scrollHeight;
+      if (!h) return;
+      const scale = Math.min(1, avail / h);
+      if (scale < 0.999) inner.style.transform = 'scale(' + scale.toFixed(4) + ')';
+    });
+    if (window.ScrollTrigger) ScrollTrigger.refresh();
+  }
+
+  let t = null;
+  const debounced = () => { clearTimeout(t); t = setTimeout(fit, 120); };
+
+  if (document.readyState === 'complete') fit();
+  else window.addEventListener('load', fit);
+  document.addEventListener('DOMContentLoaded', fit);
+  window.addEventListener('resize', debounced);
+  window.addEventListener('orientationchange', debounced);
+  // fonts can land after first paint and change heights
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+  setTimeout(fit, 600);
+  setTimeout(fit, 1800);
+})();
