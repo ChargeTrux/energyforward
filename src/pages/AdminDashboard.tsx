@@ -159,6 +159,18 @@ const getRoleLabel = (
   return "No portal role";
 };
 
+type InvestorProfile = {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  drive_url: string | null;
+  sort_order: number;
+};
+
+type InvestorAccessRow = { user_id: string; profile_id: string };
+
+
 export default function AdminDashboard() {
   const { isAdmin, loading } = useAuth();
   const navigate = useNavigate();
