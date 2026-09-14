@@ -957,6 +957,132 @@ export default function AdminDashboard() {
 
       <Card className="mb-8">
         <CardHeader>
+          <CardTitle>Investor Document Profiles</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {investorProfiles.map((p) => {
+              const draft = profileDrafts[p.id] ?? {
+                name: p.name,
+                description: p.description ?? "",
+                drive_url: p.drive_url ?? "",
+              };
+              const holders = investorAccess
+                .filter((a) => a.profile_id === p.id)
+                .map((a) => profiles.find((pr) => pr.user_id === a.user_id))
+                .filter(Boolean);
+              return (
+                <div key={p.id} className="rounded-lg border border-border p-4">
+                  <div className="grid gap-3 md:grid-cols-12">
+                    <div className="md:col-span-3">
+                      <Label>Profile name</Label>
+                      <Input
+                        value={draft.name}
+                        onChange={(e) =>
+                          setProfileDrafts((d) => ({ ...d, [p.id]: { ...draft, name: e.target.value } }))
+                        }
+                      />
+                    </div>
+                    <div className="md:col-span-4">
+                      <Label>Description</Label>
+                      <Input
+                        value={draft.description}
+                        onChange={(e) =>
+                          setProfileDrafts((d) => ({ ...d, [p.id]: { ...draft, description: e.target.value } }))
+                        }
+                      />
+                    </div>
+                    <div className="md:col-span-4">
+                      <Label>Shared folder link (Google Drive)</Label>
+                      <Input
+                        value={draft.drive_url}
+                        placeholder="https://drive.google.com/drive/folders/..."
+                        onChange={(e) =>
+                          setProfileDrafts((d) => ({ ...d, [p.id]: { ...draft, drive_url: e.target.value } }))
+                        }
+                      />
+                    </div>
+                    <div className="md:col-span-1 flex items-end">
+                      <Button type="button" onClick={() => saveInvestorProfile(p)} disabled={busy}>
+                        Save
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="mt-3 text-sm">
+                    <span className="text-muted-foreground">Has access ({holders.length}): </span>
+                    {holders.length === 0 ? (
+                      <span className="text-muted-foreground">nobody yet</span>
+                    ) : (
+                      holders.map((h) => (
+                        <span key={h!.user_id} className="mr-2">
+                          {h!.full_name || h!.email}
+                          <button
+                            type="button"
+                            className="ml-1 text-muted-foreground hover:text-destructive"
+                            title="Remove access"
+                            onClick={() => toggleUserProfileAccess(h!.user_id, p.id, false)}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-6 overflow-x-auto">
+            <h4 className="font-semibold mb-2">Who has access to what</h4>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-muted-foreground">
+                  <th className="py-2 pr-4">Investor</th>
+                  {investorProfiles.map((p) => (
+                    <th key={p.id} className="py-2 pr-4">{p.name}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {profiles
+                  .filter((p) => p.is_investor)
+                  .map((u) => (
+                    <tr key={u.user_id} className="border-t border-border">
+                      <td className="py-2 pr-4">
+                        {u.full_name || "—"}
+                        <div className="text-xs text-muted-foreground">{u.email}</div>
+                      </td>
+                      {investorProfiles.map((p) => {
+                        const on = investorAccess.some(
+                          (a) => a.user_id === u.user_id && a.profile_id === p.id,
+                        );
+                        return (
+                          <td key={p.id} className="py-2 pr-4">
+                            <input
+                              type="checkbox"
+                              checked={on}
+                              onChange={(e) =>
+                                toggleUserProfileAccess(u.user_id, p.id, e.target.checked)
+                              }
+                            />
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+            {profiles.filter((p) => p.is_investor).length === 0 && (
+              <p className="text-sm text-muted-foreground">No investor accounts yet.</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+
+      <Card className="mb-8">
+        <CardHeader>
           <CardTitle>
             Users & Website Signups{" "}
             <span className="text-sm font-normal text-muted-foreground">
