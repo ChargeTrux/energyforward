@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { InvestorDocuments } from "@/components/InvestorDocuments";
 
 export function EFFrame({ src, title }: { src: string; title: string }) {
   useEffect(() => {
