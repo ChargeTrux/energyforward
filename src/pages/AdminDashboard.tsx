@@ -186,6 +186,12 @@ export default function AdminDashboard() {
   const [inviteInvestor, setInviteInvestor] = useState(true);
   const [inviteCustomer, setInviteCustomer] = useState(false);
   const [inviteAdmin, setInviteAdmin] = useState(false);
+  const [investorProfiles, setInvestorProfiles] = useState<InvestorProfile[]>([]);
+  const [investorAccess, setInvestorAccess] = useState<InvestorAccessRow[]>([]);
+  const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>([]);
+  const [profileDrafts, setProfileDrafts] = useState<
+    Record<string, { name: string; description: string; drive_url: string }>
+  >({});
   const [busy, setBusy] = useState(false);
   const [tempCred, setTempCred] = useState<{ email: string; password: string } | null>(null);
   const [pendingAdminUser, setPendingAdminUser] = useState<UserListRow | null>(null);
