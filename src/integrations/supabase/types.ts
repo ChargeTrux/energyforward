@@ -83,6 +83,68 @@ export type Database = {
         }
         Relationships: []
       }
+      investor_profile_access: {
+        Row: {
+          granted_at: string
+          id: string
+          profile_id: string
+          user_id: string
+        }
+        Insert: {
+          granted_at?: string
+          id?: string
+          profile_id: string
+          user_id: string
+        }
+        Update: {
+          granted_at?: string
+          id?: string
+          profile_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "investor_profile_access_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "investor_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      investor_profiles: {
+        Row: {
+          created_at: string
+          description: string | null
+          drive_url: string | null
+          id: string
+          key: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          drive_url?: string | null
+          id?: string
+          key: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          drive_url?: string | null
+          id?: string
+          key?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       login_sessions: {
         Row: {
           created_at: string
