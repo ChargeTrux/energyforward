@@ -282,8 +282,17 @@ section[id] { scroll-margin-top: 0; scroll-snap-align: start; scroll-snap-stop: 
   .beat-claim { font-size: clamp(20px, 1.65vw, 26px); padding: 10px 0 10px 14px; margin: 8px 0 10px; }
   .thesis-close { margin-top: 18px; padding-top: 14px; font-size: clamp(20px, 1.8vw, 28px); max-width: 48ch; }
 
+  /* Dense chapters must read as complete slides, not clipped scroll panes. */
+  #thesis .thesis-inner { max-height: calc(100svh - 88px); }
+  #thesis .thesis-head { font-size: clamp(32px, 3.7vw, 52px); margin-bottom: 14px; }
+  #thesis .beat { padding-top: 10px; }
+  #thesis .beat-body p { font-size: 14px; line-height: 1.34; margin-bottom: 8px; }
+  #thesis .beat-claim { font-size: clamp(18px, 1.4vw, 22px); padding: 7px 0 7px 12px; margin: 5px 0 7px; }
+  #thesis .thesis-close { margin-top: 12px; padding-top: 10px; font-size: clamp(18px, 1.45vw, 22px); }
+
   #platform .split { grid-template-columns: 5fr 7fr; gap: 48px; }
-  #platform .platform-vis { aspect-ratio: 16 / 7; }
+  #platform .platform-vis { aspect-ratio: 16 / 6; background: rgba(6, 30, 34, 0.7); }
+  #platform .platform-vis img { object-fit: contain; }
   #platform .platform-rail { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 20px !important; border-top: 1px solid var(--hairline); }
   #platform .entity { min-width: 0; padding: 13px 14px; grid-template-columns: 30px 1fr 24px; gap: 10px; border-right: 1px solid var(--hairline); }
   #platform .entity:nth-child(3n) { border-right: 0; }
@@ -293,8 +302,13 @@ section[id] { scroll-margin-top: 0; scroll-snap-align: start; scroll-snap-stop: 
 
   .loop li { padding-top: 24px; padding-bottom: 24px; }
   .market-cell { padding: 28px 32px; }
-  .market-big { font-size: clamp(54px, 6.5vw, 92px); }
-  .stream-tag { padding: 16px 22px; }
+  #market .section-head { font-size: clamp(30px, 3.2vw, 46px) !important; margin-bottom: 12px !important; }
+  #market .lede { margin-bottom: 14px !important; }
+  #market .market-cell { padding: 18px 28px; }
+  #market .market-big { font-size: clamp(48px, 5vw, 72px); margin-top: 10px; }
+  #market .market-mid { font-size: clamp(24px, 2.4vw, 34px); margin-top: 14px; }
+  #market .market-sub { margin-top: 7px; }
+  #market .stream-tag { padding: 11px 18px; }
   .traction-table th { padding-top: 12px; padding-bottom: 12px; }
   .traction-table td { padding-top: 15px; padding-bottom: 15px; }
   #traction .metric-strip { margin-top: 20px !important; }
@@ -313,6 +327,26 @@ section[id] { scroll-margin-top: 0; scroll-snap-align: start; scroll-snap-stop: 
   #advisors .person .p-name { font-size: clamp(20px, 1.7vw, 25px); }
   #advisors .person .p-blurb { max-width: none; }
   #advisors .lede:last-child { margin-top: 20px !important; }
+
+  #team .section-head,
+  #advisors .section-head { font-size: clamp(30px, 3.15vw, 46px) !important; margin-bottom: 12px !important; }
+  #team .lede,
+  #advisors .lede { font-size: 16px !important; line-height: 1.4; margin-bottom: 14px !important; }
+  #team .people-grid { grid-template-columns: repeat(3, 1fr); }
+  #team .person { padding: 13px 18px 13px 0; }
+  #team .person .p-name,
+  #advisors .person .p-name { margin-top: 7px; font-size: clamp(19px, 1.5vw, 23px); }
+  #team .person .p-role,
+  #advisors .person .p-role { margin-top: 6px; }
+  #team .person .p-blurb,
+  #advisors .person .p-blurb { margin-top: 7px; font-size: 14px; line-height: 1.38; }
+  #team .person .plus,
+  #advisors .person .plus { top: 14px; }
+  #advisors .corner { padding: 9px 14px; }
+  #advisors .corner-name { margin-top: 5px; font-size: 16px; }
+  #advisors .corner-meta { margin-top: 3px; }
+  #advisors .people-grid { margin-top: 12px !important; }
+  #advisors .person { padding-top: 11px; padding-bottom: 11px; }
   .ask-head { font-size: clamp(42px, 5vw, 68px); margin: 12px 0 22px; }
   .ask-math { padding: 22px 0; margin-bottom: 20px; }
   .ask-big { font-size: clamp(46px, 5vw, 70px); }
