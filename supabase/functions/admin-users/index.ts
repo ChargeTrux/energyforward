@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     const { action } = body;
 
     if (action === "invite") {
-      const { email, full_name, role, roles } = body;
+      const { email, full_name, role, roles, investor_profile_ids } = body;
       if (!email || typeof email !== "string") return json({ error: "Invalid email" }, 400);
 
       // Generate a strong temporary password
