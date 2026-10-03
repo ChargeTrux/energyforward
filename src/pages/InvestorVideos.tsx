@@ -67,6 +67,8 @@ export default function InvestorVideos() {
   const [fullPortalAccess, setFullPortalAccess] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const playerRef = useRef<HTMLDivElement>(null);
+  const videoElRef = useRef<HTMLVideoElement>(null);
+  const pendingPlayRef = useRef(false);
 
   useEffect(() => {
     document.title = "energyforward · investor videos";
@@ -109,12 +111,21 @@ export default function InvestorVideos() {
     return () => { cancelled = true; };
   }, [active]);
 
-  const selectVideo = useCallback((video: Video, scroll = true) => {
+  const selectVideo = useCallback((video: Video, scroll = true, autoplay = false) => {
     setError(null);
+    pendingPlayRef.current = autoplay;
     setActive(video);
     setSearchParams({ video: video.id });
     if (scroll) playerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [setSearchParams]);
+
+  const handleVideoReady = () => {
+    if (!pendingPlayRef.current) return;
+    pendingPlayRef.current = false;
+    videoElRef.current?.play().catch(() => {
+      // Browser blocked playback — the viewer can press play manually.
+    });
+  };
 
   const selectNextVideo = () => {
     const currentIndex = videos.findIndex((video) => video.id === active?.id);
