@@ -134,11 +134,11 @@ export default function InvestorVideos() {
         </nav>
       </header>
 
-      <main style={{ maxWidth: 1040, margin: "0 auto", padding: "clamp(34px,6vw,72px) clamp(18px,5vw,64px) 80px" }}>
-        <section style={{ maxWidth: 760, marginBottom: "clamp(28px,5vw,48px)" }}>
+      <main style={{ maxWidth: 1040, margin: "0 auto", padding: "clamp(24px,4vw,44px) clamp(18px,5vw,64px) 80px" }}>
+        <section style={{ maxWidth: 680, margin: "0 auto", marginBottom: "clamp(24px,4vw,36px)", textAlign: "center" }}>
           <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: amber, margin: 0 }}>Confidential · Authorized viewing</p>
-          <h1 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(36px,5vw,64px)", margin: "12px 0 18px", lineHeight: 1.02, color: pearl }}>Moving energy forward.</h1>
-          <p style={{ fontSize: "clamp(17px,2vw,21px)", lineHeight: 1.6, margin: 0, color: "rgba(238,234,226,0.78)" }}>
+          <h1 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(26px,3.4vw,40px)", margin: "10px 0 12px", lineHeight: 1.05, color: pearl }}>Moving energy forward.</h1>
+          <p style={{ fontSize: "clamp(14px,1.5vw,17px)", lineHeight: 1.55, margin: 0, color: "rgba(238,234,226,0.78)" }}>
             Energy Forward is building the delivery infrastructure for the next era of energy—connecting technology, operations and execution to move critical projects from ambition to reality.
           </p>
         </section>
@@ -154,9 +154,9 @@ export default function InvestorVideos() {
         {!loading && user && !error && videos.length === 0 && <p style={{ opacity: 0.8 }}>No videos have been shared with you yet. Please reach out through the Contact page to request access.</p>}
 
         {active && (
-          <section ref={playerRef} style={{ scrollMarginTop: 24, maxWidth: 900, margin: "0 auto", textAlign: "center" }}>
+          <section ref={playerRef} style={{ scrollMarginTop: 24, maxWidth: 860, margin: "0 auto", textAlign: "center" }}>
             <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: amber, margin: "0 0 9px" }}>Now viewing</p>
-            <h2 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(20px,2.4vw,30px)", margin: "0 0 10px", lineHeight: 1.22, color: "rgba(238,234,226,0.94)" }}>{active.name}</h2>
+            <h2 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(18px,2vw,26px)", margin: "0 0 10px", lineHeight: 1.22, color: "rgba(238,234,226,0.94)" }}>{active.name}</h2>
             {active.description && <p style={{ maxWidth: 720, marginLeft: "auto", marginRight: "auto", fontSize: "clamp(14px,1.5vw,17px)", lineHeight: 1.65, margin: "0 0 20px", color: "rgba(238,234,226,0.68)", whiteSpace: "pre-line" }}>{active.description}</p>}
             <div style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", background: "#061719", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(238,234,226,0.14)", boxShadow: "0 18px 48px rgba(0,0,0,0.24)" }}>
               {src ? (
