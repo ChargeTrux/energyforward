@@ -182,6 +182,7 @@ export function LoginModal({ open, onOpenChange, defaultEmail }: LoginModalProps
               <Input
                 id="email"
                 type="email"
+                autoFocus={!defaultEmail}
                 placeholder="you@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -212,6 +213,7 @@ export function LoginModal({ open, onOpenChange, defaultEmail }: LoginModalProps
               <Input
                 id="password"
                 type="password"
+                autoFocus={!!defaultEmail}
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
