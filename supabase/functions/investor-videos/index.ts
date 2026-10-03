@@ -9,6 +9,7 @@ const VIDEO_FOLDER = "161lKDMLN9DVsiphFBxBrhczpP9K2xrYY";
 const DESCRIPTION_MIMES = new Set([
   "text/plain",
   "application/vnd.google-apps.document",
+  "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ]);
 
@@ -71,6 +72,11 @@ async function readDescriptionFile(file: DriveFile): Promise<string> {
         .replace(/&quot;/g, '"')
         .replace(/&#39;/g, "'"),
     );
+  }
+  if (file.mimeType === "application/msword") {
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    const printable = Array.from(bytes, (byte) => byte === 10 || byte === 13 || (byte >= 32 && byte <= 126) ? String.fromCharCode(byte) : " ").join("");
+    return cleanText(printable.replace(/\s{2,}/g, " "));
   }
   return cleanText(await res.text());
 }
