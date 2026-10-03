@@ -145,6 +145,27 @@ export type Database = {
         }
         Relationships: []
       }
+      investor_video_access: {
+        Row: {
+          file_id: string
+          granted_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          file_id: string
+          granted_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          file_id?: string
+          granted_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       login_sessions: {
         Row: {
           created_at: string

@@ -189,6 +189,9 @@ export default function AdminDashboard() {
   const [investorProfiles, setInvestorProfiles] = useState<InvestorProfile[]>([]);
   const [investorAccess, setInvestorAccess] = useState<InvestorAccessRow[]>([]);
   const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>([]);
+  const [videoCatalog, setVideoCatalog] = useState<{ id: string; name: string }[]>([]);
+  const [videoCatalogMsg, setVideoCatalogMsg] = useState("Loading videos…");
+  const [videoAccess, setVideoAccess] = useState<{ user_id: string; file_id: string }[]>([]);
   const [profileDrafts, setProfileDrafts] = useState<
     Record<string, { name: string; description: string; drive_url: string }>
   >({});
@@ -646,6 +649,46 @@ export default function AdminDashboard() {
     await load();
   };
 
+  const loadVideos = async () => {
+    const { data: s } = await supabase.auth.getSession();
+    const [res, { data: acc }] = await Promise.all([
+      fetch(
+        `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/investor-videos?action=catalog`,
+        {
+          headers: {
+            Authorization: `Bearer ${s.session?.access_token ?? ""}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
+          },
+        },
+      ),
+      supabase.from("investor_video_access").select("user_id, file_id"),
+    ]);
+    const body = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setVideoCatalog(body.videos ?? []);
+      setVideoCatalogMsg((body.videos ?? []).length ? "" : "No videos in the folder yet.");
+    } else setVideoCatalogMsg(body.error ?? "Could not load videos.");
+    setVideoAccess((acc ?? []) as { user_id: string; file_id: string }[]);
+  };
+
+  useEffect(() => {
+    if (isAdmin) loadVideos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin]);
+
+  const toggleVideoAccess = async (userId: string, fileId: string, grant: boolean) => {
+    const { error } = grant
+      ? await supabase
+          .from("investor_video_access")
+          .upsert({ user_id: userId, file_id: fileId }, { onConflict: "user_id,file_id" })
+      : await supabase.from("investor_video_access").delete().eq("user_id", userId).eq("file_id", fileId);
+    if (error) {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    await loadVideos();
+  };
+
 
   const inviteFromContact = async (
     row: ContactSubmissionRow,
@@ -1077,6 +1120,64 @@ export default function AdminDashboard() {
               <p className="text-sm text-muted-foreground">No investor accounts yet.</p>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Investor Videos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-3">
+            Videos from the "Investor Video" Drive folder. Tick a box to let that investor watch the video on their videos page.
+          </p>
+          {videoCatalog.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{videoCatalogMsg}</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-muted-foreground">
+                    <th className="py-2 pr-4">Investor</th>
+                    {videoCatalog.map((v) => (
+                      <th key={v.id} className="py-2 pr-4 font-normal">
+                        {v.name}
+                        <div className="text-xs">
+                          {videoAccess.filter((a) => a.file_id === v.id).length} with access
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {profiles
+                    .filter((p) => p.is_investor)
+                    .map((u) => (
+                      <tr key={u.user_id} className="border-t border-border">
+                        <td className="py-2 pr-4">
+                          {u.full_name || "—"}
+                          <div className="text-xs text-muted-foreground">{u.email}</div>
+                        </td>
+                        {videoCatalog.map((v) => {
+                          const on = videoAccess.some(
+                            (a) => a.user_id === u.user_id && a.file_id === v.id,
+                          );
+                          return (
+                            <td key={v.id} className="py-2 pr-4">
+                              <input
+                                type="checkbox"
+                                checked={on}
+                                onChange={(e) => toggleVideoAccess(u.user_id, v.id, e.target.checked)}
+                              />
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
