@@ -12,5 +12,6 @@
 - Extend the authenticated video function to find same-basename `.txt`, `.doc`, or `.docx` files and extract their text through Google Drive; descriptions from matching documents override manual entries.
 - Add administrator-only read/save description actions to the existing secure video function.
 - Return descriptions with the authorized catalog while keeping Drive file and folder URLs private.
-- Replace browser Blob loading with an authenticated short-lived stream URL so the native player can request only the required byte ranges.
+- Replace whole-file Blob loading with authenticated media requests that preserve byte-range streaming for faster startup and seeking.
+- Remove autoplay entirely; when a video ends, select the next authorized video but wait for the viewer to press Play.
 - Verify signed-out denial, administrator editing, automatic document descriptions, fallback manual descriptions, and desktop/mobile video presentation.
