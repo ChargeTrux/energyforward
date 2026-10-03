@@ -131,12 +131,23 @@ Deno.serve(async (req) => {
           .from("user_roles")
           .upsert({ user_id: newUserId, role }, { onConflict: "user_id,role" });
       }
-      // Optional multi-role assignment (customer + investor portals)
+      // Multi-role invitations define exact portal access. Preserve admin,
+      // but remove portal roles that were not selected when re-inviting an
+      // existing account.
       if (Array.isArray(roles)) {
         const valid = (roles as unknown[]).filter(
           (r): r is "admin" | "investor" | "customer" | "video" =>
             r === "admin" || r === "investor" || r === "customer" || r === "video",
         );
+        const portalRoles = ["investor", "customer", "video"] as const;
+        const rolesToRemove = portalRoles.filter((portalRole) => !valid.includes(portalRole));
+        if (rolesToRemove.length > 0) {
+          await admin
+            .from("user_roles")
+            .delete()
+            .eq("user_id", newUserId)
+            .in("role", rolesToRemove);
+        }
         for (const r of valid) {
           await admin
             .from("user_roles")
