@@ -48,6 +48,12 @@ function AppContent() {
   useEffect(() => {
     if (loading) return;
     const params = new URLSearchParams(location.search);
+    const linkEmail = params.get("email")?.trim().toLowerCase();
+    if (params.get("login") === "1" && session && linkEmail && session.user.email?.toLowerCase() !== linkEmail) {
+      // Invite link for a different person: sign out current account and show sign-in.
+      supabase.auth.signOut();
+      return;
+    }
     if (params.get("login") === "1" && session) {
       // Already signed in: skip the modal and go straight to their portal.
       params.delete("login"); params.delete("email");
