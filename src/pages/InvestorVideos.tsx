@@ -148,7 +148,7 @@ export default function InvestorVideos() {
         <nav style={{ display: "flex", gap: 20, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", alignItems: "center", flexWrap: "wrap" }}>
           <a href="/?public=1" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Home</a>
           {(fullPortalAccess || roles.has("investor") || roles.has("admin")) && <Link to="/investor" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Investor portal</Link>}
-          {(roles.has("customer") || roles.has("admin")) && <Link to="/customer" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Customer portal</Link>}
+          {(fullPortalAccess || roles.has("investor") || roles.has("admin")) && (roles.has("customer") || roles.has("admin")) && <Link to="/customer" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Customer portal</Link>}
           {roles.has("admin") && <Link to="/admin" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Admin</Link>}
           <span style={{ color: amber }}>Videos</span>
           {user && <Link to="/signout" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Sign out</Link>}
