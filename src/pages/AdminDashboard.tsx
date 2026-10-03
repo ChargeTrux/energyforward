@@ -1,3 +1,4 @@
+import type React from "react";
 import { type ComponentProps, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,6 +54,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   Users,
+  ChevronDown,
+  FolderOpen,
   Activity,
   UserPlus,
   ShieldCheck,
@@ -68,6 +71,18 @@ import {
   Mail,
   ExternalLink,
 } from "lucide-react";
+
+function Collapse({ title, children, nested = false, defaultOpen = false }: { title: React.ReactNode; children: React.ReactNode; nested?: boolean; defaultOpen?: boolean }) {
+  return (
+    <details open={defaultOpen} className={`ef-collapse group rounded-lg border bg-card text-card-foreground ${nested ? "" : "mb-8 shadow-sm"}`}>
+      <summary className={`cursor-pointer list-none flex items-center justify-between gap-3 ${nested ? "px-4 py-3 text-base" : "p-6 text-xl"} font-semibold`}>
+        <span className="flex items-center gap-2 flex-wrap">{title}</span>
+        <ChevronDown className="w-5 h-5 shrink-0 transition-transform group-open:rotate-180" />
+      </summary>
+      {children}
+    </details>
+  );
+}
 
 interface ProfileRow {
   user_id: string;
@@ -1055,12 +1070,9 @@ export default function AdminDashboard() {
         </CardContent>
       </Card>
 
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+<Collapse title={<>
             <UserPlus className="w-5 h-5" /> Invite New User
-          </CardTitle>
-        </CardHeader>
+</>}>
         <CardContent>
           <form
             onSubmit={handleInvite}
@@ -1121,7 +1133,7 @@ export default function AdminDashboard() {
             </div>
             {inviteInvestor && investorProfiles.length > 0 && (
               <div className="md:col-span-12">
-                <Label>Investor Document Profiles</Label>
+                <Label>Documents — profile folders</Label>
                 <div className="ef-portal-grid mt-1">
                   {investorProfiles.map((p) => {
                     const on = selectedProfileIds.includes(p.id);
@@ -1185,12 +1197,10 @@ export default function AdminDashboard() {
             change it on first sign-in.
           </p>
         </CardContent>
-      </Card>
+      </Collapse>
 
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>Investor Document Profiles</CardTitle>
-        </CardHeader>
+<Collapse title={<><FolderOpen className="w-5 h-5" /> Investor Materials</>}><div className="px-6 pb-6 space-y-4"><Collapse nested title={<>Documents — profile folders
+</>}>
         <CardContent>
           <div className="space-y-4">
             {investorProfiles.map((p) => {
@@ -1310,12 +1320,10 @@ export default function AdminDashboard() {
             )}
           </div>
         </CardContent>
-      </Card>
+      </Collapse>
 
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>Video descriptions &amp; links</CardTitle>
-        </CardHeader>
+<Collapse nested title={<>Videos — descriptions &amp; links
+</>}>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-3">
             Edit each video's description or copy a secure direct link. Who can watch which video is managed in the Access manager above. Recipients must sign in before viewing.
@@ -1355,18 +1363,15 @@ export default function AdminDashboard() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Collapse></div></Collapse>
 
 
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>
+<Collapse title={<><Users className="w-5 h-5" /> People &amp; Inquiries</>}><div className="px-6 pb-6 space-y-4"><p className="text-sm text-muted-foreground"><strong>Users &amp; Website Signups</strong> are accounts and newsletter sign-ups ("Stay Connected"). <strong>Contact Inquiries</strong> are messages sent through the Contact Us form — invite someone from there to turn them into a user.</p><Collapse nested title={<>
             Users & Website Signups{" "}
             <span className="text-sm font-normal text-muted-foreground">
               ({userRows.length} total · scroll to see more)
             </span>
-          </CardTitle>
-        </CardHeader>
+</>}>
         <CardContent>
           <div className="rounded-md border overflow-hidden">
             <div className="max-h-[32rem] overflow-auto always-scrollbar">
@@ -1543,18 +1548,15 @@ export default function AdminDashboard() {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </Collapse>
 
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+<Collapse nested title={<>
             <Mail className="w-5 h-5" /> Contact Inquiries{" "}
             <span className="text-sm font-normal text-muted-foreground">
               ({contacts.filter((c) => c.status !== "resolved").length} open ·{" "}
               {contacts.filter((c) => c.status === "new").length} new)
             </span>
-          </CardTitle>
-        </CardHeader>
+</>}>
         <CardContent>
           <div className="rounded-md border overflow-hidden">
             <div className="max-h-[28rem] overflow-auto always-scrollbar">
@@ -1687,14 +1689,11 @@ export default function AdminDashboard() {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </Collapse></div></Collapse>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+<Collapse defaultOpen title={<>
             <Activity className="w-5 h-5" /> Login Activity & Time Spent
-          </CardTitle>
-        </CardHeader>
+</>}>
         <CardContent className="space-y-4">
           <div className="grid gap-3 md:grid-cols-[minmax(220px,1fr)_180px_180px_180px] items-end">
             <div>
@@ -1856,7 +1855,7 @@ export default function AdminDashboard() {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </Collapse>
 
       <AlertDialog open={!!pendingAdminUser} onOpenChange={(open) => !open && setPendingAdminUser(null)}>
         <AlertDialogContent>
