@@ -989,7 +989,7 @@ export default function AdminDashboard() {
                   <input type="checkbox" checked={inviteInvestor} onChange={(e)=>setInviteInvestor(e.target.checked)} />
                   <div>
                     <div className="ttl">Investor Portal</div>
-                    <div className="sub">Investor materials &amp; reports</div>
+                    <div className="sub">Full portal, documents &amp; video link</div>
                   </div>
                 </label>
                 <label className={`ef-portal-card ${inviteCustomer ? "active" : ""}`}>
@@ -1003,7 +1003,7 @@ export default function AdminDashboard() {
                   <input type="checkbox" checked={inviteVideo} onChange={(e)=>setInviteVideo(e.target.checked)} />
                   <div>
                     <div className="ttl">Video Portal</div>
-                    <div className="sub">Videos only, without the investor portal</div>
+                    <div className="sub">Dedicated video page only</div>
                   </div>
                 </label>
                 <label className={`ef-portal-card ${inviteAdmin ? "active" : ""}`} style={{flexBasis:"160px"}}>
