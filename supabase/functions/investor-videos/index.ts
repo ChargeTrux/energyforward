@@ -1,4 +1,9 @@
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { corsHeaders as baseCors } from "npm:@supabase/supabase-js@2/cors";
+const corsHeaders: Record<string, string> = {
+  ...baseCors,
+  "Access-Control-Allow-Headers": `${(baseCors as Record<string, string>)["Access-Control-Allow-Headers"] ?? "authorization, x-client-info, apikey, content-type"}, range`,
+  "Access-Control-Expose-Headers": "Content-Length, Content-Range, Accept-Ranges",
+};
 import { createClient } from "npm:@supabase/supabase-js@2";
 import JSZip from "npm:jszip@3.10.1";
 
