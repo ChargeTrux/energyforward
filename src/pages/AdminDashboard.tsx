@@ -54,6 +54,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   Users,
+  ChevronDown,
+  FolderOpen,
   Activity,
   UserPlus,
   ShieldCheck,
@@ -1131,7 +1133,7 @@ export default function AdminDashboard() {
             </div>
             {inviteInvestor && investorProfiles.length > 0 && (
               <div className="md:col-span-12">
-                <Label>Investor Document Profiles</Label>
+                <Label>Documents — profile folders</Label>
                 <div className="ef-portal-grid mt-1">
                   {investorProfiles.map((p) => {
                     const on = selectedProfileIds.includes(p.id);
@@ -1197,7 +1199,7 @@ export default function AdminDashboard() {
         </CardContent>
       </Collapse>
 
-<Collapse title={<><FolderOpen className="w-5 h-5" /> Investor Materials</>}><div className="px-6 pb-6 space-y-4"><Collapse nested title={<>Investor Document Profiles</CardTitle>
+<Collapse title={<><FolderOpen className="w-5 h-5" /> Investor Materials</>}><div className="px-6 pb-6 space-y-4"><Collapse nested title={<>Documents — profile folders
 </>}>
         <CardContent>
           <div className="space-y-4">
@@ -1320,7 +1322,7 @@ export default function AdminDashboard() {
         </CardContent>
       </Collapse>
 
-<Collapse nested title={<>Video descriptions &amp; links</CardTitle>
+<Collapse nested title={<>Videos — descriptions &amp; links
 </>}>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-3">
