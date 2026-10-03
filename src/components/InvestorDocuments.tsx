@@ -39,7 +39,7 @@ async function callFn(path: string, init?: RequestInit) {
   });
 }
 
-export function InvestorDocuments() {
+export function InvestorDocuments({ hideLauncher = false, openSignal = 0, onProfilesLoaded }: { hideLauncher?: boolean; openSignal?: number; onProfilesLoaded?: (count: number) => void } = {}) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -103,12 +103,16 @@ export function InvestorDocuments() {
         const body = await res.json();
         const list: Profile[] = body.profiles ?? [];
         setProfiles(list);
+        onProfilesLoaded?.(list.length);
         setActiveProfile((cur) => cur ?? list[0]?.id ?? null);
       } catch {
         setProfiles([]);
+        onProfilesLoaded?.(0);
       }
     })();
   }, [user]);
+
+  useEffect(() => { if (openSignal > 0) setOpen(true); }, [openSignal]);
 
   const loadFolder = useCallback(
     async (profileId: string, folderId?: string) => {
@@ -185,7 +189,7 @@ export function InvestorDocuments() {
 
   return (
     <>
-      <button
+      {!hideLauncher && <button
         type="button"
         aria-label="Open secure documents. Drag to move this button."
         title="Drag to move · Click to open"
@@ -230,7 +234,7 @@ export function InvestorDocuments() {
           <span>Documents</span>
           <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>Secure access</span>
         </span>
-      </button>
+      </button>}
 
       {open && (
         <div
