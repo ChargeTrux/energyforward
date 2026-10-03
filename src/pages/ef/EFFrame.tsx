@@ -58,7 +58,7 @@ export const InvestorPortal = () => {
     <EFFrame src="/ef-assets/site/investor/index.html" title="energyforward · investor portal" />
     <InvestorDocuments />
     <Link
-      to="/investor/videos"
+      to="/investor/materials"
       style={{
         position: "fixed", left: 22, bottom: 22, zIndex: 60, display: "flex", alignItems: "center", gap: 10,
         padding: "14px 22px", borderRadius: 999, background: "#E8B14A", color: "#0A2A2E",
@@ -66,7 +66,7 @@ export const InvestorPortal = () => {
         boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
       }}
     >
-      <PlayCircle size={20} /> Videos
+      <PlayCircle size={20} /> Investor materials
     </Link>
   </>;
 };
