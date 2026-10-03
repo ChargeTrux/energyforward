@@ -77,6 +77,7 @@ interface ProfileRow {
   is_admin?: boolean;
   is_investor?: boolean;
   is_customer?: boolean;
+  is_video?: boolean;
 }
 
 interface SignupRow {
@@ -120,7 +121,7 @@ interface ActivityRow {
   invite_status?: "invite_sent" | "logged_in";
 }
 
-type PortalRole = "admin" | "investor" | "customer";
+type PortalRole = "admin" | "investor" | "customer" | "video";
 type ActivityPreset = "all" | "7" | "10" | "custom";
 type BadgeVariant = ComponentProps<typeof Badge>["variant"];
 type SortDir = "asc" | "desc";
@@ -146,14 +147,16 @@ type UserListRow = {
   is_admin?: boolean;
   is_investor?: boolean;
   is_customer?: boolean;
+  is_video?: boolean;
 };
 
 const getRoleLabel = (
-  user: Pick<ProfileRow, "is_admin" | "is_investor" | "is_customer">,
+  user: Pick<ProfileRow, "is_admin" | "is_investor" | "is_customer" | "is_video">,
 ): string => {
   if (user.is_admin) return "Admin";
   const parts: string[] = [];
   if (user.is_investor) parts.push("Investor");
+  if (user.is_video) parts.push("Video");
   if (user.is_customer) parts.push("Customer");
   if (parts.length) return parts.join(" + ");
   return "No portal role";
@@ -185,6 +188,7 @@ export default function AdminDashboard() {
   const [inviteName, setInviteName] = useState("");
   const [inviteInvestor, setInviteInvestor] = useState(true);
   const [inviteCustomer, setInviteCustomer] = useState(false);
+  const [inviteVideo, setInviteVideo] = useState(false);
   const [inviteAdmin, setInviteAdmin] = useState(false);
   const [investorProfiles, setInvestorProfiles] = useState<InvestorProfile[]>([]);
   const [investorAccess, setInvestorAccess] = useState<InvestorAccessRow[]>([]);
@@ -192,6 +196,7 @@ export default function AdminDashboard() {
   const [videoCatalog, setVideoCatalog] = useState<{ id: string; name: string }[]>([]);
   const [videoCatalogMsg, setVideoCatalogMsg] = useState("Loading videos…");
   const [videoAccess, setVideoAccess] = useState<{ user_id: string; file_id: string }[]>([]);
+  const [selectedVideoIds, setSelectedVideoIds] = useState<string[]>([]);
   const [profileDrafts, setProfileDrafts] = useState<
     Record<string, { name: string; description: string; drive_url: string }>
   >({});
@@ -277,11 +282,15 @@ export default function AdminDashboard() {
     const customerSet = new Set(
       (roles ?? []).filter((r) => r.role === "customer").map((r) => r.user_id),
     );
+    const videoSet = new Set(
+      (roles ?? []).filter((r) => r.role === "video").map((r) => r.user_id),
+    );
     const enrichedProfiles = (profs ?? []).map((p) => ({
       ...(p as ProfileRow),
       is_admin: adminSet.has(p.user_id),
       is_investor: investorSet.has(p.user_id),
       is_customer: customerSet.has(p.user_id),
+      is_video: videoSet.has(p.user_id),
     }));
     const profileMap = new Map(enrichedProfiles.map((p) => [p.user_id, p]));
 
@@ -528,6 +537,7 @@ export default function AdminDashboard() {
       full_name: fullName,
       roles: rolesArr,
       investor_profile_ids: rolesArr.includes("investor") ? selectedProfileIds : [],
+      investor_video_ids: rolesArr.includes("video") || rolesArr.includes("investor") ? selectedVideoIds : [],
     })) as { temp_password?: string } | null;
     if (data) {
       const list = rolesArr.length ? rolesArr.join(", ") : "no portal";
@@ -539,8 +549,10 @@ export default function AdminDashboard() {
       setInviteName("");
       setInviteInvestor(true);
       setInviteCustomer(false);
+      setInviteVideo(false);
       setInviteAdmin(false);
       setSelectedProfileIds([]);
+      setSelectedVideoIds([]);
     }
   };
 
@@ -554,6 +566,7 @@ export default function AdminDashboard() {
     const rolesArr: PortalRole[] = [];
     if (inviteInvestor) rolesArr.push("investor");
     if (inviteCustomer) rolesArr.push("customer");
+    if (inviteVideo) rolesArr.push("video");
     await createInvite(rolesArr);
   };
 
@@ -687,6 +700,12 @@ export default function AdminDashboard() {
       return;
     }
     await loadVideos();
+  };
+
+  const copyVideoLink = async (fileId: string) => {
+    const url = `https://energyforward.com/investor/videos?video=${encodeURIComponent(fileId)}&login=1`;
+    await navigator.clipboard.writeText(url);
+    toast({ title: "Video link copied", description: "The recipient must sign in and have access to this video." });
   };
 
 
@@ -941,6 +960,13 @@ export default function AdminDashboard() {
                     <div className="sub">Customer-facing area</div>
                   </div>
                 </label>
+                <label className={`ef-portal-card ${inviteVideo ? "active" : ""}`}>
+                  <input type="checkbox" checked={inviteVideo} onChange={(e)=>setInviteVideo(e.target.checked)} />
+                  <div>
+                    <div className="ttl">Video Portal</div>
+                    <div className="sub">Videos only, without the investor portal</div>
+                  </div>
+                </label>
                 <label className={`ef-portal-card ${inviteAdmin ? "active" : ""}`} style={{flexBasis:"160px"}}>
                   <input type="checkbox" checked={inviteAdmin} onChange={(e)=>setInviteAdmin(e.target.checked)} />
                   <div>
@@ -983,6 +1009,26 @@ export default function AdminDashboard() {
                 <p className="text-xs text-muted-foreground mt-2">
                   The selected profiles and their shared folder links are listed in the welcome email.
                 </p>
+              </div>
+            )}
+            {(inviteInvestor || inviteVideo) && videoCatalog.length > 0 && (
+              <div className="md:col-span-12">
+                <Label>Authorized Videos</Label>
+                <div className="ef-portal-grid mt-1">
+                  {videoCatalog.map((video) => {
+                    const on = selectedVideoIds.includes(video.id);
+                    return (
+                      <label key={video.id} className={`ef-portal-card ${on ? "active" : ""}`}>
+                        <input
+                          type="checkbox"
+                          checked={on}
+                          onChange={(e) => setSelectedVideoIds((prev) => e.target.checked ? [...prev, video.id] : prev.filter((id) => id !== video.id))}
+                        />
+                        <div><div className="ttl">{video.name}</div><div className="sub">Secure in-page viewing</div></div>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
             )}
             <div className="md:col-span-12 flex justify-end">
@@ -1129,7 +1175,7 @@ export default function AdminDashboard() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-3">
-            Videos from the "Investor Video" Drive folder. Tick a box to let that investor watch the video on their videos page.
+            Assign individual videos, control video-only access, or copy a secure direct link. Recipients must sign in before viewing.
           </p>
           {videoCatalog.length === 0 ? (
             <p className="text-sm text-muted-foreground">{videoCatalogMsg}</p>
@@ -1145,18 +1191,29 @@ export default function AdminDashboard() {
                         <div className="text-xs">
                           {videoAccess.filter((a) => a.file_id === v.id).length} with access
                         </div>
+                        <Button type="button" variant="ghost" size="sm" className="mt-1 h-7 px-2 text-xs" onClick={() => copyVideoLink(v.id)}>
+                          <Copy className="w-3 h-3 mr-1" /> Copy link
+                        </Button>
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {profiles
-                    .filter((p) => p.is_investor)
+                    .filter((p) => p.is_investor || p.is_video)
                     .map((u) => (
                       <tr key={u.user_id} className="border-t border-border">
                         <td className="py-2 pr-4">
                           {u.full_name || "—"}
                           <div className="text-xs text-muted-foreground">{u.email}</div>
+                          <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(u.is_video)}
+                              onChange={(e) => callAdmin("set_video", { user_id: u.user_id, make_video: e.target.checked })}
+                            />
+                            Video-only portal
+                          </label>
                         </td>
                         {videoCatalog.map((v) => {
                           const on = videoAccess.some(
@@ -1323,6 +1380,11 @@ export default function AdminDashboard() {
                                 }
                               >
                                 {row.is_customer ? "Remove Customer" : "Make Customer"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => callAdmin("set_video", { user_id: row.user_id, make_video: !row.is_video })}
+                              >
+                                {row.is_video ? "Remove Video Portal" : "Add Video Portal"}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuLabel>Account</DropdownMenuLabel>
