@@ -65,6 +65,12 @@ export default function InvestorVideos() {
   const [loadingVideo, setLoadingVideo] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fullPortalAccess, setFullPortalAccess] = useState(false);
+  const [roles, setRoles] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!user) { setRoles(new Set()); return; }
+    supabase.from("user_roles").select("role").eq("user_id", user.id)
+      .then(({ data }) => setRoles(new Set((data ?? []).map((r) => r.role as string))));
+  }, [user]);
   const [searchParams, setSearchParams] = useSearchParams();
   const playerRef = useRef<HTMLDivElement>(null);
   const videoElRef = useRef<HTMLVideoElement>(null);
@@ -139,9 +145,13 @@ export default function InvestorVideos() {
         <Link to="/" style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: 18, color: pearl, textDecoration: "none" }}>
           energyforward<span style={{ color: amber }}>.</span>
         </Link>
-        <nav style={{ display: "flex", gap: 24, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-          {fullPortalAccess && <Link to="/investor" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Investor portal</Link>}
+        <nav style={{ display: "flex", gap: 20, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", alignItems: "center", flexWrap: "wrap" }}>
+          <a href="/?public=1" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Home</a>
+          {(fullPortalAccess || roles.has("investor") || roles.has("admin")) && <Link to="/investor" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Investor portal</Link>}
+          {(roles.has("customer") || roles.has("admin")) && <Link to="/customer" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Customer portal</Link>}
+          {roles.has("admin") && <Link to="/admin" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Admin</Link>}
           <span style={{ color: amber }}>Videos</span>
+          {user && <Link to="/signout" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Sign out</Link>}
         </nav>
       </header>
 
