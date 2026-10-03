@@ -59,6 +59,7 @@ function AppContent() {
     }
   }, [loading, session, location.search, location.pathname, navigate]);
   const prevSession = useRef<boolean>(!!session);
+  const initialised = useRef(false);
   useEffect(() => {
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
     const searchParams = new URLSearchParams(window.location.search);
@@ -76,7 +77,14 @@ function AppContent() {
       return;
     }
 
-    if (!loading && session && !prevSession.current) {
+    if (loading) return;
+    if (!initialised.current) {
+      // First resolved auth state (existing session restored) — not a fresh login.
+      initialised.current = true;
+      prevSession.current = !!session;
+      return;
+    }
+    if (session && !prevSession.current) {
       if (isPasswordRecovery) {
         prevSession.current = !!session;
         return;
