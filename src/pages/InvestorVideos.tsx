@@ -90,14 +90,24 @@ export default function InvestorVideos() {
       <main style={{ maxWidth: 1040, margin: "0 auto", padding: "clamp(34px,6vw,72px) clamp(18px,5vw,64px) 80px" }}>
         <section style={{ maxWidth: 760, marginBottom: "clamp(28px,5vw,48px)" }}>
           <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: amber, margin: 0 }}>Confidential · Authorized viewing</p>
-          <h1 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(36px,5vw,64px)", margin: "12px 0 18px", lineHeight: 1.02 }}>Moving energy forward.</h1>
+          <h1 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(36px,5vw,64px)", margin: "12px 0 18px", lineHeight: 1.02, color: pearl }}>Moving energy forward.</h1>
           <p style={{ fontSize: "clamp(17px,2vw,21px)", lineHeight: 1.6, margin: 0, color: "rgba(238,234,226,0.78)" }}>
             Energy Forward is building the delivery infrastructure for the next era of energy—connecting technology, operations and execution to move critical projects from ambition to reality.
           </p>
         </section>
 
         {(loading || authLoading) && <p style={{ opacity: 0.7 }}>Loading your videos…</p>}
-        {!authLoading && !user && <p>Please sign in to view your authorized videos.</p>}
+        {!authLoading && !user && (
+          <div>
+            <p>Please sign in to view your authorized videos.</p>
+            <Link
+              to={`${window.location.pathname}${window.location.search ? `${window.location.search}&login=1` : "?login=1"}`}
+              style={{ display: "inline-block", marginTop: 8, padding: "12px 20px", borderRadius: 6, background: amber, color: teal, textDecoration: "none", fontWeight: 700 }}
+            >
+              Sign in
+            </Link>
+          </div>
+        )}
         {error && <p style={{ color: amber }}>{error}</p>}
         {!loading && user && !error && videos.length === 0 && (
           <p style={{ opacity: 0.8 }}>No videos have been shared with you yet. Please reach out through the Contact page to request access.</p>
