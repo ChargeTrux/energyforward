@@ -166,6 +166,30 @@ export type Database = {
         }
         Relationships: []
       }
+      investor_video_descriptions: {
+        Row: {
+          created_at: string
+          description: string
+          file_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          file_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          file_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       login_sessions: {
         Row: {
           created_at: string
