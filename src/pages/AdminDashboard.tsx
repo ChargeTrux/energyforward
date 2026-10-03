@@ -1314,101 +1314,45 @@ export default function AdminDashboard() {
 
       <Card className="mb-8">
         <CardHeader>
-          <CardTitle>Investor Videos</CardTitle>
+          <CardTitle>Video descriptions &amp; links</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-3">
-            Assign individual videos, control video-only access, or copy a secure direct link. Recipients must sign in before viewing.
+            Edit each video's description or copy a secure direct link. Who can watch which video is managed in the Access manager above. Recipients must sign in before viewing.
           </p>
           {videoCatalog.length === 0 ? (
             <p className="text-sm text-muted-foreground">{videoCatalogMsg}</p>
           ) : (
-            <>
-              <div className="ef-video-description-grid mb-6">
-                {videoCatalog.map((video) => (
-                  <div key={video.id} className="ef-video-description-editor">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-sm font-semibold">{video.name}</h3>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {video.descriptionSource === "document" ? "Automatically using the matching folder document" : video.descriptionSource === "manual" ? "Manual description" : "No description yet"}
-                        </p>
-                      </div>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => copyVideoLink(video.id)} aria-label={`Copy direct link for ${video.name}`}>
-                        <Copy className="w-4 h-4" />
-                      </Button>
+            <div className="ef-video-description-grid">
+              {videoCatalog.map((video) => (
+                <div key={video.id} className="ef-video-description-editor">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold">{video.name}</h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {video.descriptionSource === "document" ? "Automatically using the matching folder document" : video.descriptionSource === "manual" ? "Manual description" : "No description yet"}
+                      </p>
                     </div>
-                    <Textarea
-                      value={videoDescriptionDrafts[video.id] ?? ""}
-                      onChange={(event) => setVideoDescriptionDrafts((current) => ({ ...current, [video.id]: event.target.value }))}
-                      disabled={video.descriptionSource === "document"}
-                      placeholder="Enter a concise description for this video"
-                      className="mt-3 min-h-[108px] resize-y"
-                      maxLength={12000}
-                    />
-                    <div className="mt-3 flex justify-end">
-                      <Button type="button" size="sm" className="ef-cta" disabled={video.descriptionSource === "document" || savingVideoId === video.id} onClick={() => saveVideoDescription(video)}>
-                        {savingVideoId === video.id ? "Saving…" : "Save description"}
-                      </Button>
-                    </div>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => copyVideoLink(video.id)} aria-label={`Copy direct link for ${video.name}`}>
+                      <Copy className="w-4 h-4" />
+                    </Button>
                   </div>
-                ))}
-              </div>
-              <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-muted-foreground">
-                    <th className="py-2 pr-4">Investor</th>
-                    {videoCatalog.map((v) => (
-                      <th key={v.id} className="py-2 pr-4 font-normal">
-                        {v.name}
-                        <div className="text-xs">
-                          {videoAccess.filter((a) => a.file_id === v.id).length} with access
-                        </div>
-                        <Button type="button" variant="ghost" size="sm" className="mt-1 h-7 px-2 text-xs" onClick={() => copyVideoLink(v.id)}>
-                          <Copy className="w-3 h-3 mr-1" /> Copy link
-                        </Button>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {profiles
-                    .filter((p) => p.is_investor || p.is_video)
-                    .map((u) => (
-                      <tr key={u.user_id} className="border-t border-border">
-                        <td className="py-2 pr-4">
-                          {u.full_name || "—"}
-                          <div className="text-xs text-muted-foreground">{u.email}</div>
-                          <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                            <input
-                              type="checkbox"
-                              checked={Boolean(u.is_video)}
-                              onChange={(e) => callAdmin("set_video", { user_id: u.user_id, make_video: e.target.checked })}
-                            />
-                            Video Portal access
-                          </label>
-                        </td>
-                        {videoCatalog.map((v) => {
-                          const on = videoAccess.some(
-                            (a) => a.user_id === u.user_id && a.file_id === v.id,
-                          );
-                          return (
-                            <td key={v.id} className="py-2 pr-4">
-                              <input
-                                type="checkbox"
-                                checked={on}
-                                onChange={(e) => toggleVideoAccess(u.user_id, v.id, e.target.checked)}
-                              />
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-              </div>
-            </>
+                  <Textarea
+                    value={videoDescriptionDrafts[video.id] ?? ""}
+                    onChange={(event) => setVideoDescriptionDrafts((current) => ({ ...current, [video.id]: event.target.value }))}
+                    disabled={video.descriptionSource === "document"}
+                    placeholder="Enter a concise description for this video"
+                    className="mt-3 min-h-[108px] resize-y"
+                    maxLength={12000}
+                  />
+                  <div className="mt-3 flex justify-end">
+                    <Button type="button" size="sm" className="ef-cta" disabled={video.descriptionSource === "document" || savingVideoId === video.id} onClick={() => saveVideoDescription(video)}>
+                      {savingVideoId === video.id ? "Saving…" : "Save description"}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>
