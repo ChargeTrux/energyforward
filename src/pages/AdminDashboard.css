@@ -155,3 +155,19 @@
 .ef-admin .ef-portal-card input { accent-color: var(--ef-teal); width: 16px; height: 16px; }
 .ef-admin .ef-portal-card .ttl { color: var(--ef-pearl); font-weight: 600; font-size: 14px; text-transform: none; letter-spacing: 0; }
 .ef-admin .ef-portal-card .sub { color: var(--ef-muted); font-size: 11px; }
+
+.ef-admin .ef-video-description-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+.ef-admin .ef-video-description-editor {
+  padding: 16px;
+  border: 1px solid var(--ef-border);
+  border-radius: 8px;
+  background: var(--ef-surface-2);
+}
+.ef-admin .ef-video-description-editor textarea:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}

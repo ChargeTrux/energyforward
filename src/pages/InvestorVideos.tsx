@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Play, LockKeyhole } from "lucide-react";
+import { LockKeyhole, Play } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-type Video = { id: string; name: string };
+type Video = { id: string; name: string; description: string };
 
 const teal = "#0A2A2E";
 const amber = "#E8B14A";
@@ -21,6 +21,21 @@ async function callFn(qs: string) {
   });
 }
 
+async function prepareVideoStream() {
+  if (!("serviceWorker" in navigator)) return false;
+  const registration = await navigator.serviceWorker.register("/video-stream-sw.js", { scope: "/" });
+  await navigator.serviceWorker.ready;
+  const { data } = await supabase.auth.getSession();
+  const worker = navigator.serviceWorker.controller ?? registration.active;
+  if (!worker || !data.session?.access_token) return false;
+  worker.postMessage({
+    type: "ENERGY_FORWARD_VIDEO_AUTH",
+    token: data.session.access_token,
+    apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
+  });
+  return true;
+}
+
 export default function InvestorVideos() {
   const { user, loading: authLoading } = useAuth();
   const [videos, setVideos] = useState<Video[]>([]);
@@ -31,7 +46,7 @@ export default function InvestorVideos() {
   const [error, setError] = useState<string | null>(null);
   const [fullPortalAccess, setFullPortalAccess] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
-  const urlRef = useRef<string | null>(null);
+  const playerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     document.title = "energyforward · investor videos";
@@ -61,19 +76,31 @@ export default function InvestorVideos() {
     setLoadingVideo(true);
     setSrc(null);
     (async () => {
-      const res = await callFn(`action=stream&file_id=${encodeURIComponent(active.id)}`);
-      if (!res.ok) { if (!cancelled) { setError("This video could not be loaded."); setLoadingVideo(false); } return; }
-      const blob = await res.blob();
-      if (cancelled) return;
-      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
-      urlRef.current = URL.createObjectURL(blob);
-      setSrc(urlRef.current);
-      setLoadingVideo(false);
+      try {
+        const ready = await prepareVideoStream();
+        if (!ready || cancelled) throw new Error("The secure player could not start.");
+        setSrc(`${FN_URL}?action=stream&file_id=${encodeURIComponent(active.id)}`);
+      } catch (streamError) {
+        if (!cancelled) setError(streamError instanceof Error ? streamError.message : "This video could not be loaded.");
+      } finally {
+        if (!cancelled) setLoadingVideo(false);
+      }
     })();
     return () => { cancelled = true; };
   }, [active]);
 
-  useEffect(() => () => { if (urlRef.current) URL.revokeObjectURL(urlRef.current); }, []);
+  const selectVideo = useCallback((video: Video, scroll = true) => {
+    setError(null);
+    setActive(video);
+    setSearchParams({ video: video.id });
+    if (scroll) playerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [setSearchParams]);
+
+  const selectNextVideo = () => {
+    const currentIndex = videos.findIndex((video) => video.id === active?.id);
+    const next = videos[currentIndex + 1];
+    if (next) selectVideo(next, false);
+  };
 
   return (
     <div style={{ minHeight: "100vh", background: teal, color: pearl, fontFamily: "'General Sans', Arial, sans-serif" }}>
@@ -100,70 +127,44 @@ export default function InvestorVideos() {
         {!authLoading && !user && (
           <div>
             <p>Please sign in to view your authorized videos.</p>
-            <Link
-              to={`${window.location.pathname}${window.location.search ? `${window.location.search}&login=1` : "?login=1"}`}
-              style={{ display: "inline-block", marginTop: 8, padding: "12px 20px", borderRadius: 6, background: amber, color: teal, textDecoration: "none", fontWeight: 700 }}
-            >
-              Sign in
-            </Link>
+            <Link to={`${window.location.pathname}${window.location.search ? `${window.location.search}&login=1` : "?login=1"}`} style={{ display: "inline-block", marginTop: 8, padding: "12px 20px", borderRadius: 6, background: amber, color: teal, textDecoration: "none", fontWeight: 700 }}>Sign in</Link>
           </div>
         )}
         {error && <p style={{ color: amber }}>{error}</p>}
-        {!loading && user && !error && videos.length === 0 && (
-          <p style={{ opacity: 0.8 }}>No videos have been shared with you yet. Please reach out through the Contact page to request access.</p>
-        )}
+        {!loading && user && !error && videos.length === 0 && <p style={{ opacity: 0.8 }}>No videos have been shared with you yet. Please reach out through the Contact page to request access.</p>}
 
         {active && (
-          <>
-            <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: amber, margin: "0 0 8px" }}>Now playing</p>
-            <h2 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(24px,3vw,38px)", margin: "0 0 18px", lineHeight: 1.15 }}>{active.name}</h2>
-            <div style={{ position: "relative", width: "min(100%, 820px)", aspectRatio: "16 / 9", background: "#061719", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(238,234,226,0.14)", boxShadow: "0 22px 60px rgba(0,0,0,0.28)" }}>
+          <section ref={playerRef} style={{ scrollMarginTop: 24, maxWidth: 820 }}>
+            <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: amber, margin: "0 0 9px" }}>Now viewing</p>
+            <h2 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(20px,2.4vw,30px)", margin: "0 0 10px", lineHeight: 1.22, color: "rgba(238,234,226,0.94)" }}>{active.name}</h2>
+            {active.description && <p style={{ maxWidth: 720, fontSize: "clamp(14px,1.5vw,17px)", lineHeight: 1.65, margin: "0 0 20px", color: "rgba(238,234,226,0.68)", whiteSpace: "pre-line" }}>{active.description}</p>}
+            <div style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", background: "#061719", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(238,234,226,0.14)", boxShadow: "0 18px 48px rgba(0,0,0,0.24)" }}>
               {src ? (
-                <video
-                  key={src}
-                  src={src}
-                  controls
-                  autoPlay
-                  playsInline
-                  controlsList="nodownload noremoteplayback"
-                  disablePictureInPicture
-                  onContextMenu={(e) => e.preventDefault()}
-                  style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
-                />
+                <video key={src} src={src} controls preload="metadata" playsInline controlsList="nodownload noremoteplayback" disablePictureInPicture onEnded={selectNextVideo} onContextMenu={(event) => event.preventDefault()} style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
               ) : (
-                <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", opacity: 0.7 }}>
-                  {loadingVideo ? "Loading video…" : ""}
-                </div>
+                <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", opacity: 0.7 }}>{loadingVideo ? "Preparing video…" : ""}</div>
               )}
             </div>
-          </>
+          </section>
         )}
 
         {videos.length > 1 && (
           <section style={{ marginTop: 48, borderTop: "1px solid rgba(238,234,226,0.14)", paddingTop: 28 }}>
             <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", opacity: 0.7, marginBottom: 14 }}>Your authorized videos</p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 16 }}>
-              {videos.map((v) => {
-                const on = v.id === active?.id;
+              {videos.map((video) => {
+                const selected = video.id === active?.id;
                 return (
-                  <button
-                    key={v.id}
-                    onClick={() => { setError(null); setActive(v); setSearchParams({ video: v.id }); window.scrollTo({ top: 280, behavior: "smooth" }); }}
-                    style={{ textAlign: "left", cursor: "pointer", padding: 18, borderRadius: 10, background: on ? "rgba(232,177,74,0.12)" : "rgba(238,234,226,0.05)", border: `1px solid ${on ? amber : "rgba(238,234,226,0.14)"}`, color: pearl, display: "flex", gap: 14, alignItems: "center", font: "inherit" }}
-                  >
-                    <span style={{ flex: "0 0 40px", height: 40, borderRadius: "50%", background: on ? amber : "rgba(238,234,226,0.1)", display: "grid", placeItems: "center", color: on ? teal : pearl }}>
-                      <Play size={16} />
-                    </span>
-                    <span style={{ fontSize: 15, lineHeight: 1.35 }}>{v.name}{on && <span style={{ display: "block", fontSize: 11, color: amber, letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 4 }}>Now playing</span>}</span>
+                  <button key={video.id} onClick={() => selectVideo(video)} style={{ textAlign: "left", cursor: "pointer", padding: 18, borderRadius: 8, background: selected ? "rgba(232,177,74,0.12)" : "rgba(238,234,226,0.05)", border: `1px solid ${selected ? amber : "rgba(238,234,226,0.14)"}`, color: pearl, display: "flex", gap: 14, alignItems: "flex-start", font: "inherit" }}>
+                    <span style={{ flex: "0 0 40px", height: 40, borderRadius: "50%", background: selected ? amber : "rgba(238,234,226,0.1)", display: "grid", placeItems: "center", color: selected ? teal : pearl }}><Play size={16} /></span>
+                    <span><span style={{ display: "block", fontSize: 15, lineHeight: 1.35 }}>{video.name}</span>{video.description && <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", marginTop: 6, fontSize: 12, lineHeight: 1.45, color: "rgba(238,234,226,0.58)" }}>{video.description}</span>}{selected && <span style={{ display: "block", fontSize: 10, color: amber, letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 7 }}>Selected</span>}</span>
                   </button>
                 );
               })}
             </div>
           </section>
         )}
-        <footer style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 48, paddingTop: 24, borderTop: "1px solid rgba(238,234,226,0.12)", color: "rgba(238,234,226,0.55)", fontSize: 12 }}>
-          <LockKeyhole size={15} color={amber} /> Access is personal and verified each time a video is requested.
-        </footer>
+        <footer style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 48, paddingTop: 24, borderTop: "1px solid rgba(238,234,226,0.12)", color: "rgba(238,234,226,0.55)", fontSize: 12 }}><LockKeyhole size={15} color={amber} /> Access is personal and verified each time a video is requested.</footer>
       </main>
     </div>
   );

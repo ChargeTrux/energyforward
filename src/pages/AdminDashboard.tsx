@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -172,6 +173,12 @@ type InvestorProfile = {
 };
 
 type InvestorAccessRow = { user_id: string; profile_id: string };
+type VideoCatalogItem = {
+  id: string;
+  name: string;
+  description: string;
+  descriptionSource: "document" | "manual" | "none";
+};
 
 
 export default function AdminDashboard() {
@@ -193,10 +200,12 @@ export default function AdminDashboard() {
   const [investorProfiles, setInvestorProfiles] = useState<InvestorProfile[]>([]);
   const [investorAccess, setInvestorAccess] = useState<InvestorAccessRow[]>([]);
   const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>([]);
-  const [videoCatalog, setVideoCatalog] = useState<{ id: string; name: string }[]>([]);
+  const [videoCatalog, setVideoCatalog] = useState<VideoCatalogItem[]>([]);
   const [videoCatalogMsg, setVideoCatalogMsg] = useState("Loading videos…");
   const [videoAccess, setVideoAccess] = useState<{ user_id: string; file_id: string }[]>([]);
   const [selectedVideoIds, setSelectedVideoIds] = useState<string[]>([]);
+  const [videoDescriptionDrafts, setVideoDescriptionDrafts] = useState<Record<string, string>>({});
+  const [savingVideoId, setSavingVideoId] = useState<string | null>(null);
   const [profileDrafts, setProfileDrafts] = useState<
     Record<string, { name: string; description: string; drive_url: string }>
   >({});
@@ -681,7 +690,9 @@ export default function AdminDashboard() {
     ]);
     const body = await res.json().catch(() => ({}));
     if (res.ok) {
-      setVideoCatalog(body.videos ?? []);
+      const videos = (body.videos ?? []) as VideoCatalogItem[];
+      setVideoCatalog(videos);
+      setVideoDescriptionDrafts(Object.fromEntries(videos.map((video) => [video.id, video.description ?? ""])));
       setVideoCatalogMsg((body.videos ?? []).length ? "" : "No videos in the folder yet.");
     } else setVideoCatalogMsg(body.error ?? "Could not load videos.");
     setVideoAccess((acc ?? []) as { user_id: string; file_id: string }[]);
@@ -709,6 +720,31 @@ export default function AdminDashboard() {
     const url = `${window.location.origin}/investor/videos?video=${encodeURIComponent(fileId)}&login=1`;
     await navigator.clipboard.writeText(url);
     toast({ title: "Video link copied", description: "The recipient must sign in and have access to this video." });
+  };
+
+  const saveVideoDescription = async (video: VideoCatalogItem) => {
+    setSavingVideoId(video.id);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const res = await fetch(
+      `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/investor-videos?action=save-description&file_id=${encodeURIComponent(video.id)}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${sessionData.session?.access_token ?? ""}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ description: videoDescriptionDrafts[video.id] ?? "" }),
+      },
+    );
+    const body = await res.json().catch(() => ({}));
+    setSavingVideoId(null);
+    if (!res.ok) {
+      toast({ title: "Description not saved", description: body.error ?? "Please try again.", variant: "destructive" });
+      return;
+    }
+    toast({ title: "Description saved", description: video.descriptionSource === "document" ? "The matching document still takes priority." : `Updated ${video.name}.` });
+    await loadVideos();
   };
 
 
@@ -1183,7 +1219,38 @@ export default function AdminDashboard() {
           {videoCatalog.length === 0 ? (
             <p className="text-sm text-muted-foreground">{videoCatalogMsg}</p>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+              <div className="ef-video-description-grid mb-6">
+                {videoCatalog.map((video) => (
+                  <div key={video.id} className="ef-video-description-editor">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="text-sm font-semibold">{video.name}</h3>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {video.descriptionSource === "document" ? "Automatically using the matching folder document" : video.descriptionSource === "manual" ? "Manual description" : "No description yet"}
+                        </p>
+                      </div>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => copyVideoLink(video.id)} aria-label={`Copy direct link for ${video.name}`}>
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <Textarea
+                      value={videoDescriptionDrafts[video.id] ?? ""}
+                      onChange={(event) => setVideoDescriptionDrafts((current) => ({ ...current, [video.id]: event.target.value }))}
+                      disabled={video.descriptionSource === "document"}
+                      placeholder="Enter a concise description for this video"
+                      className="mt-3 min-h-[108px] resize-y"
+                      maxLength={12000}
+                    />
+                    <div className="mt-3 flex justify-end">
+                      <Button type="button" size="sm" className="ef-cta" disabled={video.descriptionSource === "document" || savingVideoId === video.id} onClick={() => saveVideoDescription(video)}>
+                        {savingVideoId === video.id ? "Saving…" : "Save description"}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-muted-foreground">
@@ -1236,7 +1303,8 @@ export default function AdminDashboard() {
                     ))}
                 </tbody>
               </table>
-            </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
