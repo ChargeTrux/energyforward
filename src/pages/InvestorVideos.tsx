@@ -171,7 +171,7 @@ export default function InvestorVideos() {
             {active.description && <p style={{ maxWidth: 720, marginLeft: "auto", marginRight: "auto", fontSize: "clamp(14px,1.5vw,17px)", lineHeight: 1.65, margin: "0 0 20px", color: "rgba(238,234,226,0.68)", whiteSpace: "pre-line" }}>{active.description}</p>}
             <div style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", background: "#061719", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(238,234,226,0.14)", boxShadow: "0 18px 48px rgba(0,0,0,0.24)" }}>
               {src ? (
-                <video key={src} src={src} controls preload="metadata" playsInline controlsList="nodownload noremoteplayback" disablePictureInPicture onEnded={selectNextVideo} onContextMenu={(event) => event.preventDefault()} style={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "center center", display: "block", margin: "0 auto" }} />
+                <video ref={videoElRef} key={src} src={src} controls preload="metadata" playsInline controlsList="nodownload noremoteplayback" disablePictureInPicture onLoadedData={handleVideoReady} onEnded={selectNextVideo} onContextMenu={(event) => event.preventDefault()} style={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "center center", display: "block", margin: "0 auto" }} />
               ) : (
                 <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", opacity: 0.7 }}>{loadingVideo ? "Preparing video…" : ""}</div>
               )}
@@ -186,7 +186,7 @@ export default function InvestorVideos() {
               {videos.map((video) => {
                 const selected = video.id === active?.id;
                 return (
-                  <button key={video.id} onClick={() => selectVideo(video)} style={{ textAlign: "left", cursor: "pointer", padding: 18, borderRadius: 8, background: selected ? "rgba(232,177,74,0.12)" : "rgba(238,234,226,0.05)", border: `1px solid ${selected ? amber : "rgba(238,234,226,0.14)"}`, color: pearl, display: "flex", gap: 14, alignItems: "flex-start", font: "inherit" }}>
+                  <button key={video.id} onClick={() => selectVideo(video, true, true)} style={{ textAlign: "left", cursor: "pointer", padding: 18, borderRadius: 8, background: selected ? "rgba(232,177,74,0.12)" : "rgba(238,234,226,0.05)", border: `1px solid ${selected ? amber : "rgba(238,234,226,0.14)"}`, color: pearl, display: "flex", gap: 14, alignItems: "flex-start", font: "inherit" }}>
                     <span style={{ flex: "0 0 40px", height: 40, borderRadius: "50%", background: selected ? amber : "rgba(238,234,226,0.1)", display: "grid", placeItems: "center", color: selected ? teal : pearl }}><Play size={16} /></span>
                     <span><span style={{ display: "block", fontSize: 15, lineHeight: 1.35 }}>{video.name}</span>{video.description && <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", marginTop: 6, fontSize: 12, lineHeight: 1.45, color: "rgba(238,234,226,0.58)" }}>{video.description}</span>}{selected && <span style={{ display: "block", fontSize: 10, color: amber, letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 7 }}>Selected</span>}</span>
                   </button>
