@@ -200,7 +200,9 @@ export function welcomeEmail(args: {
   const pwd = escapeHtml(args.tempPassword);
   const baseLogin = args.loginUrl || "https://energyforward.com/";
   const sep = baseLogin.includes("?") ? "&" : "?";
-  const loginUrl = `${baseLogin}${sep}login=1&email=${encodeURIComponent(args.email)}`;
+  const loginUrl = /[?&]login=1/.test(baseLogin)
+    ? baseLogin
+    : `${baseLogin}${sep}login=1&email=${encodeURIComponent(args.email)}`;
   const portals = (args.portals && args.portals.length > 0) ? args.portals : ["Investor"];
   const branding = brandingForPortals(portals);
   const portalsHtml = portals
