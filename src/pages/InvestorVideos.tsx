@@ -21,10 +21,30 @@ async function callFn(qs: string) {
   });
 }
 
+let authReplyInstalled = false;
+
 async function prepareVideoStream() {
   if (!("serviceWorker" in navigator)) return false;
+  if (!authReplyInstalled) {
+    authReplyInstalled = true;
+    navigator.serviceWorker.addEventListener("message", async (event) => {
+      if (event.data?.type !== "ENERGY_FORWARD_VIDEO_AUTH_REQUEST") return;
+      const { data } = await supabase.auth.getSession();
+      event.ports[0]?.postMessage({
+        token: data.session?.access_token ?? null,
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
+      });
+    });
+  }
   const registration = await navigator.serviceWorker.register("/video-stream-sw.js", { scope: "/" });
   await navigator.serviceWorker.ready;
+  // On first visit the page isn't controlled yet, so video requests would bypass the worker.
+  if (!navigator.serviceWorker.controller) {
+    await new Promise<void>((resolve) => {
+      const t = setTimeout(resolve, 3000);
+      navigator.serviceWorker.addEventListener("controllerchange", () => { clearTimeout(t); resolve(); }, { once: true });
+    });
+  }
   const { data } = await supabase.auth.getSession();
   const worker = navigator.serviceWorker.controller ?? registration.active;
   if (!worker || !data.session?.access_token) return false;
@@ -33,7 +53,7 @@ async function prepareVideoStream() {
     token: data.session.access_token,
     apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
   });
-  return true;
+  return Boolean(navigator.serviceWorker.controller);
 }
 
 export default function InvestorVideos() {
