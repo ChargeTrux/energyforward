@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { LoginModal } from "@/components/LoginModal";
 import { Home } from "@/pages/Home";
@@ -36,6 +36,7 @@ function AppContent() {
   const [prefillEmail, setPrefillEmail] = useState<string | undefined>(undefined);
   const { session, loading, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   usePageTracking();
   useEffect(() => {
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
@@ -46,7 +47,7 @@ function AppContent() {
   // Auto-open login modal when arriving from email CTA: ?login=1&email=...
   useEffect(() => {
     if (loading) return;
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search);
     if (params.get("login") === "1" && !session) {
       const em = params.get("email") ?? undefined;
       setPrefillEmail(em);
@@ -54,9 +55,9 @@ function AppContent() {
       params.delete("login");
       params.delete("email");
       const qs = params.toString();
-      window.history.replaceState({}, "", window.location.pathname + (qs ? `?${qs}` : ""));
+      navigate(location.pathname + (qs ? `?${qs}` : ""), { replace: true });
     }
-  }, [loading, session]);
+  }, [loading, session, location.search, location.pathname, navigate]);
   const prevSession = useRef<boolean>(!!session);
   useEffect(() => {
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
