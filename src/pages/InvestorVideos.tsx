@@ -150,6 +150,7 @@ export default function InvestorVideos() {
           {(fullPortalAccess || roles.has("investor") || roles.has("admin")) && <Link to="/investor" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Investor portal</Link>}
           {(fullPortalAccess || roles.has("investor") || roles.has("admin")) && (roles.has("customer") || roles.has("admin")) && <Link to="/customer" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Customer portal</Link>}
           {roles.has("admin") && <Link to="/admin" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Admin</Link>}
+          <Link to="/investor/materials" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Materials</Link>
           <span style={{ color: amber }}>Videos</span>
           {user && <Link to="/signout" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Sign out</Link>}
         </nav>
