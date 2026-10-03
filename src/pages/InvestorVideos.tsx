@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { Play } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
+import { Play, LockKeyhole } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -29,6 +29,8 @@ export default function InvestorVideos() {
   const [loading, setLoading] = useState(true);
   const [loadingVideo, setLoadingVideo] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fullPortalAccess, setFullPortalAccess] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
   const urlRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -43,12 +45,15 @@ export default function InvestorVideos() {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) setError(body.error ?? "Could not load videos");
       else {
-        setVideos(body.videos ?? []);
-        if (body.videos?.[0]) setActive(body.videos[0]);
+        const available = (body.videos ?? []) as Video[];
+        setVideos(available);
+        setFullPortalAccess(Boolean(body.fullPortalAccess));
+        const requested = searchParams.get("video");
+        setActive(available.find((video) => video.id === requested) ?? available[0] ?? null);
       }
       setLoading(false);
     })();
-  }, [user, authLoading]);
+  }, [user, authLoading, searchParams]);
 
   useEffect(() => {
     if (!active) return;
@@ -76,15 +81,20 @@ export default function InvestorVideos() {
         <Link to="/" style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: 18, color: pearl, textDecoration: "none" }}>
           energyforward<span style={{ color: amber }}>.</span>
         </Link>
-        <nav style={{ display: "flex", gap: 24, fontSize: 13, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-          <Link to="/investor" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Investor portal</Link>
+        <nav style={{ display: "flex", gap: 24, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+          {fullPortalAccess && <Link to="/investor" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Investor portal</Link>}
           <span style={{ color: amber }}>Videos</span>
         </nav>
       </header>
 
-      <main style={{ maxWidth: 1200, margin: "0 auto", padding: "clamp(24px,5vw,56px) clamp(16px,4vw,56px)" }}>
-        <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: amber, margin: 0 }}>Confidential · Investor briefing</p>
-        <h1 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(32px,4.5vw,56px)", margin: "10px 0 28px", lineHeight: 1.05 }}>Investor videos</h1>
+      <main style={{ maxWidth: 1040, margin: "0 auto", padding: "clamp(34px,6vw,72px) clamp(18px,5vw,64px) 80px" }}>
+        <section style={{ maxWidth: 760, marginBottom: "clamp(28px,5vw,48px)" }}>
+          <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: amber, margin: 0 }}>Confidential · Authorized viewing</p>
+          <h1 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(36px,5vw,64px)", margin: "12px 0 18px", lineHeight: 1.02 }}>Moving energy forward.</h1>
+          <p style={{ fontSize: "clamp(17px,2vw,21px)", lineHeight: 1.6, margin: 0, color: "rgba(238,234,226,0.78)" }}>
+            Energy Forward is building the delivery infrastructure for the next era of energy—connecting technology, operations and execution to move critical projects from ambition to reality.
+          </p>
+        </section>
 
         {(loading || authLoading) && <p style={{ opacity: 0.7 }}>Loading your videos…</p>}
         {!authLoading && !user && <p>Please sign in from the investor portal to watch your videos.</p>}
@@ -95,7 +105,9 @@ export default function InvestorVideos() {
 
         {active && (
           <>
-            <div style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", background: "#000", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(238,234,226,0.14)" }}>
+            <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: amber, margin: "0 0 8px" }}>Now playing</p>
+            <h2 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(24px,3vw,38px)", margin: "0 0 18px", lineHeight: 1.15 }}>{active.name}</h2>
+            <div style={{ position: "relative", width: "min(100%, 820px)", aspectRatio: "16 / 9", background: "#061719", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(238,234,226,0.14)", boxShadow: "0 22px 60px rgba(0,0,0,0.28)" }}>
               {src ? (
                 <video
                   key={src}
@@ -114,20 +126,19 @@ export default function InvestorVideos() {
                 </div>
               )}
             </div>
-            <h2 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(20px,2.2vw,28px)", margin: "18px 0 0" }}>{active.name}</h2>
           </>
         )}
 
         {videos.length > 1 && (
-          <section style={{ marginTop: 40 }}>
-            <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", opacity: 0.7, marginBottom: 14 }}>More videos for you</p>
+          <section style={{ marginTop: 48, borderTop: "1px solid rgba(238,234,226,0.14)", paddingTop: 28 }}>
+            <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", opacity: 0.7, marginBottom: 14 }}>Your authorized videos</p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 16 }}>
               {videos.map((v) => {
                 const on = v.id === active?.id;
                 return (
                   <button
                     key={v.id}
-                    onClick={() => { setError(null); setActive(v); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                    onClick={() => { setError(null); setActive(v); setSearchParams({ video: v.id }); window.scrollTo({ top: 280, behavior: "smooth" }); }}
                     style={{ textAlign: "left", cursor: "pointer", padding: 18, borderRadius: 10, background: on ? "rgba(232,177,74,0.12)" : "rgba(238,234,226,0.05)", border: `1px solid ${on ? amber : "rgba(238,234,226,0.14)"}`, color: pearl, display: "flex", gap: 14, alignItems: "center", font: "inherit" }}
                   >
                     <span style={{ flex: "0 0 40px", height: 40, borderRadius: "50%", background: on ? amber : "rgba(238,234,226,0.1)", display: "grid", placeItems: "center", color: on ? teal : pearl }}>
@@ -140,6 +151,9 @@ export default function InvestorVideos() {
             </div>
           </section>
         )}
+        <footer style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 48, paddingTop: 24, borderTop: "1px solid rgba(238,234,226,0.12)", color: "rgba(238,234,226,0.55)", fontSize: 12 }}>
+          <LockKeyhole size={15} color={amber} /> Access is personal and verified each time a video is requested.
+        </footer>
       </main>
     </div>
   );
