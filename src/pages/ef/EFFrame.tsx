@@ -52,7 +52,7 @@ export const InvestorPortal = () => {
   }, [user, loading]);
 
   if (loading || destination === null) return <div className="min-h-screen grid place-items-center">Loading…</div>;
-  if (destination !== "investor") return <Navigate to={destination === "video" ? "/investor/videos" : user ? "/" : "/?login=1"} replace />;
+  if (destination !== "investor") return <Navigate to={destination === "video" ? "/investor/videos" : "/?login=1"} replace />;
 
   return <>
     <EFFrame src="/ef-assets/site/investor/index.html" title="energyforward · investor portal" />

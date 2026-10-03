@@ -56,16 +56,20 @@ function AppContent() {
     }
     if (params.get("login") === "1" && session) {
       // Already signed in: skip the modal and go straight to their portal.
-      params.delete("login"); params.delete("email");
       (async () => {
-        const { data } = await supabase.from('user_roles').select('role').eq('user_id', session.user.id);
+        const { data, error } = await supabase.from('user_roles').select('role').eq('user_id', session.user.id);
+        if (error) {
+          // Stale/expired saved sign-in — clear it so the sign-in window shows.
+          await supabase.auth.signOut();
+          return;
+        }
         const roles = new Set((data ?? []).map((r) => r.role as string));
-        const vid = location.pathname === '/investor/videos' ? location.pathname : '/investor/videos';
+        const onVideos = location.pathname === '/investor/videos';
         if (roles.has('admin')) navigate('/admin', { replace: true });
-        else if (roles.has('investor')) navigate(location.pathname === '/investor/videos' ? vid : '/investor', { replace: true });
-        else if (roles.has('video')) navigate(vid, { replace: true });
+        else if (roles.has('investor')) navigate(onVideos ? '/investor/videos' : '/investor', { replace: true });
+        else if (roles.has('video')) navigate('/investor/videos', { replace: true });
         else if (roles.has('customer')) navigate('/customer', { replace: true });
-        else navigate('/', { replace: true });
+        else await supabase.auth.signOut(); // no portal access: let them sign in with another account
       })();
       return;
     }
