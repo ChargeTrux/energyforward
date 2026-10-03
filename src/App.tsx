@@ -10,6 +10,7 @@ import { Home } from "@/pages/Home";
 import { LandingStealth, CustomerPortal, InvestorPortal, ContactPage } from "@/pages/ef/EFFrame";
 import AdminDashboard from "@/pages/AdminDashboard";
 import ResetPassword from "@/pages/ResetPassword";
+import InvestorVideos from "@/pages/InvestorVideos";
 import NotFound from "./pages/NotFound";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { usePageTracking } from "@/hooks/usePageTracking";
@@ -122,6 +123,7 @@ function AppContent() {
     path === "/" ||
     path === "/customer" ||
     path === "/investor" ||
+    path === "/investor/videos" ||
     path === "/contact" ||
     path === "/admin" ||
     path === "/reset-password";
@@ -139,6 +141,7 @@ function AppContent() {
         <Route path="/" element={<LandingStealth />} />
         <Route path="/customer" element={<CustomerPortal />} />
         <Route path="/investor" element={<InvestorPortal />} />
+        <Route path="/investor/videos" element={<InvestorVideos />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/home-v1" element={<Home />} />
         <Route path="/signout" element={<SignOutRoute onLogout={handleLogout} />} />
