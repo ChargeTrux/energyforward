@@ -8,7 +8,6 @@ export const EF_CUSTOMER_REPLY_TO = "customer@energyforward.com";
 export const EF_LOGO_URL = "https://energyforward.com/favicon.png";
 export const EF_SITE_URL = "https://energyforward.com";
 export const EF_PORTAL_URL = "https://energyforward.com/?login=1";
-export const EF_VIDEO_URL = "https://energyforward.com/investor/videos";
 export const EF_ADMIN_URL = "https://energyforward-launchpad.lovable.app/customer";
 
 /**

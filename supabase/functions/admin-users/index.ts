@@ -4,7 +4,6 @@ import {
   resetEmail,
   sendBrandedEmail,
   EF_PORTAL_URL,
-  EF_VIDEO_URL,
 } from "../_shared/branded-emails.ts";
 
 const corsHeaders = {
@@ -63,7 +62,7 @@ Deno.serve(async (req) => {
     const { action } = body;
 
     if (action === "invite") {
-      const { email, full_name, role, roles, investor_profile_ids, investor_video_ids } = body;
+      const { email, full_name, role, roles, investor_profile_ids, investor_video_ids, app_origin } = body;
       if (!email || typeof email !== "string") return json({ error: "Invalid email" }, 400);
 
       // Generate a strong temporary password
@@ -188,7 +187,18 @@ Deno.serve(async (req) => {
         if (role === "investor" || (Array.isArray(roles) && roles.includes("investor"))) portals.push("Investor");
         if (Array.isArray(roles) && roles.includes("video")) portals.push("Video");
         if (Array.isArray(roles) && roles.includes("customer")) portals.push("Customer");
-        const loginDestination = portals.includes("Investor") ? EF_PORTAL_URL : portals.includes("Video") ? EF_VIDEO_URL : EF_PORTAL_URL;
+        const requestOrigin = (() => {
+          const raw = typeof app_origin === "string" ? app_origin : req.headers.get("origin");
+          try {
+            const parsed = new URL(raw ?? EF_PORTAL_URL);
+            return `${parsed.protocol}//${parsed.host}`;
+          } catch {
+            return new URL(EF_PORTAL_URL).origin;
+          }
+        })();
+        const loginDestination = portals.includes("Video") && !portals.includes("Investor")
+          ? `${requestOrigin}/investor/videos`
+          : `${requestOrigin}/`;
         if (userAlreadyExisted) {
           // Existing user — send a password reset link instead of a temp password.
           try {

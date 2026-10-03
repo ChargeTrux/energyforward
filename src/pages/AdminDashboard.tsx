@@ -386,6 +386,7 @@ export default function AdminDashboard() {
       is_admin: p.is_admin,
       is_investor: p.is_investor,
       is_customer: p.is_customer,
+      is_video: p.is_video,
     }));
     const signupRows: UserListRow[] = signups
       .filter((s) => !accountEmails.has(s.email.toLowerCase()))
@@ -397,6 +398,7 @@ export default function AdminDashboard() {
         created_at: s.created_at,
         is_admin: false,
         is_investor: false,
+        is_video: false,
       }));
     return [...accountRows, ...signupRows];
   }, [profiles, signups]);
@@ -406,7 +408,7 @@ export default function AdminDashboard() {
     const { key, dir } = userSort;
     const mult = dir === "asc" ? 1 : -1;
     const roleRank = (r: UserListRow) =>
-      r.is_admin ? 0 : r.is_investor ? 1 : 2;
+      r.is_admin ? 0 : r.is_investor ? 1 : r.is_video ? 2 : 3;
     const statusRank = (r: UserListRow) =>
       r.source === "signup" ? 2 : r.is_active ? 0 : 1;
     rows.sort((a, b) => {
@@ -536,6 +538,7 @@ export default function AdminDashboard() {
       email,
       full_name: fullName,
       roles: rolesArr,
+      app_origin: window.location.origin,
       investor_profile_ids: rolesArr.includes("investor") ? selectedProfileIds : [],
       investor_video_ids: rolesArr.includes("video") || rolesArr.includes("investor") ? selectedVideoIds : [],
     })) as { temp_password?: string } | null;
@@ -1296,8 +1299,9 @@ export default function AdminDashboard() {
                       <div className="flex gap-1 flex-wrap">
                         {row.is_admin && <span className="ef-badge ef-badge--admin">Admin</span>}
                         {row.is_investor && <span className="ef-badge ef-badge--investor">Investor</span>}
+                        {row.is_video && <span className="ef-badge ef-badge--investor">Video</span>}
                         {row.is_customer && <span className="ef-badge ef-badge--customer">Customer</span>}
-                        {!row.is_admin && !row.is_investor && !row.is_customer && (
+                        {!row.is_admin && !row.is_investor && !row.is_video && !row.is_customer && (
                           <span className="ef-badge ef-badge--none">No portal</span>
                         )}
                       </div>

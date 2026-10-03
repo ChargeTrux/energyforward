@@ -97,7 +97,7 @@ export default function InvestorVideos() {
         </section>
 
         {(loading || authLoading) && <p style={{ opacity: 0.7 }}>Loading your videos…</p>}
-        {!authLoading && !user && <p>Please sign in from the investor portal to watch your videos.</p>}
+        {!authLoading && !user && <p>Please sign in to view your authorized videos.</p>}
         {error && <p style={{ color: amber }}>{error}</p>}
         {!loading && user && !error && videos.length === 0 && (
           <p style={{ opacity: 0.8 }}>No videos have been shared with you yet. Please reach out through the Contact page to request access.</p>

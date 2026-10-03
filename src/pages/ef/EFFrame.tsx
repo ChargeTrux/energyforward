@@ -39,18 +39,21 @@ export const LandingStealth = () => <EFFrame src="/ef-assets/site/index.html" ti
 export const CustomerPortal = () => <EFFrame src="/ef-assets/site/customer/index.html" title="energyforward · customer portal" />;
 export const InvestorPortal = () => {
   const { user, isAdmin, loading } = useAuth();
-  const [allowed, setAllowed] = useState<boolean | null>(null);
+  const [destination, setDestination] = useState<"investor" | "video" | "home" | null>(null);
 
   useEffect(() => {
     if (loading) return;
-    if (!user) { setAllowed(false); return; }
-    if (isAdmin) { setAllowed(true); return; }
-    supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "investor").maybeSingle()
-      .then(({ data }) => setAllowed(Boolean(data)));
+    if (!user) { setDestination("home"); return; }
+    if (isAdmin) { setDestination("investor"); return; }
+    supabase.from("user_roles").select("role").eq("user_id", user.id)
+      .then(({ data }) => {
+        const roles = new Set((data ?? []).map((row) => row.role as string));
+        setDestination(roles.has("investor") ? "investor" : roles.has("video") ? "video" : "home");
+      });
   }, [user, isAdmin, loading]);
 
-  if (loading || allowed === null) return <div className="min-h-screen grid place-items-center">Loading…</div>;
-  if (!allowed) return user ? <Navigate to="/investor/videos" replace /> : <Navigate to="/?login=1" replace />;
+  if (loading || destination === null) return <div className="min-h-screen grid place-items-center">Loading…</div>;
+  if (destination !== "investor") return <Navigate to={destination === "video" ? "/investor/videos" : user ? "/" : "/?login=1"} replace />;
 
   return <>
     <EFFrame src="/ef-assets/site/investor/index.html" title="energyforward · investor portal" />
