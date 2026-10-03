@@ -706,7 +706,7 @@ export default function AdminDashboard() {
   };
 
   const copyVideoLink = async (fileId: string) => {
-    const url = `https://energyforward.com/investor/videos?video=${encodeURIComponent(fileId)}&login=1`;
+    const url = `${window.location.origin}/investor/videos?video=${encodeURIComponent(fileId)}&login=1`;
     await navigator.clipboard.writeText(url);
     toast({ title: "Video link copied", description: "The recipient must sign in and have access to this video." });
   };
@@ -1215,7 +1215,7 @@ export default function AdminDashboard() {
                               checked={Boolean(u.is_video)}
                               onChange={(e) => callAdmin("set_video", { user_id: u.user_id, make_video: e.target.checked })}
                             />
-                            Video-only portal
+                            Video Portal access
                           </label>
                         </td>
                         {videoCatalog.map((v) => {
