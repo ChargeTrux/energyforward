@@ -210,6 +210,7 @@ export default function AdminDashboard() {
     Record<string, { name: string; description: string; drive_url: string }>
   >({});
   const [busy, setBusy] = useState(false);
+  const [accessSearch, setAccessSearch] = useState("");
   const [tempCred, setTempCred] = useState<{ email: string; password: string } | null>(null);
   const [pendingAdminUser, setPendingAdminUser] = useState<UserListRow | null>(null);
   const [confirmAdminInvite, setConfirmAdminInvite] = useState(false);
@@ -950,6 +951,109 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>
+            Access manager{" "}
+            <span className="text-sm font-normal text-muted-foreground">
+              — who can see which portals, folders and videos
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Input
+            placeholder="Search by name or email…"
+            value={accessSearch}
+            onChange={(e) => setAccessSearch(e.target.value)}
+            className="mb-4 max-w-sm"
+          />
+          <div className="space-y-3 max-h-[640px] overflow-y-auto pr-1">
+            {profiles
+              .filter((u) => !u.is_admin || u.is_investor || u.is_video)
+              .filter((u) =>
+                `${u.full_name ?? ""} ${u.email}`.toLowerCase().includes(accessSearch.toLowerCase()),
+              )
+              .map((u) => {
+                const folders = investorProfiles.filter((p) =>
+                  investorAccess.some((a) => a.user_id === u.user_id && a.profile_id === p.id),
+                );
+                const vids = videoCatalog.filter((v) =>
+                  videoAccess.some((a) => a.user_id === u.user_id && a.file_id === v.id),
+                );
+                return (
+                  <div key={u.user_id} className="rounded-md border border-border p-3">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <div>
+                        <span className="font-semibold">{u.full_name || "—"}</span>{" "}
+                        <span className="text-xs text-muted-foreground">{u.email}</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {u.is_investor ? "Full investor portal" : u.is_video ? "Video page only" : "No portal access"}
+                        {" · "}
+                        {folders.length} folder{folders.length === 1 ? "" : "s"} · {vids.length} video
+                        {vids.length === 1 ? "" : "s"}
+                      </div>
+                    </div>
+                    <div className="mt-2 grid gap-3 md:grid-cols-3 text-sm">
+                      <div>
+                        <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">Portals</div>
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(u.is_investor)}
+                            onChange={(e) =>
+                              callAdmin("set_investor", { user_id: u.user_id, make_investor: e.target.checked })
+                            }
+                          />
+                          Investor portal
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(u.is_video)}
+                            onChange={(e) =>
+                              callAdmin("set_video", { user_id: u.user_id, make_video: e.target.checked })
+                            }
+                          />
+                          Video portal
+                        </label>
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">Folders</div>
+                        {investorProfiles.length === 0 && <span className="text-muted-foreground">None set up</span>}
+                        {investorProfiles.map((p) => (
+                          <label key={p.id} className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={folders.some((f) => f.id === p.id)}
+                              onChange={(e) => toggleUserProfileAccess(u.user_id, p.id, e.target.checked)}
+                            />
+                            {p.name}
+                          </label>
+                        ))}
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">Videos</div>
+                        {videoCatalog.length === 0 && <span className="text-muted-foreground">{videoCatalogMsg}</span>}
+                        {videoCatalog.map((v) => (
+                          <label key={v.id} className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={vids.some((x) => x.id === v.id)}
+                              onChange={(e) => toggleVideoAccess(u.user_id, v.id, e.target.checked)}
+                            />
+                            <span className="truncate">{v.name.replace(/\.[^.]+$/, "")}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="mb-8">
         <CardHeader>
