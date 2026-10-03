@@ -134,11 +134,11 @@ export default function InvestorVideos() {
         </nav>
       </header>
 
-      <main style={{ maxWidth: 1040, margin: "0 auto", padding: "clamp(34px,6vw,72px) clamp(18px,5vw,64px) 80px" }}>
-        <section style={{ maxWidth: 760, marginBottom: "clamp(28px,5vw,48px)" }}>
+      <main style={{ maxWidth: 1040, margin: "0 auto", padding: "clamp(24px,4vw,44px) clamp(18px,5vw,64px) 80px" }}>
+        <section style={{ maxWidth: 680, margin: "0 auto", marginBottom: "clamp(24px,4vw,36px)", textAlign: "center" }}>
           <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: amber, margin: 0 }}>Confidential · Authorized viewing</p>
-          <h1 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(36px,5vw,64px)", margin: "12px 0 18px", lineHeight: 1.02, color: pearl }}>Moving energy forward.</h1>
-          <p style={{ fontSize: "clamp(17px,2vw,21px)", lineHeight: 1.6, margin: 0, color: "rgba(238,234,226,0.78)" }}>
+          <h1 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(26px,3.4vw,40px)", margin: "10px 0 12px", lineHeight: 1.05, color: pearl }}>Moving energy forward.</h1>
+          <p style={{ fontSize: "clamp(14px,1.5vw,17px)", lineHeight: 1.55, margin: 0, color: "rgba(238,234,226,0.78)" }}>
             Energy Forward is building the delivery infrastructure for the next era of energy—connecting technology, operations and execution to move critical projects from ambition to reality.
           </p>
         </section>
