@@ -50,7 +50,10 @@ async function listFolder(): Promise<DriveFile[]> {
 }
 
 const baseName = (name: string) => name.replace(/\.[a-z0-9]+$/i, "").trim().toLocaleLowerCase();
-const pretty = (name: string) => name.replace(/\.[a-z0-9]+$/i, "").replace(/_+/g, " ").replace(/\s+/g, " ").trim();
+const ORDER_RE = /^\s*(\d+)\s*[-–—_.)]\s*/;
+const orderOf = (name: string) => { const m = name.match(ORDER_RE); return m ? Number(m[1]) : Number.MAX_SAFE_INTEGER; };
+const stripOrder = (name: string) => name.replace(ORDER_RE, "");
+const pretty = (name: string) => stripOrder(name).replace(/\.[a-z0-9]+$/i, "").replace(/_+/g, " ").replace(/\s+/g, " ").trim();
 const cleanText = (value: string) => value.replace(/\r/g, "").replace(/\n{3,}/g, "\n\n").trim().slice(0, 12000);
 
 async function readDescriptionFile(file: DriveFile): Promise<string> {
@@ -87,11 +90,14 @@ async function readDescriptionFile(file: DriveFile): Promise<string> {
 }
 
 async function enrichVideos(files: DriveFile[], manualRows: DescriptionRow[]) {
-  const videos = files.filter((file) => file.mimeType.startsWith("video/"));
+  const videos = files
+    .filter((file) => file.mimeType.startsWith("video/"))
+    .sort((a, b) => orderOf(a.name) - orderOf(b.name) || pretty(a.name).localeCompare(pretty(b.name)));
   const documents = files.filter((file) => DESCRIPTION_MIMES.has(file.mimeType));
   const manual = new Map(manualRows.map((row) => [row.file_id, row.description]));
   return await Promise.all(videos.map(async (video) => {
-    const match = documents.find((doc) => baseName(doc.name) === baseName(video.name));
+    const match = documents.find((doc) => baseName(doc.name) === baseName(video.name))
+      ?? documents.find((doc) => baseName(stripOrder(doc.name)) === baseName(stripOrder(video.name)));
     const automatic = match ? await readDescriptionFile(match) : "";
     return {
       id: video.id,
@@ -135,7 +141,9 @@ Deno.serve(async (req) => {
     }
 
     const files = await listFolder();
-    const videos = files.filter((file) => file.mimeType.startsWith("video/"));
+    const videos = files
+    .filter((file) => file.mimeType.startsWith("video/"))
+    .sort((a, b) => orderOf(a.name) - orderOf(b.name) || pretty(a.name).localeCompare(pretty(b.name)));
 
     if (action === "catalog") {
       if (!isAdmin) return json({ error: "Admins only" }, 403);
