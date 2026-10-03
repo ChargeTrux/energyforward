@@ -68,6 +68,16 @@ Deno.serve(async (req) => {
   const appOrigin = resolveAppOrigin(req, bodyOrigin);
   const redirectTo = `${appOrigin}/reset-password`;
 
+  const forceEnergyForwardResetUrl = (url: string) => {
+    try {
+      const parsed = new URL(url);
+      parsed.searchParams.set("redirect_to", redirectTo);
+      return parsed.toString();
+    } catch {
+      return url;
+    }
+  };
+
   if (!email || !EMAIL_RE.test(email) || email.length > 255) {
     return json({ error: "Invalid email" }, 400);
   }

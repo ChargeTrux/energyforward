@@ -23,7 +23,7 @@ export function brandingForPortals(portals?: string[] | null): {
   relationsLabel: string;
 } {
   const list = (portals ?? []).map((p) => String(p).toLowerCase());
-  const hasInvestor = list.includes("investor");
+  const hasInvestor = list.includes("investor") || list.includes("video");
   const hasCustomer = list.includes("customer");
   if (hasCustomer && !hasInvestor) {
     return {
@@ -206,7 +206,7 @@ export function welcomeEmail(args: {
   const portalsHtml = portals
     .map(
       (p) =>
-        `<span style="display:inline-block;margin:0 6px 6px 0;padding:5px 12px;border:1px solid ${TEAL};color:${TEAL};border-radius:999px;font-size:12px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">${escapeHtml(p)} Portal</span>`,
+        `<span style="display:inline-block;margin:0 6px 6px 0;padding:5px 12px;border:1px solid ${TEAL};color:${TEAL};border-radius:999px;font-size:12px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">${escapeHtml(p)}${p.toLowerCase().includes("portal") ? "" : " Portal"}</span>`,
     )
     .join("");
   const portalSentence =

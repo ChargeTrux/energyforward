@@ -96,8 +96,12 @@ function AppContent() {
           .select('role')
           .eq('user_id', session.user.id);
         const roles = new Set((rolesData ?? []).map((r) => r.role as string));
+        const currentVideoUrl = window.location.pathname === '/investor/videos'
+          ? `${window.location.pathname}${window.location.search}`
+          : '/investor/videos';
         if (roles.has('admin')) navigate('/admin');
-        else if (roles.has('investor')) navigate('/investor');
+        else if (roles.has('investor')) navigate(window.location.pathname === '/investor/videos' ? currentVideoUrl : '/investor');
+        else if (roles.has('video')) navigate(currentVideoUrl);
         else if (roles.has('customer')) navigate('/customer');
         else navigate('/');
       })();

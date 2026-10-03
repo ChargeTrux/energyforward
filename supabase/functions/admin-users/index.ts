@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     const { action } = body;
 
     if (action === "invite") {
-      const { email, full_name, role, roles, investor_profile_ids } = body;
+      const { email, full_name, role, roles, investor_profile_ids, investor_video_ids, app_origin } = body;
       if (!email || typeof email !== "string") return json({ error: "Invalid email" }, 400);
 
       // Generate a strong temporary password
@@ -134,13 +134,23 @@ Deno.serve(async (req) => {
       // Optional multi-role assignment (customer + investor portals)
       if (Array.isArray(roles)) {
         const valid = (roles as unknown[]).filter(
-          (r): r is "admin" | "investor" | "customer" =>
-            r === "admin" || r === "investor" || r === "customer",
+          (r): r is "admin" | "investor" | "customer" | "video" =>
+            r === "admin" || r === "investor" || r === "customer" || r === "video",
         );
         for (const r of valid) {
           await admin
             .from("user_roles")
             .upsert({ user_id: newUserId, role: r }, { onConflict: "user_id,role" });
+        }
+      }
+
+      if (Array.isArray(investor_video_ids)) {
+        const videoIds = (investor_video_ids as unknown[]).filter((v): v is string => typeof v === "string");
+        for (const fileId of videoIds) {
+          await admin.from("investor_video_access").upsert(
+            { user_id: newUserId, file_id: fileId },
+            { onConflict: "user_id,file_id" },
+          );
         }
       }
 
@@ -175,7 +185,20 @@ Deno.serve(async (req) => {
       if (RESEND_API_KEY) {
         const portals: string[] = [];
         if (role === "investor" || (Array.isArray(roles) && roles.includes("investor"))) portals.push("Investor");
+        if (Array.isArray(roles) && roles.includes("video")) portals.push("Video");
         if (Array.isArray(roles) && roles.includes("customer")) portals.push("Customer");
+        const requestOrigin = (() => {
+          const raw = typeof app_origin === "string" ? app_origin : req.headers.get("origin");
+          try {
+            const parsed = new URL(raw ?? EF_PORTAL_URL);
+            return `${parsed.protocol}//${parsed.host}`;
+          } catch {
+            return new URL(EF_PORTAL_URL).origin;
+          }
+        })();
+        const loginDestination = portals.includes("Video") && !portals.includes("Investor")
+          ? `${requestOrigin}/investor/videos`
+          : `${requestOrigin}/`;
         if (userAlreadyExisted) {
           // Existing user — send a password reset link instead of a temp password.
           try {
@@ -211,7 +234,7 @@ Deno.serve(async (req) => {
             name: full_name ?? "",
             email,
             tempPassword,
-            loginUrl: EF_PORTAL_URL,
+            loginUrl: loginDestination,
             portals,
             investorProfiles: grantedProfiles,
           });
@@ -291,6 +314,17 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    if (action === "set_video") {
+      const { user_id, make_video } = body;
+      if (!user_id) return json({ error: "Missing user_id" }, 400);
+      const query = make_video
+        ? admin.from("user_roles").upsert({ user_id, role: "video" }, { onConflict: "user_id,role" })
+        : admin.from("user_roles").delete().eq("user_id", user_id).eq("role", "video");
+      const { error } = await query;
+      if (error) return json({ error: error.message }, 400);
+      return json({ ok: true });
+    }
+
     if (action === "send_reset") {
       const { email } = body;
       if (!email) return json({ error: "Missing email" }, 400);
@@ -334,6 +368,7 @@ Deno.serve(async (req) => {
             .eq("user_id", uid);
           for (const row of (roleRows ?? []) as Array<{ role: string }>) {
             if (row.role === "investor") userPortals.push("Investor");
+            if (row.role === "video") userPortals.push("Video");
             if (row.role === "customer") userPortals.push("Customer");
           }
         }

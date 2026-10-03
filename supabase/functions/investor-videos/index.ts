@@ -50,6 +50,9 @@ Deno.serve(async (req) => {
     const user = u?.user;
     if (!user) return json({ error: "Not signed in" }, 401);
     const { data: isAdmin } = await admin.rpc("has_role", { _user_id: user.id, _role: "admin" });
+    const { data: roleRows } = await admin.from("user_roles").select("role").eq("user_id", user.id);
+    const roles = new Set((roleRows ?? []).map((row: { role: string }) => row.role));
+    const canOpenVideos = Boolean(isAdmin) || roles.has("investor") || roles.has("video");
 
     const url = new URL(req.url);
     const action = url.searchParams.get("action") ?? "mine";
@@ -61,12 +64,15 @@ Deno.serve(async (req) => {
       return json({ videos: files.map((f) => ({ id: f.id, name: pretty(f.name), size: f.size })) });
     }
 
+    if (!canOpenVideos) return json({ error: "You do not have access to the video portal" }, 403);
+
     const { data: grants } = await admin.from("investor_video_access").select("file_id").eq("user_id", user.id);
     const allowed = new Set((grants ?? []).map((g: { file_id: string }) => g.file_id));
 
     if (action === "mine") {
       const files = await listFolder();
       return json({
+        fullPortalAccess: Boolean(isAdmin) || roles.has("investor"),
         videos: files.filter((f) => allowed.has(f.id)).map((f) => ({ id: f.id, name: pretty(f.name), size: f.size })),
       });
     }

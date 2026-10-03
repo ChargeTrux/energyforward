@@ -1,7 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { InvestorDocuments } from "@/components/InvestorDocuments";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { PlayCircle } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 export function EFFrame({ src, title }: { src: string; title: string }) {
   useEffect(() => {
@@ -35,8 +37,25 @@ export function EFFrame({ src, title }: { src: string; title: string }) {
 
 export const LandingStealth = () => <EFFrame src="/ef-assets/site/index.html" title="energyforward · in stealth" />;
 export const CustomerPortal = () => <EFFrame src="/ef-assets/site/customer/index.html" title="energyforward · customer portal" />;
-export const InvestorPortal = () => (
-  <>
+export const InvestorPortal = () => {
+  const { user, isAdmin, loading } = useAuth();
+  const [destination, setDestination] = useState<"investor" | "video" | "home" | null>(null);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user) { setDestination("home"); return; }
+    if (isAdmin) { setDestination("investor"); return; }
+    supabase.from("user_roles").select("role").eq("user_id", user.id)
+      .then(({ data }) => {
+        const roles = new Set((data ?? []).map((row) => row.role as string));
+        setDestination(roles.has("investor") ? "investor" : roles.has("video") ? "video" : "home");
+      });
+  }, [user, isAdmin, loading]);
+
+  if (loading || destination === null) return <div className="min-h-screen grid place-items-center">Loading…</div>;
+  if (destination !== "investor") return <Navigate to={destination === "video" ? "/investor/videos" : user ? "/" : "/?login=1"} replace />;
+
+  return <>
     <EFFrame src="/ef-assets/site/investor/index.html" title="energyforward · investor portal" />
     <InvestorDocuments />
     <Link
@@ -50,6 +69,6 @@ export const InvestorPortal = () => (
     >
       <PlayCircle size={20} /> Videos
     </Link>
-  </>
-);
+  </>;
+};
 export const ContactPage = () => <EFFrame src="/ef-assets/site/contact/index.html" title="energyforward · contact" />;
