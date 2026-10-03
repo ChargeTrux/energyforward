@@ -1015,10 +1015,7 @@ export default function AdminDashboard() {
                         <span className="ef-badge ef-badge--off">Suspended</span>
                       )}
                       <Button size="sm" variant="outline" onClick={() => callAdmin("send_reset", { email: u.email })}>
-                        Reset password
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => callAdmin("send_reset", { email: u.email, resend_invite: true })}>
-                        Resend sign-in link
+                        Resend link / reset password
                       </Button>
                       <Button
                         size="sm"
