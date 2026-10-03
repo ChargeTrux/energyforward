@@ -48,6 +48,21 @@ function AppContent() {
   useEffect(() => {
     if (loading) return;
     const params = new URLSearchParams(location.search);
+    if (params.get("login") === "1" && session) {
+      // Already signed in: skip the modal and go straight to their portal.
+      params.delete("login"); params.delete("email");
+      (async () => {
+        const { data } = await supabase.from('user_roles').select('role').eq('user_id', session.user.id);
+        const roles = new Set((data ?? []).map((r) => r.role as string));
+        const vid = location.pathname === '/investor/videos' ? location.pathname : '/investor/videos';
+        if (roles.has('admin')) navigate('/admin', { replace: true });
+        else if (roles.has('investor')) navigate(location.pathname === '/investor/videos' ? vid : '/investor', { replace: true });
+        else if (roles.has('video')) navigate(vid, { replace: true });
+        else if (roles.has('customer')) navigate('/customer', { replace: true });
+        else navigate('/', { replace: true });
+      })();
+      return;
+    }
     if (params.get("login") === "1" && !session) {
       const em = params.get("email") ?? undefined;
       setPrefillEmail(em);

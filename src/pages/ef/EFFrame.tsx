@@ -38,19 +38,18 @@ export function EFFrame({ src, title }: { src: string; title: string }) {
 export const LandingStealth = () => <EFFrame src="/ef-assets/site/index.html" title="energyforward · in stealth" />;
 export const CustomerPortal = () => <EFFrame src="/ef-assets/site/customer/index.html" title="energyforward · customer portal" />;
 export const InvestorPortal = () => {
-  const { user, isAdmin, loading } = useAuth();
+  const { user, loading } = useAuth();
   const [destination, setDestination] = useState<"investor" | "video" | "home" | null>(null);
 
   useEffect(() => {
     if (loading) return;
     if (!user) { setDestination("home"); return; }
-    if (isAdmin) { setDestination("investor"); return; }
     supabase.from("user_roles").select("role").eq("user_id", user.id)
       .then(({ data }) => {
         const roles = new Set((data ?? []).map((row) => row.role as string));
-        setDestination(roles.has("investor") ? "investor" : roles.has("video") ? "video" : "home");
+        setDestination(roles.has("admin") || roles.has("investor") ? "investor" : roles.has("video") ? "video" : "home");
       });
-  }, [user, isAdmin, loading]);
+  }, [user, loading]);
 
   if (loading || destination === null) return <div className="min-h-screen grid place-items-center">Loading…</div>;
   if (destination !== "investor") return <Navigate to={destination === "video" ? "/investor/videos" : user ? "/" : "/?login=1"} replace />;
