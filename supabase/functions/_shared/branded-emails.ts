@@ -8,6 +8,7 @@ export const EF_CUSTOMER_REPLY_TO = "customer@energyforward.com";
 export const EF_LOGO_URL = "https://energyforward.com/favicon.png";
 export const EF_SITE_URL = "https://energyforward.com";
 export const EF_PORTAL_URL = "https://energyforward.com/?login=1";
+export const EF_VIDEO_URL = "https://energyforward.com/investor/videos";
 export const EF_ADMIN_URL = "https://energyforward-launchpad.lovable.app/customer";
 
 /**
@@ -23,7 +24,7 @@ export function brandingForPortals(portals?: string[] | null): {
   relationsLabel: string;
 } {
   const list = (portals ?? []).map((p) => String(p).toLowerCase());
-  const hasInvestor = list.includes("investor");
+  const hasInvestor = list.includes("investor") || list.includes("video");
   const hasCustomer = list.includes("customer");
   if (hasCustomer && !hasInvestor) {
     return {
@@ -206,7 +207,7 @@ export function welcomeEmail(args: {
   const portalsHtml = portals
     .map(
       (p) =>
-        `<span style="display:inline-block;margin:0 6px 6px 0;padding:5px 12px;border:1px solid ${TEAL};color:${TEAL};border-radius:999px;font-size:12px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">${escapeHtml(p)} Portal</span>`,
+        `<span style="display:inline-block;margin:0 6px 6px 0;padding:5px 12px;border:1px solid ${TEAL};color:${TEAL};border-radius:999px;font-size:12px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">${escapeHtml(p)}${p.toLowerCase().includes("portal") ? "" : " Portal"}</span>`,
     )
     .join("");
   const portalSentence =

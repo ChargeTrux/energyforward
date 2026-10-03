@@ -98,6 +98,7 @@ function AppContent() {
         const roles = new Set((rolesData ?? []).map((r) => r.role as string));
         if (roles.has('admin')) navigate('/admin');
         else if (roles.has('investor')) navigate('/investor');
+        else if (roles.has('video')) navigate('/investor/videos');
         else if (roles.has('customer')) navigate('/customer');
         else navigate('/');
       })();
