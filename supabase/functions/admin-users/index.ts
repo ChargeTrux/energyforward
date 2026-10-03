@@ -207,9 +207,10 @@ Deno.serve(async (req) => {
             return new URL(EF_PORTAL_URL).origin;
           }
         })();
+        const loginParams = `?login=1&email=${encodeURIComponent(email)}`;
         const loginDestination = portals.includes("Video") && !portals.includes("Investor")
-          ? `${requestOrigin}/investor/videos`
-          : `${requestOrigin}/`;
+          ? `${requestOrigin}/investor/videos${loginParams}`
+          : `${requestOrigin}/${loginParams}`;
         if (userAlreadyExisted) {
           // Existing user — send a password reset link instead of a temp password.
           try {
