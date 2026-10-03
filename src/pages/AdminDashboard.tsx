@@ -1010,6 +1010,28 @@ export default function AdminDashboard() {
                         {vids.length === 1 ? "" : "s"}
                       </div>
                     </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      {u.is_active === false && (
+                        <span className="ef-badge ef-badge--off">Suspended</span>
+                      )}
+                      <Button size="sm" variant="outline" onClick={() => callAdmin("send_reset", { email: u.email })}>
+                        Resend link / reset password
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const suspend = u.is_active !== false;
+                          if (suspend && !window.confirm(`Suspend ${u.email}? They won't be able to sign in until you restore access.`)) return;
+                          callAdmin("set_active", { user_id: u.user_id, is_active: !suspend });
+                        }}
+                      >
+                        {u.is_active === false ? "Restore access" : "Suspend access"}
+                      </Button>
+                      <Button size="sm" variant="destructive" onClick={() => handleDelete(u.user_id, u.email)}>
+                        Remove user
+                      </Button>
+                    </div>
                     <div className="mt-2 grid gap-3 md:grid-cols-3 text-sm">
                       <div>
                         <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">Portals</div>
