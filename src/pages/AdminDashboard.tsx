@@ -1221,7 +1221,7 @@ export default function AdminDashboard() {
         </CardContent>
       </Collapse>
 
-<Collapse defaultOpen title={<><FolderOpen className="w-5 h-5" /> Investor Materials</>}><div className="px-6 pb-6 space-y-4"><Collapse nested title={<>Documents — profile folders
+<Collapse title={<><FolderOpen className="w-5 h-5" /> Investor Materials</>}><div className="px-6 pb-6 space-y-4"><Collapse nested title={<>Documents — profile folders
 </>}>
         <CardContent>
           <div className="space-y-4">
@@ -1344,11 +1344,11 @@ export default function AdminDashboard() {
         </CardContent>
       </Collapse>
 
-<Collapse nested defaultOpen title={<>Videos — descriptions &amp; links
+<Collapse nested title={<>Videos — descriptions &amp; links
 </>}>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-3">
-            Every video and its narrator content are shown below. Edit the description, open the secure video page, or copy its direct link. Access is managed above.
+            Edit each video's description or copy a secure direct link. Who can watch which video is managed in the Access manager above. Recipients must sign in before viewing.
           </p>
           {videoCatalog.length === 0 ? (
             <p className="text-sm text-muted-foreground">{videoCatalogMsg}</p>
@@ -1363,16 +1363,10 @@ export default function AdminDashboard() {
                         {video.descriptionSource === "document" ? "Automatically using the matching folder document" : video.descriptionSource === "manual" ? "Manual description" : "No description yet"}
                       </p>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button type="button" variant="outline" size="sm" onClick={() => navigate(`/investor/videos?video=${encodeURIComponent(video.id)}`)}>
-                        View
-                      </Button>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => copyVideoLink(video.id)} aria-label={`Copy direct link for ${video.name}`}>
-                        <Copy className="w-4 h-4" />
-                      </Button>
-                    </div>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => copyVideoLink(video.id)} aria-label={`Copy direct link for ${video.name}`}>
+                      <Copy className="w-4 h-4" />
+                    </Button>
                   </div>
-                  <Label className="mt-3 block">Narrator content / description</Label>
                   <Textarea
                     value={videoDescriptionDrafts[video.id] ?? ""}
                     onChange={(event) => setVideoDescriptionDrafts((current) => ({ ...current, [video.id]: event.target.value }))}
