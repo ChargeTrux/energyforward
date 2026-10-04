@@ -40,6 +40,7 @@ export const CustomerPortal = () => <EFFrame src="/ef-assets/site/customer/index
 export const InvestorPortal = () => {
   const { user, loading } = useAuth();
   const [destination, setDestination] = useState<"investor" | "video" | "home" | null>(null);
+  const [hasVideos, setHasVideos] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -51,14 +52,39 @@ export const InvestorPortal = () => {
       });
   }, [user, loading]);
 
+  useEffect(() => {
+    if (!user || destination !== "investor") {
+      setHasVideos(false);
+      return;
+    }
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const response = await fetch(
+        `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/investor-videos?action=mine`,
+        {
+          headers: {
+            Authorization: `Bearer ${data.session?.access_token ?? ""}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
+          },
+        },
+      );
+      if (!response.ok) {
+        setHasVideos(false);
+        return;
+      }
+      const body = await response.json().catch(() => ({}));
+      setHasVideos(Array.isArray(body.videos) && body.videos.length > 0);
+    })();
+  }, [user, destination]);
+
   if (loading || destination === null) return <div className="min-h-screen grid place-items-center">Loading…</div>;
   if (destination !== "investor") return <Navigate to={destination === "video" ? "/investor/videos" : "/?login=1"} replace />;
 
   return <>
     <EFFrame src="/ef-assets/site/investor/index.html" title="energyforward · investor portal" />
     <InvestorDocuments />
-    <Link
-      to="/investor/materials"
+    {hasVideos && <Link
+      to="/investor/videos"
       style={{
         position: "fixed", left: 22, bottom: 22, zIndex: 60, display: "flex", alignItems: "center", gap: 10,
         padding: "14px 22px", borderRadius: 999, background: "#E8B14A", color: "#0A2A2E",
@@ -66,8 +92,8 @@ export const InvestorPortal = () => {
         boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
       }}
     >
-      <PlayCircle size={20} /> Investor materials
-    </Link>
+      <PlayCircle size={20} /> Videos
+    </Link>}
   </>;
 };
 export const ContactPage = () => <EFFrame src="/ef-assets/site/contact/index.html" title="energyforward · contact" />;
