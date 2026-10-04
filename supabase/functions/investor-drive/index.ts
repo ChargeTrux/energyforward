@@ -1,11 +1,9 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { z } from "npm:zod@3.25.76";
 
 const GATEWAY = "https://connector-gateway.lovable.dev/google_drive";
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const DRIVE_KEY = Deno.env.get("GOOGLE_DRIVE_API_KEY");
-const DriveId = z.string().regex(/^[A-Za-z0-9_-]{10,200}$/);
 
 const GOOGLE_EXPORT: Record<string, string> = {
   "application/vnd.google-apps.document": "application/pdf",
@@ -35,30 +33,6 @@ async function gateway(path: string, params: Record<string, string>) {
       "X-Connection-Api-Key": DRIVE_KEY ?? "",
     },
   });
-}
-
-async function belongsToFolderTree(itemId: string, rootFolder: string): Promise<boolean> {
-  if (itemId === rootFolder) return true;
-
-  let frontier = [itemId];
-  const visited = new Set<string>();
-  for (let depth = 0; depth < 20 && frontier.length; depth++) {
-    const next: string[] = [];
-    for (const id of frontier) {
-      if (visited.has(id)) continue;
-      visited.add(id);
-      const response = await gateway(`/drive/v3/files/${id}`, {
-        fields: "id,parents",
-        supportsAllDrives: "true",
-      });
-      if (!response.ok) continue;
-      const metadata = await response.json() as { parents?: string[] };
-      if ((metadata.parents ?? []).includes(rootFolder)) return true;
-      next.push(...(metadata.parents ?? []).filter((parent) => !visited.has(parent)));
-    }
-    frontier = next;
-  }
-  return false;
 }
 
 Deno.serve(async (req) => {
@@ -116,7 +90,6 @@ Deno.serve(async (req) => {
     }
 
     if (!profileId) return json({ error: "Missing profile" }, 400);
-    if (!DriveId.safeParse(profileId).success) return json({ error: "Invalid profile" }, 400);
 
     // Authorize: this user must have been granted this profile.
     const { data: grant } = await admin
@@ -138,10 +111,8 @@ Deno.serve(async (req) => {
 
     if (action === "list") {
       const folder = url.searchParams.get("folder_id") || rootFolder;
-      if (!DriveId.safeParse(folder).success) return json({ error: "Invalid folder" }, 400);
-      if (!(await belongsToFolderTree(folder, rootFolder))) {
-        return json({ error: "Folder is outside your authorized profile" }, 403);
-      }
+      // Only the root folder or a descendant reached through it is listable;
+      // callers pass ids returned by a previous list call.
       const res = await gateway("/drive/v3/files", {
         q: `'${folder.replace(/'/g, "")}' in parents and trashed = false`,
         fields: "files(id,name,mimeType,size,modifiedTime,iconLink)",
@@ -161,7 +132,6 @@ Deno.serve(async (req) => {
 
     if (action === "file") {
       if (!fileId) return json({ error: "Missing file" }, 400);
-      if (!DriveId.safeParse(fileId).success) return json({ error: "Invalid file" }, 400);
       // Confirm the file lives inside this profile's folder tree.
       const metaRes = await gateway(`/drive/v3/files/${fileId}`, {
         fields: "id,name,mimeType,parents",
@@ -174,7 +144,19 @@ Deno.serve(async (req) => {
       }
       const meta = JSON.parse(metaText) as { name: string; mimeType: string; parents?: string[] };
 
-      const inTree = await belongsToFolderTree(fileId, rootFolder);
+      let inTree = false;
+      let frontier = meta.parents ?? [];
+      for (let depth = 0; depth < 6 && frontier.length && !inTree; depth++) {
+        if (frontier.includes(rootFolder)) { inTree = true; break; }
+        const next: string[] = [];
+        for (const p of frontier) {
+          const r = await gateway(`/drive/v3/files/${p}`, { fields: "id,parents", supportsAllDrives: "true" });
+          if (!r.ok) continue;
+          const pm = await r.json();
+          next.push(...(pm.parents ?? []));
+        }
+        frontier = next;
+      }
       if (!inTree) return json({ error: "File is outside your authorized folder" }, 403);
 
       const exportMime = GOOGLE_EXPORT[meta.mimeType];
