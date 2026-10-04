@@ -3,6 +3,19 @@ import { FolderLock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
+const navLink = {
+  background: "none",
+  border: "none",
+  color: "rgba(238,234,226,0.75)",
+  cursor: "pointer",
+  fontFamily: "inherit",
+  fontSize: 12,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase" as const,
+  padding: 0,
+  textDecoration: "none",
+};
+
 type Profile = {
   id: string;
   name: string;
@@ -40,7 +53,13 @@ async function callFn(path: string, init?: RequestInit) {
 }
 
 export function InvestorDocuments() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const [roles, setRoles] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!user) { setRoles(new Set()); return; }
+    supabase.from("user_roles").select("role").eq("user_id", user.id)
+      .then(({ data }) => setRoles(new Set((data ?? []).map((r) => r.role as string))));
+  }, [user]);
   const [open, setOpen] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [activeProfile, setActiveProfile] = useState<string | null>(null);
