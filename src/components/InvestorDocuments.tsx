@@ -317,6 +317,35 @@ export function InvestorDocuments() {
             </button>
           </div>
 
+          <div
+            style={{
+              display: "flex",
+              gap: 20,
+              alignItems: "center",
+              flexWrap: "wrap",
+              padding: "10px 20px",
+              borderBottom: "1px solid rgba(238,234,226,0.14)",
+            }}
+          >
+            <a href="/?public=1" style={navLink}>Home</a>
+            <button
+              type="button"
+              onClick={() => {
+                revokePreview();
+                setOpen(false);
+              }}
+              style={navLink}
+            >
+              Investor portal
+            </button>
+            {(roles.has("customer") || roles.has("admin")) && (
+              <a href="/customer" style={navLink}>Customer portal</a>
+            )}
+            {isAdmin && <a href="/admin" style={navLink}>Admin</a>}
+            <span style={{ ...navLink, color: amber, cursor: "default" }}>Documents</span>
+            {user && <a href="/signout" style={{ ...navLink, marginLeft: "auto" }}>Sign out</a>}
+          </div>
+
           <div style={{ display: "flex", flex: 1, minHeight: 0, flexDirection: "row" }}>
             <div
               style={{
