@@ -14,3 +14,4 @@
 - [x] Enforce assigned-profile and folder-tree authorization for every document listing and file request.
 - [ ] Verify an assigned user's real folder contents while signed in (blocked: external sign-in cannot be injected into the preview).
 - [x] Remove the duplicate Investor Materials page and link directly to authorized Documents and Videos.
+- [x] Restore the Admin video list, narrator content, and direct viewing controls.
