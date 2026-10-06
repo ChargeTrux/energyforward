@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Reduce protected video startup delays without changing quality or text or sending emails; verify request handling.
+
 - [x] Collapse users by default with individual/all controls and persistent status lights; show recent recorded activity in blue without sending emails (status checks passed; build clean).
 
 - [x] Add Today and individual-user audit filters, accurate invite events, user status lights, and visible Access manager scrolling.

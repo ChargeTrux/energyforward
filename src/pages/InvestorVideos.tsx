@@ -87,6 +87,8 @@ export default function InvestorVideos() {
     if (authLoading) return;
     if (!user) { setLoading(false); return; }
     (async () => {
+      // Prepare authenticated media requests while the video list loads, not afterward.
+      const streamReady = prepareVideoStream().catch(() => false);
       const res = await callFn("action=mine");
       const body = await res.json().catch(() => ({}));
       if (!res.ok) setError(body.error ?? "Could not load videos");
@@ -94,6 +96,7 @@ export default function InvestorVideos() {
         const available = (body.videos ?? []) as Video[];
         setVideos(available);
         setFullPortalAccess(Boolean(body.fullPortalAccess));
+        await streamReady;
         const requested = searchParamsRef.current.get("video");
         setActive(available.find((video) => video.id === requested) ?? available[0] ?? null);
       }
