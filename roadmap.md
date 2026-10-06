@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Collapse users by default with individual/all controls and persistent status lights; show recent recorded activity in blue without sending emails.
+- [x] Collapse users by default with individual/all controls and persistent status lights; show recent recorded activity in blue without sending emails (status checks passed; build clean).
 
 - [x] Add Today and individual-user audit filters, accurate invite events, user status lights, and visible Access manager scrolling.
 - [x] Verify date/status helpers and signed-out protection without sending any emails.
