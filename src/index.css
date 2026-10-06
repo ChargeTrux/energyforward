@@ -16,6 +16,14 @@
     --ef-pearl-faint: rgba(238, 234, 226, 0.45);
     --ef-hair: rgba(238, 234, 226, 0.10);
     --ef-gutter: clamp(24px, 5vw, 64px);
+    --admin-status-success: 158 57% 60%;
+    --admin-status-pending: 40 91% 62%;
+    --admin-status-neutral: 217 16% 64%;
+    --admin-status-issue: 0 88% 74%;
+    --admin-access-surface: 220 40% 12%;
+    --admin-access-border: 218 30% 29%;
+    --admin-scroll-track: 220 38% 16%;
+    --admin-scroll-thumb: 172 37% 57%;
 
     /* EnergyForward Color Palette */
     --background: 208 100% 97%; /* Very light blue #f0f8ff */
