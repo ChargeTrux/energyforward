@@ -1164,6 +1164,30 @@ export default function AdminDashboard() {
             onChange={(e) => setAccessSearch(e.target.value)}
             className="max-w-sm"
           />
+          <Select value={accessStatusFilter} onValueChange={(v) => setAccessStatusFilter(v as typeof accessStatusFilter)}>
+            <SelectTrigger className="w-[190px]" aria-label="Filter users by status">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="active">Recently active</SelectItem>
+              <SelectItem value="success">Signed in</SelectItem>
+              <SelectItem value="pending">Invite pending</SelectItem>
+              <SelectItem value="neutral">Not invited</SelectItem>
+              <SelectItem value="issue">Blocked / needs access</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={accessSort} onValueChange={(v) => setAccessSort(v as typeof accessSort)}>
+            <SelectTrigger className="w-[210px]" aria-label="Sort users">
+              <SelectValue placeholder="Sort: Name" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name">Sort: Name (A–Z)</SelectItem>
+              <SelectItem value="activity">Sort: Recently active first</SelectItem>
+              <SelectItem value="status">Sort: Status</SelectItem>
+              <SelectItem value="added">Sort: Newest sign-up</SelectItem>
+            </SelectContent>
+          </Select>
           <span className="text-sm text-muted-foreground">{visibleAccessProfiles.length} users</span>
           <div className="flex flex-wrap items-center gap-2 ml-auto">
             <Button size="sm" variant="outline" className="ef-ghost-btn" onClick={() => setExpandedUsers((current) => new Set([...current, ...visibleAccessProfiles.map((u) => u.user_id)]))}>Expand all</Button>
