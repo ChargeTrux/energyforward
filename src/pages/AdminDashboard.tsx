@@ -1757,7 +1757,7 @@ export default function AdminDashboard() {
                     className="mt-3 min-h-[108px] resize-y"
                     maxLength={12000}
                   />
-                  <div className="mt-3 flex items-center justify-between gap-2">
+                  <div className="ef-video-description-actions mt-3">
                     <Button type="button" size="sm" variant="outline" disabled={optimizingVideoId === video.id} onClick={() => optimizeVideo(video)}>
                       {optimizingVideoId === video.id ? "Optimizing… (keep this page open)" : "Optimize for fast playback"}
                     </Button>

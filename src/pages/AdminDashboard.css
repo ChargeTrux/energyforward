@@ -158,14 +158,32 @@
 
 .ef-admin .ef-video-description-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
   gap: 14px;
 }
 .ef-admin .ef-video-description-editor {
+  min-width: 0;
   padding: 16px;
   border: 1px solid var(--ef-border);
   border-radius: 8px;
   background: var(--ef-surface-2);
+}
+.ef-admin .ef-video-description-editor h3 {
+  overflow-wrap: anywhere;
+}
+.ef-admin .ef-video-description-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ef-admin .ef-video-description-actions > button {
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  min-height: 36px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  padding: 8px 12px;
 }
 .ef-admin .ef-video-description-editor textarea:disabled {
   opacity: 0.72;
