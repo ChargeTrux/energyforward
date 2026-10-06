@@ -783,13 +783,12 @@ export default function AdminDashboard() {
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
         },
       });
-    let { data: s } = await supabase.auth.getSession();
+    const { data: s } = await supabase.auth.getSession();
     let res = await fetchCatalog(s.session?.access_token ?? "");
     if (res.status === 401) {
       // Token may be stale — force a refresh and retry once.
-      const refreshed = await supabase.auth.refreshSession();
-      s = { data: { session: refreshed.data.session } } as typeof s;
-      if (refreshed.data.session) res = await fetchCatalog(refreshed.data.session.access_token);
+      const { data: refreshed } = await supabase.auth.refreshSession();
+      if (refreshed.session) res = await fetchCatalog(refreshed.session.access_token);
     }
     const { data: acc } = await supabase.from("investor_video_access").select("user_id, file_id");
     const body = await res.json().catch(() => ({}));
