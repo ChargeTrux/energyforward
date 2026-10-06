@@ -35,7 +35,9 @@ async function gateway(path: string, params: Record<string, string>, headers: Re
 type DriveFile = { id: string; name: string; mimeType: string; size?: string };
 type DescriptionRow = { file_id: string; description: string };
 
+let folderCache: { at: number; files: DriveFile[] } | null = null;
 async function listFolder(): Promise<DriveFile[]> {
+  if (folderCache && Date.now() - folderCache.at < 60_000) return folderCache.files;
   const res = await gateway("/drive/v3/files", {
     q: `'${VIDEO_FOLDER}' in parents and trashed = false`,
     fields: "files(id,name,mimeType,size)",
@@ -46,7 +48,9 @@ async function listFolder(): Promise<DriveFile[]> {
   });
   const text = await res.text();
   if (!res.ok) throw new Error(`[${res.status}]: ${text}`);
-  return JSON.parse(text).files ?? [];
+  const files = JSON.parse(text).files ?? [];
+  folderCache = { at: Date.now(), files };
+  return files;
 }
 
 const baseName = (name: string) => name.replace(/\.[a-z0-9]+$/i, "").trim().toLocaleLowerCase();
