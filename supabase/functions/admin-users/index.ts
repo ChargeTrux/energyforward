@@ -21,6 +21,24 @@ const json = (body: unknown, status = 200) =>
 const APP_ORIGIN = "https://energyforward-launchpad.lovable.app";
 const getResetRedirectUrl = () => `${APP_ORIGIN}/reset-password`;
 
+// Readable temporary password: no look-alike characters (0/O, 1/l/I), grouped
+// like "Kp7m-Rx4t-Wq9h" so it can be typed or copied without mistakes.
+const TEMP_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+const makeTempPassword = (): string => {
+  const pick = () => {
+    const b = new Uint8Array(1);
+    while (true) {
+      crypto.getRandomValues(b);
+      if (b[0] < 220) return TEMP_ALPHABET[b[0] % TEMP_ALPHABET.length];
+    }
+  };
+  while (true) {
+    const groups = [0, 1, 2].map(() => Array.from({ length: 4 }, pick).join(""));
+    const pwd = groups.join("-");
+    if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd) && /[2-9]/.test(pwd)) return pwd;
+  }
+};
+
 const forceEnergyForwardResetUrl = (url: string) => {
   try {
     const parsed = new URL(url);
@@ -67,10 +85,7 @@ Deno.serve(async (req) => {
       if (!email || typeof email !== "string") return json({ error: "Invalid email" }, 400);
 
       // Generate a strong temporary password
-      const bytes = new Uint8Array(12);
-      crypto.getRandomValues(bytes);
-      const tempPassword =
-        Array.from(bytes, (b) => b.toString(36).padStart(2, "0")).join("") + "A1!";
+      const tempPassword = makeTempPassword();
 
       let newUserId: string | undefined;
       let userAlreadyExisted = false;
@@ -296,10 +311,7 @@ Deno.serve(async (req) => {
           results.push({ email: email || "(missing)", ok: false, message: "Invalid email" });
           continue;
         }
-        const bytes = new Uint8Array(12);
-        crypto.getRandomValues(bytes);
-        const tempPassword =
-          Array.from(bytes, (b) => b.toString(36).padStart(2, "0")).join("") + "A1!";
+        const tempPassword = makeTempPassword();
         const { data, error } = await admin.auth.admin.createUser({
           email,
           password: tempPassword,
@@ -385,9 +397,7 @@ Deno.serve(async (req) => {
           const { data: pr } = await admin.from("investor_profiles").select("name, description, drive_url").in("id", pids).order("sort_order");
           grantedProfiles = (pr ?? []) as typeof grantedProfiles;
         }
-        const bytes = new Uint8Array(12);
-        crypto.getRandomValues(bytes);
-        const tempPassword = Array.from(bytes, (b) => b.toString(36).padStart(2, "0")).join("") + "A1!";
+        const tempPassword = makeTempPassword();
         const { error: pwErr } = await admin.auth.admin.updateUserById(uid, { password: tempPassword, ban_duration: "none" });
         if (pwErr) { results.push({ user_id: uid, email, ok: false, message: pwErr.message }); continue; }
         await admin.from("profiles").update({ must_change_password: true }).eq("user_id", uid);
