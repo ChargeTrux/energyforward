@@ -181,7 +181,7 @@ export default function InvestorVideos() {
             {active.description && <p style={{ maxWidth: 720, margin: "0 auto 20px", fontSize: "clamp(14px,1.5vw,17px)", lineHeight: 1.65, color: "rgba(238,234,226,0.68)", whiteSpace: "pre-line", textAlign: "center" }}>{active.description}</p>}
             <div style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", background: "#061719", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(238,234,226,0.14)", boxShadow: "0 18px 48px rgba(0,0,0,0.24)" }}>
               {src ? (
-                <video ref={videoElRef} key={src} src={src} controls preload="metadata" playsInline controlsList="nodownload noremoteplayback" disablePictureInPicture onLoadedData={handleVideoReady} onEnded={selectNextVideo} onContextMenu={(event) => event.preventDefault()} style={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "center center", display: "block", margin: "0 auto" }} />
+                <video ref={videoElRef} key={src} src={src} controls preload="auto" playsInline controlsList="nodownload noremoteplayback" disablePictureInPicture onLoadedData={handleVideoReady} onEnded={selectNextVideo} onContextMenu={(event) => event.preventDefault()} style={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "center center", display: "block", margin: "0 auto" }} />
               ) : (
                 <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", opacity: 0.7 }}>{loadingVideo ? "Preparing video…" : ""}</div>
               )}
