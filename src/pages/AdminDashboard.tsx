@@ -90,6 +90,7 @@ interface ProfileRow {
   email: string;
   is_active: boolean;
   created_at: string;
+  invite_sent_at?: string | null;
   is_admin?: boolean;
   is_investor?: boolean;
   is_customer?: boolean;
@@ -134,7 +135,8 @@ interface ActivityRow {
   duration_seconds: number | null;
   path: string;
   page_seconds: number;
-  invite_status?: "invite_sent" | "logged_in";
+  invite_status?: "invite_sent" | "not_invited" | "logged_in";
+  invite_sent_at?: string | null;
 }
 
 type PortalRole = "admin" | "investor" | "customer" | "video";
@@ -394,7 +396,8 @@ export default function AdminDashboard() {
         duration_seconds: null,
         path: "—",
         page_seconds: 0,
-        invite_status: "invite_sent",
+        invite_status: p.invite_sent_at ? "invite_sent" : "not_invited",
+        invite_sent_at: p.invite_sent_at ?? null,
       });
     });
     setActivity(rows);
@@ -577,9 +580,11 @@ export default function AdminDashboard() {
     rolesArr: PortalRole[],
     email = inviteEmail,
     fullName = inviteName,
+    sendEmail = true,
   ) => {
     if (!email) return;
     const data = (await callAdmin("invite", {
+      send_email: sendEmail,
       email,
       full_name: fullName,
       roles: rolesArr,
@@ -589,10 +594,9 @@ export default function AdminDashboard() {
     })) as { temp_password?: string } | null;
     if (data) {
       const list = rolesArr.length ? rolesArr.join(", ") : "no portal";
-      toast({
-        title: "Welcome email sent",
-        description: `Invited ${email} (${list}).`,
-      });
+      toast(sendEmail
+        ? { title: "Welcome email sent", description: `Invited ${email} (${list}).` }
+        : { title: "User created — no email sent", description: `${email} (${list}). Use "Send invite" in the Access manager when ready.` });
       setInviteEmail("");
       setInviteName("");
       setInviteInvestor(true);
@@ -1390,6 +1394,21 @@ export default function AdminDashboard() {
               </div>
             )}
             <div className="md:col-span-12 flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy || !inviteEmail || inviteAdmin}
+                className="mr-3"
+                onClick={() => {
+                  const r: PortalRole[] = [];
+                  if (inviteInvestor) r.push("investor");
+                  if (inviteCustomer) r.push("customer");
+                  if (inviteVideo) r.push("video");
+                  createInvite(r, inviteEmail, inviteName, false);
+                }}
+              >
+                Create only (no email)
+              </Button>
               <Button type="submit" disabled={busy} className="ef-cta px-8">
                 Create &amp; Invite
               </Button>
@@ -2110,9 +2129,11 @@ export default function AdminDashboard() {
                         {r.login_at ? formatCompact(r.login_at) : "—"}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm">
-                        {r.invite_status === "invite_sent" ? (
+                        {r.invite_status === "not_invited" ? (
+                          <span className="ef-badge ef-badge--off">Not invited yet</span>
+                        ) : r.invite_status === "invite_sent" ? (
                           <div className="flex items-center gap-2">
-                            <span className="ef-badge ef-badge--signup">Invite sent</span>
+                            <span className="ef-badge ef-badge--signup">Invite sent {r.invite_sent_at ? formatCompact(r.invite_sent_at) : ""}</span>
                             <Button
                               size="sm"
                               variant="outline"
