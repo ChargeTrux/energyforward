@@ -17,6 +17,7 @@
     --ef-hair: rgba(238, 234, 226, 0.10);
     --ef-gutter: clamp(24px, 5vw, 64px);
     --admin-status-success: 158 57% 60%;
+    --admin-status-active: 211 100% 70%;
     --admin-status-pending: 40 91% 62%;
     --admin-status-neutral: 217 16% 64%;
     --admin-status-issue: 0 88% 74%;

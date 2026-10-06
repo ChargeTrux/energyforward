@@ -179,6 +179,13 @@
 .ef-admin .ef-user-status { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; line-height: 1.5; color: var(--user-status-color); }
 .ef-admin .ef-user-status i { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: var(--user-status-color); }
 .ef-admin .ef-user-status--success, .ef-admin .ef-access-user--success { --user-status-color: hsl(var(--admin-status-success)); }
+.ef-admin .ef-user-status--active, .ef-admin .ef-access-user--active { --user-status-color: hsl(var(--admin-status-active)); }
+.ef-admin .ef-access-summary { display: flex; align-items: center; gap: 12px; }
+.ef-admin .ef-access-toggle { display: flex; flex: 1; min-width: 0; height: auto; padding: 0; gap: 16px; justify-content: space-between; white-space: normal; text-align: left; color: var(--ef-text); }
+.ef-admin .ef-access-toggle:hover { background: transparent; }
+.ef-admin .ef-access-identity { min-width: 0; overflow-wrap: anywhere; }
+.ef-admin .ef-access-indicator { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 12px; }
+.ef-admin .ef-access-summary input { accent-color: hsl(var(--admin-status-success)); flex-shrink: 0; }
 .ef-admin .ef-user-status--pending, .ef-admin .ef-access-user--pending { --user-status-color: hsl(var(--admin-status-pending)); }
 .ef-admin .ef-user-status--neutral, .ef-admin .ef-access-user--neutral { --user-status-color: hsl(var(--admin-status-neutral)); }
 .ef-admin .ef-user-status--issue, .ef-admin .ef-access-user--issue { --user-status-color: hsl(var(--admin-status-issue)); }
@@ -197,4 +204,6 @@
 @media (max-width: 640px) {
   .ef-admin .ef-access-list { max-height: 70svh; }
   .ef-admin .ef-access-user { padding: 14px; }
+  .ef-admin .ef-access-toggle { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .ef-admin .ef-access-indicator { justify-content: flex-start; }
 }

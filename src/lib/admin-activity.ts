@@ -14,10 +14,15 @@ export function activityInRange(timestamp: string | null | undefined, preset: Ac
   return (start === null || time >= start) && (end === null || time < end);
 }
 
-export function userAccessStatus(user: { is_active: boolean; invite_sent_at?: string | null; is_admin?: boolean; is_investor?: boolean; is_video?: boolean; is_customer?: boolean }, lastLogin?: string) {
+export function userAccessStatus(user: { is_active: boolean; invite_sent_at?: string | null; is_admin?: boolean; is_investor?: boolean; is_video?: boolean; is_customer?: boolean }, lastLogin?: string, lastActivity?: string, now = new Date()) {
   const hasPortal = user.is_admin || user.is_investor || user.is_video || user.is_customer;
   if (!user.is_active) return { tone: "issue", label: "Sign-in blocked — suspended" };
   if (user.invite_sent_at && !hasPortal) return { tone: "issue", label: "Access needed — no portal selected" };
+  const activityTime = lastActivity ? new Date(lastActivity).getTime() : NaN;
+  const age = now.getTime() - activityTime;
+  if (hasPortal && age >= 0 && age < 5 * 60 * 1000 && (!user.invite_sent_at || activityTime >= new Date(user.invite_sent_at).getTime())) {
+    return { tone: "active", label: "Recently active on website" };
+  }
   if (lastLogin && (!user.invite_sent_at || new Date(lastLogin).getTime() >= new Date(user.invite_sent_at).getTime())) {
     return { tone: "success", label: "Signed in successfully" };
   }
