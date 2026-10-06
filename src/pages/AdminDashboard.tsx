@@ -1292,6 +1292,95 @@ export default function AdminDashboard() {
         </CardContent>
       </Collapse>
 
+<Collapse title={<>
+            <Users className="w-5 h-5" /> Import Users
+</>}>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Upload a list of people to create their accounts all at once. No emails are sent during
+            import — afterwards, assign each person's access and send their invite individually from
+            the Access manager above.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" variant="outline" onClick={downloadImportTemplate}>
+              Download template (CSV)
+            </Button>
+            <Input
+              type="file"
+              accept=".csv,text/csv"
+              className="max-w-xs"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) parseImportFile(f);
+              }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            The template has three columns: <code>first_name</code>, <code>last_name</code>,{" "}
+            <code>email</code>. Fill in one person per row and save it as a CSV file (in Excel or
+            Google Sheets: File → Download → CSV).
+          </p>
+          {importRows.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-sm">
+                <strong>{importRows.length}</strong> people found in <em>{importFileName}</em>:
+              </p>
+              <div className="max-h-64 overflow-auto rounded border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      {importResults && <TableHead>Result</TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {importRows.map((r) => {
+                      const res = importResults?.find(
+                        (x) => x.email.toLowerCase() === r.email.toLowerCase(),
+                      );
+                      return (
+                        <TableRow key={r.email}>
+                          <TableCell>{r.full_name || "—"}</TableCell>
+                          <TableCell>{r.email}</TableCell>
+                          {importResults && (
+                            <TableCell>
+                              {res ? (
+                                <Badge variant={res.ok ? "secondary" : "destructive"}>
+                                  {res.message}
+                                </Badge>
+                              ) : (
+                                "—"
+                              )}
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="flex gap-2">
+                <Button type="button" onClick={runBulkImport} disabled={busy}>
+                  Import {importRows.length} people
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setImportRows([]);
+                    setImportResults(null);
+                    setImportFileName("");
+                  }}
+                >
+                  Clear
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Collapse>
+
 <Collapse title={<><FolderOpen className="w-5 h-5" /> Investor Materials</>}><div className="px-6 pb-6 space-y-4"><Collapse nested title={<>Documents — profile folders
 </>}>
         <CardContent>
