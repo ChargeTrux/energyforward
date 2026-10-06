@@ -489,6 +489,21 @@ Deno.serve(async (req) => {
       const { user_id } = body;
       if (!user_id) return json({ error: "Missing user_id" }, 400);
       if (user_id === userData.user.id) return json({ error: "Cannot delete yourself" }, 400);
+      // Remove related rows first — some foreign keys don't cascade, which
+      // would make the auth delete fail with a database error.
+      const relatedTables = [
+        "page_views",
+        "login_sessions",
+        "investor_video_access",
+        "investor_profile_access",
+        "page_access",
+        "user_roles",
+        "profiles",
+      ];
+      for (const table of relatedTables) {
+        const { error: delErr } = await admin.from(table).delete().eq("user_id", user_id);
+        if (delErr) console.error(`Cleanup ${table} failed:`, delErr.message);
+      }
       const { error } = await admin.auth.admin.deleteUser(user_id);
       if (error) return json({ error: error.message }, 400);
       return json({ ok: true });
