@@ -540,6 +540,7 @@ export default function AdminDashboard() {
     return rows;
   }, [filteredActivity, activitySort]);
 
+  const [selectedInvitees, setSelectedInvitees] = useState<string[]>([]);
   const callAdmin = async (action: string, payload: Record<string, unknown>) => {
     setBusy(true);
     const { data, error } = await supabase.functions.invoke("admin-users", {
@@ -1094,8 +1095,54 @@ export default function AdminDashboard() {
             placeholder="Search by name or email…"
             value={accessSearch}
             onChange={(e) => setAccessSearch(e.target.value)}
-            className="mb-4 max-w-sm"
+            className="mb-3 max-w-sm"
           />
+          <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const visible = profiles
+                  .filter((u) => !u.is_admin || u.is_investor || u.is_video)
+                  .filter((u) => `${u.full_name ?? ""} ${u.email}`.toLowerCase().includes(accessSearch.toLowerCase()))
+                  .map((u) => u.user_id);
+                setSelectedInvitees((s) => (s.length === visible.length ? [] : visible));
+              }}
+            >
+              {selectedInvitees.length ? "Clear selection" : "Select all shown"}
+            </Button>
+            <span className="text-muted-foreground">{selectedInvitees.length} selected</span>
+            <Button
+              size="sm"
+              disabled={!selectedInvitees.length || busy}
+              onClick={async () => {
+                if (!window.confirm(`Send first-time invites to ${selectedInvitees.length} people? Each gets a new temporary password.`)) return;
+                const res = await callAdmin("send_welcome", { user_ids: selectedInvitees, app_origin: window.location.origin });
+                if (res) {
+                  const r = res as { sent: number; total: number };
+                  toast({ title: `Invites sent: ${r.sent} of ${r.total}` });
+                  setSelectedInvitees([]);
+                }
+              }}
+            >
+              Send invite to selected
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!selectedInvitees.length || busy}
+              onClick={async () => {
+                if (!window.confirm(`Send reset-password links to ${selectedInvitees.length} people?`)) return;
+                for (const id of selectedInvitees) {
+                  const p = profiles.find((x) => x.user_id === id);
+                  if (p) await callAdmin("send_reset", { email: p.email });
+                }
+                setSelectedInvitees([]);
+              }}
+            >
+              Send reset link to selected
+            </Button>
+          </div>
           <div className="space-y-3 max-h-[640px] overflow-y-auto pr-1">
             {profiles
               .filter((u) => !u.is_admin || u.is_investor || u.is_video)
@@ -1124,11 +1171,32 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <label className="flex items-center gap-1 text-xs mr-1">
+                        <input
+                          type="checkbox"
+                          checked={selectedInvitees.includes(u.user_id)}
+                          onChange={(e) =>
+                            setSelectedInvitees((s) =>
+                              e.target.checked ? [...s, u.user_id] : s.filter((x) => x !== u.user_id),
+                            )
+                          }
+                        />
+                        Select
+                      </label>
                       {u.is_active === false && (
                         <span className="ef-badge ef-badge--off">Suspended</span>
                       )}
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          if (!window.confirm(`Send a first-time invite to ${u.email}? A new temporary password will be emailed.`)) return;
+                          callAdmin("send_welcome", { user_ids: [u.user_id], app_origin: window.location.origin });
+                        }}
+                      >
+                        Send invite
+                      </Button>
                       <Button size="sm" variant="outline" onClick={() => callAdmin("send_reset", { email: u.email })}>
-                        Resend link / reset password
+                        Send reset password link
                       </Button>
                       <Button
                         size="sm"
