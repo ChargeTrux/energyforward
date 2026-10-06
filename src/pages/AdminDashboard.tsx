@@ -212,6 +212,11 @@ export default function AdminDashboard() {
   const [inviteCustomer, setInviteCustomer] = useState(false);
   const [inviteVideo, setInviteVideo] = useState(false);
   const [inviteAdmin, setInviteAdmin] = useState(false);
+  const [importRows, setImportRows] = useState<{ full_name: string; email: string }[]>([]);
+  const [importFileName, setImportFileName] = useState("");
+  const [importResults, setImportResults] = useState<
+    { email: string; ok: boolean; message: string }[] | null
+  >(null);
   const [investorProfiles, setInvestorProfiles] = useState<InvestorProfile[]>([]);
   const [investorAccess, setInvestorAccess] = useState<InvestorAccessRow[]>([]);
   const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>([]);
