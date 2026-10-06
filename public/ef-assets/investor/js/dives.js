@@ -12,7 +12,7 @@
   const DEST = {
     rideshare: {
       tag: '03 · arrival',
-      img: 'img/ef-dest-rideshare.png',
+      img: '/ef-assets/investor/img/ef-dest-rideshare.png',
       label: 'autonomous & ride-share depot',
       claim: 'electrons arrive where the wheels are already turning.',
       sub: 'energytrux docks at the depot. dc fast charging runs while the next rotation of vehicles queues. no interconnect. no demand-charge surprise.',
@@ -24,7 +24,7 @@
     },
     drayage: {
       tag: '03 · arrival',
-      img: 'img/ef-dest-drayage.png',
+      img: '/ef-assets/investor/img/ef-dest-drayage.png',
       label: 'port · drayage yard',
       claim: 'power lands inside the terminal gate, not on a waitlist.',
       sub: 'energytrux pulls into the yard. tractors charge between turns. the port meets its zero-emission deadline without waiting on a substation upgrade.',
@@ -36,7 +36,7 @@
     },
     warehouse: {
       tag: '03 · arrival',
-      img: 'img/ef-dest-warehouse.png',
+      img: '/ef-assets/investor/img/ef-dest-warehouse.png',
       label: 'flagship off-grid building',
       claim: 'the building runs on power that was scheduled, not requested.',
       sub: 'a chargehub holds capacity on-site. energytrux refills it on cycle. the tenant occupies a building the grid said wouldn\'t be ready until 2028.',
@@ -48,7 +48,7 @@
     },
     datacenter: {
       tag: '03 · arrival',
-      img: 'img/ef-dest-datacenter.png',
+      img: '/ef-assets/investor/img/ef-dest-datacenter.png',
       label: 'hyperscaler · bridge load',
       claim: 'the rack lights up while the substation is still being built.',
       sub: 'a demandhub at the campus accepts back-to-back energytrux deliveries. the operator gets revenue-bearing capacity now and decommissions to standby when permanent power arrives.',
@@ -60,7 +60,7 @@
     },
     chargehub: {
       tag: '03 · arrival',
-      img: 'img/ef-dest-chargehub.png',
+      img: '/ef-assets/investor/img/ef-dest-chargehub.png',
       label: 'chargehub · stationary site',
       claim: 'a charging site that doesn\'t need a transformer upgrade.',
       sub: 'the chargehub sits behind the meter or fully off-grid. energytrux replenishes the battery overnight. utilization stays high; demand charges stay low.',
@@ -76,7 +76,7 @@
   function scene1(claim, sub){
     return {
       tag: '01 · load-out',
-      img: 'img/ef-platform-schematic.png',
+      img: '/ef-assets/investor/img/ef-platform-schematic.png',
       claim: claim || 'an energyhub fills a 4 mwh container.',
       sub: sub || 'solar generation, behind-the-meter. battery state-of-charge climbs to 100%. an energytrux backs in and couples.'
     };
@@ -84,7 +84,7 @@
   function scene2(claim, sub){
     return {
       tag: '02 · transit',
-      img: 'img/ef-highway-pull.png',
+      img: '/ef-assets/investor/img/ef-highway-pull.png',
       claim: claim || 'the container moves to where the load is.',
       sub: sub || 'highway transit, not interconnect queue. distance is a routing problem, not a permitting problem.'
     };

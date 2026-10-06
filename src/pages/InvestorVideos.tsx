@@ -75,6 +75,9 @@ export default function InvestorVideos() {
   const playerRef = useRef<HTMLDivElement>(null);
   const videoElRef = useRef<HTMLVideoElement>(null);
   const pendingPlayRef = useRef(false);
+  const searchParamsRef = useRef(searchParams);
+  searchParamsRef.current = searchParams;
+  const activeIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     document.title = "energyforward · investor videos";
@@ -91,15 +94,17 @@ export default function InvestorVideos() {
         const available = (body.videos ?? []) as Video[];
         setVideos(available);
         setFullPortalAccess(Boolean(body.fullPortalAccess));
-        const requested = searchParams.get("video");
+        const requested = searchParamsRef.current.get("video");
         setActive(available.find((video) => video.id === requested) ?? available[0] ?? null);
       }
       setLoading(false);
     })();
-  }, [user, authLoading, searchParams]);
+  }, [user, authLoading]);
 
   useEffect(() => {
     if (!active) return;
+    if (activeIdRef.current === active.id) { pendingPlayRef.current = false; return; }
+    activeIdRef.current = active.id;
     let cancelled = false;
     setLoadingVideo(true);
     setSrc(null);
@@ -136,7 +141,7 @@ export default function InvestorVideos() {
   const selectNextVideo = () => {
     const currentIndex = videos.findIndex((video) => video.id === active?.id);
     const next = videos[currentIndex + 1];
-    if (next) selectVideo(next, false);
+    if (next) selectVideo(next, false, true);
   };
 
   return (
