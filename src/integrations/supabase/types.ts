@@ -308,6 +308,7 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          invite_sent_at: string | null
           is_active: boolean
           must_change_password: boolean
           updated_at: string
@@ -318,6 +319,7 @@ export type Database = {
           email: string
           full_name?: string | null
           id?: string
+          invite_sent_at?: string | null
           is_active?: boolean
           must_change_password?: boolean
           updated_at?: string
@@ -328,6 +330,7 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          invite_sent_at?: string | null
           is_active?: boolean
           must_change_password?: boolean
           updated_at?: string
