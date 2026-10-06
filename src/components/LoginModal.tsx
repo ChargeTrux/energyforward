@@ -71,10 +71,18 @@ export function LoginModal({ open, onOpenChange, defaultEmail }: LoginModalProps
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      let { data, error } = await supabase.auth.signInWithPassword({
         email: validation.data.email,
         password: validation.data.password,
       });
+      // Copy-pasting a temporary password from an email often adds stray spaces.
+      const trimmed = validation.data.password.trim();
+      if (error && trimmed !== validation.data.password && trimmed.length >= 8) {
+        ({ data, error } = await supabase.auth.signInWithPassword({
+          email: validation.data.email,
+          password: trimmed,
+        }));
+      }
 
       if (error) {
         toast({

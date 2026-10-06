@@ -154,10 +154,13 @@
       const fd = new FormData(form);
       try {
         const sb = await getSupabase();
-        const { data, error } = await sb.auth.signInWithPassword({
-          email: String(fd.get('email') || '').trim(),
-          password: String(fd.get('password') || ''),
-        });
+        const em = String(fd.get('email') || '').trim();
+        const pw = String(fd.get('password') || '');
+        let { data, error } = await sb.auth.signInWithPassword({ email: em, password: pw });
+        // copy-pasted temp passwords often carry stray spaces
+        if (error && pw.trim() !== pw && pw.trim().length >= 8) {
+          ({ data, error } = await sb.auth.signInWithPassword({ email: em, password: pw.trim() }));
+        }
         if (error || !data?.user) {
           throw new Error(error?.message || 'invalid credentials');
         }
