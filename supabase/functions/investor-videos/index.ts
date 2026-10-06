@@ -114,11 +114,11 @@ Deno.serve(async (req) => {
   try {
     if (!LOVABLE_API_KEY || !DRIVE_KEY) return json({ error: "Google Drive is not connected." }, 500);
     const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
-    if (!token) return json({ error: "Not signed in" }, 401);
+    if (!token) return json({ error: "Not signed in (no token)" }, 401);
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const { data: userData } = await admin.auth.getUser(token);
+    const { data: userData, error: userError } = await admin.auth.getUser(token);
     const user = userData?.user;
-    if (!user) return json({ error: "Not signed in" }, 401);
+    if (!user) return json({ error: `Not signed in (${userError?.message ?? "invalid token"})` }, 401);
     const { data: isAdmin } = await admin.rpc("has_role", { _user_id: user.id, _role: "admin" });
     const { data: roleRows } = await admin.from("user_roles").select("role").eq("user_id", user.id);
     const roles = new Set((roleRows ?? []).map((row: { role: string }) => row.role));
