@@ -44,7 +44,16 @@
   }
 
   function applyRoute(decision) {
-    if (decision.kind === 'unlock') return unlock();
+    if (decision.kind === 'unlock') {
+      if (decision.fresh) {
+        // a sign-in inside this frame is invisible to the parent app — reload
+        // the top window so it picks up the new session (Documents button, nav)
+        try { window.top.location.reload(); return; } catch (_) {}
+        window.location.reload();
+        return;
+      }
+      return unlock();
+    }
     if (decision.kind === 'redirect') {
       try { window.top.location.replace(decision.to); }
       catch { window.location.replace(decision.to); }
