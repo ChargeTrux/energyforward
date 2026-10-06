@@ -222,6 +222,7 @@ export default function AdminDashboard() {
   const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>([]);
   const [videoCatalog, setVideoCatalog] = useState<VideoCatalogItem[]>([]);
   const [videoCatalogMsg, setVideoCatalogMsg] = useState("Loading videos…");
+  const [optimizingVideoId, setOptimizingVideoId] = useState<string | null>(null);
   const [videoAccess, setVideoAccess] = useState<{ user_id: string; file_id: string }[]>([]);
   const [selectedVideoIds, setSelectedVideoIds] = useState<string[]>([]);
   const [videoDescriptionDrafts, setVideoDescriptionDrafts] = useState<Record<string, string>>({});
@@ -823,6 +824,31 @@ export default function AdminDashboard() {
     const url = `${window.location.origin}/investor/videos?video=${encodeURIComponent(fileId)}&login=1`;
     await navigator.clipboard.writeText(url);
     toast({ title: "Video link copied", description: "The recipient must sign in and have access to this video." });
+  };
+
+  const optimizeVideo = async (video: VideoCatalogItem) => {
+    setOptimizingVideoId(video.id);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const res = await fetch(
+      `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/investor-videos?action=optimize&file_id=${encodeURIComponent(video.id)}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${sessionData.session?.access_token ?? ""}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
+        },
+      },
+    );
+    const body = await res.json().catch(() => ({}));
+    setOptimizingVideoId(null);
+    if (!res.ok) {
+      toast({ title: "Could not optimize", description: body.error ?? "Please try again.", variant: "destructive" });
+      return;
+    }
+    toast({
+      title: body.already ? "Already optimized" : "Video optimized",
+      description: body.already ? `${video.name} already starts playing fast.` : `${video.name} will now start playing much faster.`,
+    });
   };
 
   const saveVideoDescription = async (video: VideoCatalogItem) => {
