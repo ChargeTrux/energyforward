@@ -1365,7 +1365,7 @@ export default function AdminDashboard() {
                   </div>
                 );
               })}
-            {visibleAccessProfiles.length === 0 && <p className="py-8 text-center text-muted-foreground">No users match your search.</p>}
+            {visibleAccessProfiles.length === 0 && <p className="py-8 text-center text-muted-foreground">No users match your search or filters.</p>}
           </div>
         </CardContent>
       </Card>
