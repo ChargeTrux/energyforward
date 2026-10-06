@@ -236,6 +236,38 @@ export default function AdminDashboard() {
   const [busy, setBusy] = useState(false);
   const [accessSearch, setAccessSearch] = useState("");
   const accessListRef = useRef<HTMLDivElement>(null);
+  const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
+  const [recentActivity, setRecentActivity] = useState<Map<string, string>>(new Map());
+  const [activityNow, setActivityNow] = useState(new Date());
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+    const refresh = async () => {
+      const now = new Date();
+      const since = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
+      const [{ data: sessions, error: sessionError }, { data: views, error: viewError }] = await Promise.all([
+        supabase.from("login_sessions").select("id, user_id, login_at, logout_at").is("logout_at", null),
+        supabase.from("page_views").select("user_id, session_id, entered_at").gte("entered_at", since),
+      ]);
+      if (cancelled) return;
+      setActivityNow(now);
+      if (sessionError || viewError) { setRecentActivity(new Map()); return; }
+      const openSessions = new Set((sessions ?? []).map((s) => s.id));
+      const latest = new Map<string, string>();
+      const record = (id: string, time: string) => {
+        if (time >= since && time > (latest.get(id) ?? "")) latest.set(id, time);
+      };
+      (sessions ?? []).forEach((s) => record(s.user_id, s.login_at));
+      (views ?? []).forEach((v) => {
+        if (v.session_id && openSessions.has(v.session_id)) record(v.user_id, v.entered_at);
+      });
+      setRecentActivity(latest);
+    };
+    void refresh();
+    const timer = window.setInterval(() => { void refresh(); }, 30000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, [isAdmin]);
   const [tempCred, setTempCred] = useState<{ email: string; password: string } | null>(null);
   const [pendingAdminUser, setPendingAdminUser] = useState<UserListRow | null>(null);
   const [confirmAdminInvite, setConfirmAdminInvite] = useState(false);
@@ -1102,12 +1134,15 @@ export default function AdminDashboard() {
             className="max-w-sm"
           />
           <span className="text-sm text-muted-foreground">{visibleAccessProfiles.length} users</span>
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex flex-wrap items-center gap-2 ml-auto">
+            <Button size="sm" variant="outline" className="ef-ghost-btn" onClick={() => setExpandedUsers((current) => new Set([...current, ...visibleAccessProfiles.map((u) => u.user_id)]))}>Expand all</Button>
+            <Button size="sm" variant="outline" className="ef-ghost-btn" onClick={() => setExpandedUsers(new Set())}>Collapse all</Button>
             <Button size="icon" variant="outline" className="ef-ghost-btn" aria-label="Scroll users up" title="Scroll users up" onClick={() => accessListRef.current?.scrollBy({ top: -420, behavior: "smooth" })}><ArrowUp className="h-4 w-4" /></Button>
             <Button size="icon" variant="outline" className="ef-ghost-btn" aria-label="Scroll users down" title="Scroll users down" onClick={() => accessListRef.current?.scrollBy({ top: 420, behavior: "smooth" })}><ArrowDown className="h-4 w-4" /></Button>
           </div>
           </div>
           <div className="ef-status-legend" aria-label="User status legend">
+            <span className="ef-user-status ef-user-status--active" title="Recorded sign-in or page visit within the last five minutes"><i aria-hidden="true" />Recently active</span>
             <span className="ef-user-status ef-user-status--success"><i aria-hidden="true" />Signed in</span>
             <span className="ef-user-status ef-user-status--pending"><i aria-hidden="true" />Invite pending</span>
             <span className="ef-user-status ef-user-status--neutral"><i aria-hidden="true" />Not invited</span>
@@ -1158,7 +1193,8 @@ export default function AdminDashboard() {
           </div>
           <div ref={accessListRef} className="ef-access-list always-scrollbar space-y-3" tabIndex={0} role="region" aria-label="User access list">
             {visibleAccessProfiles.map((u) => {
-                 const status = userAccessStatus(u, lastLogins.get(u.user_id));
+                 const status = userAccessStatus(u, lastLogins.get(u.user_id), recentActivity.get(u.user_id), activityNow);
+                 const expanded = expandedUsers.has(u.user_id);
                 const folders = investorProfiles.filter((p) =>
                   investorAccess.some((a) => a.user_id === u.user_id && a.profile_id === p.id),
                 );
@@ -1167,34 +1203,26 @@ export default function AdminDashboard() {
                 );
                 return (
                   <div key={u.user_id} className={`ef-access-user ef-access-user--${status.tone}`}>
-                    <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <div>
-                        <span className="font-semibold">{u.full_name || "—"}</span>{" "}
-                        <span className="text-xs text-muted-foreground">{u.email}</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        <span className={`ef-user-status ef-user-status--${status.tone}`} title={lastLogins.get(u.user_id) ? `Last successful sign-in: ${formatCompact(lastLogins.get(u.user_id) ?? "")}` : status.label}><i aria-hidden="true" />{status.label}</span>
-                        <div className="mt-1">
-                        {u.is_investor ? "Full investor portal" : u.is_video ? "Video page only" : "No portal access"}
-                        {" · "}
-                        {folders.length} folder{folders.length === 1 ? "" : "s"} · {vids.length} video
-                        {vids.length === 1 ? "" : "s"}
-                        </div>
-                      </div>
+                    <div className="ef-access-summary">
+                      <input type="checkbox" aria-label={`Select ${u.full_name || u.email}`} checked={selectedInvitees.includes(u.user_id)} onChange={(e) => setSelectedInvitees((current) => e.target.checked ? [...current, u.user_id] : current.filter((id) => id !== u.user_id))} />
+                      <Button variant="ghost" className="ef-access-toggle" aria-expanded={expanded} aria-controls={`access-${u.user_id}`} onClick={() => setExpandedUsers((current) => {
+                        const next = new Set(current);
+                        if (next.has(u.user_id)) next.delete(u.user_id); else next.add(u.user_id);
+                        return next;
+                      })}>
+                        <span className="ef-access-identity">
+                          <span className="block font-semibold">{u.full_name || "—"}</span>
+                          <span className="block text-xs text-muted-foreground">{u.email}</span>
+                          <span className="block mt-1 text-xs text-muted-foreground">{getRoleLabel(u)} · {folders.length} folders · {vids.length} videos</span>
+                        </span>
+                        <span className="ef-access-indicator">
+                          <span className={`ef-user-status ef-user-status--${status.tone}`} title={status.tone === "active" ? `Activity recorded: ${formatCompact(recentActivity.get(u.user_id) ?? "")} (within five minutes)` : lastLogins.get(u.user_id) ? `Last successful sign-in: ${formatCompact(lastLogins.get(u.user_id) ?? "")}` : status.label}><i aria-hidden="true" />{status.label}</span>
+                          <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`} />
+                        </span>
+                      </Button>
                     </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <label className="flex items-center gap-1 text-xs mr-1">
-                        <input
-                          type="checkbox"
-                          checked={selectedInvitees.includes(u.user_id)}
-                          onChange={(e) =>
-                            setSelectedInvitees((s) =>
-                              e.target.checked ? [...s, u.user_id] : s.filter((x) => x !== u.user_id),
-                            )
-                          }
-                        />
-                        Select
-                      </label>
+                    <div id={`access-${u.user_id}`} hidden={!expanded}>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
                       {u.is_active === false && (
                         <span className="ef-badge ef-badge--off">Suspended</span>
                       )}
@@ -1277,6 +1305,7 @@ export default function AdminDashboard() {
                           </label>
                         ))}
                       </div>
+                    </div>
                     </div>
                   </div>
                 );
