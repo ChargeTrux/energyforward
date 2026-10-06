@@ -212,6 +212,11 @@ export default function AdminDashboard() {
   const [inviteCustomer, setInviteCustomer] = useState(false);
   const [inviteVideo, setInviteVideo] = useState(false);
   const [inviteAdmin, setInviteAdmin] = useState(false);
+  const [importRows, setImportRows] = useState<{ full_name: string; email: string }[]>([]);
+  const [importFileName, setImportFileName] = useState("");
+  const [importResults, setImportResults] = useState<
+    { email: string; ok: boolean; message: string }[] | null
+  >(null);
   const [investorProfiles, setInvestorProfiles] = useState<InvestorProfile[]>([]);
   const [investorAccess, setInvestorAccess] = useState<InvestorAccessRow[]>([]);
   const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>([]);
@@ -581,6 +586,72 @@ export default function AdminDashboard() {
       setInviteAdmin(false);
       setSelectedProfileIds([]);
       setSelectedVideoIds([]);
+    }
+  };
+
+  const downloadImportTemplate = () => {
+    const csv =
+      "first_name,last_name,email\nJane,Doe,jane@example.com\nJohn,Smith,john@example.com\n";
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "user-import-template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const parseImportFile = async (file: File) => {
+    const text = await file.text();
+    const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (lines.length === 0) return;
+    const splitLine = (line: string) => {
+      // Minimal CSV split with quote support
+      const out: string[] = [];
+      let cur = "";
+      let inQ = false;
+      for (const ch of line) {
+        if (ch === '"') inQ = !inQ;
+        else if (ch === "," && !inQ) { out.push(cur.trim()); cur = ""; }
+        else cur += ch;
+      }
+      out.push(cur.trim());
+      return out;
+    };
+    const header = splitLine(lines[0]).map((h) => h.toLowerCase());
+    const hasHeader = header.includes("email");
+    const emailIdx = hasHeader ? header.indexOf("email") : 2;
+    const firstIdx = hasHeader ? header.indexOf("first_name") : 0;
+    const lastIdx = hasHeader ? header.indexOf("last_name") : 1;
+    const rows: { full_name: string; email: string }[] = [];
+    for (const line of lines.slice(hasHeader ? 1 : 0)) {
+      const cols = splitLine(line);
+      const email = cols[emailIdx] ?? "";
+      if (!email) continue;
+      const full_name = [cols[firstIdx], cols[lastIdx]].filter(Boolean).join(" ").trim();
+      rows.push({ full_name, email });
+    }
+    setImportRows(rows);
+    setImportResults(null);
+    setImportFileName(file.name);
+    if (rows.length === 0) {
+      toast({ title: "No rows found", description: "The file needs an email column.", variant: "destructive" });
+    }
+  };
+
+  const runBulkImport = async () => {
+    if (importRows.length === 0) return;
+    const data = (await callAdmin("bulk_import", { people: importRows })) as {
+      imported?: number;
+      total?: number;
+      results?: { email: string; ok: boolean; message: string }[];
+    } | null;
+    if (data) {
+      setImportResults(data.results ?? []);
+      toast({
+        title: "Import finished",
+        description: `${data.imported ?? 0} of ${data.total ?? importRows.length} people added. Assign access and invite them from the Access manager above.`,
+      });
     }
   };
 
@@ -1218,6 +1289,95 @@ export default function AdminDashboard() {
             A temporary password will be generated. The user will be required to
             change it on first sign-in.
           </p>
+        </CardContent>
+      </Collapse>
+
+<Collapse title={<>
+            <Users className="w-5 h-5" /> Import Users
+</>}>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Upload a list of people to create their accounts all at once. No emails are sent during
+            import — afterwards, assign each person's access and send their invite individually from
+            the Access manager above.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" variant="outline" onClick={downloadImportTemplate}>
+              Download template (CSV)
+            </Button>
+            <Input
+              type="file"
+              accept=".csv,text/csv"
+              className="max-w-xs"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) parseImportFile(f);
+              }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            The template has three columns: <code>first_name</code>, <code>last_name</code>,{" "}
+            <code>email</code>. Fill in one person per row and save it as a CSV file (in Excel or
+            Google Sheets: File → Download → CSV).
+          </p>
+          {importRows.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-sm">
+                <strong>{importRows.length}</strong> people found in <em>{importFileName}</em>:
+              </p>
+              <div className="max-h-64 overflow-auto rounded border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      {importResults && <TableHead>Result</TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {importRows.map((r) => {
+                      const res = importResults?.find(
+                        (x) => x.email.toLowerCase() === r.email.toLowerCase(),
+                      );
+                      return (
+                        <TableRow key={r.email}>
+                          <TableCell>{r.full_name || "—"}</TableCell>
+                          <TableCell>{r.email}</TableCell>
+                          {importResults && (
+                            <TableCell>
+                              {res ? (
+                                <Badge variant={res.ok ? "secondary" : "destructive"}>
+                                  {res.message}
+                                </Badge>
+                              ) : (
+                                "—"
+                              )}
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="flex gap-2">
+                <Button type="button" onClick={runBulkImport} disabled={busy}>
+                  Import {importRows.length} people
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setImportRows([]);
+                    setImportResults(null);
+                    setImportFileName("");
+                  }}
+                >
+                  Clear
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Collapse>
 
