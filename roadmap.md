@@ -1,5 +1,8 @@
 # Roadmap
 
+- [ ] Add Today and individual-user audit filters, accurate invite events, user status lights, and visible Access manager scrolling.
+- [ ] Verify admin improvements without sending any emails (authenticated checks may require external sign-in).
+
 - [x] Refine the active video title and description presentation.
 - [x] Add automatic same-name text/Word descriptions with admin manual fallback editing.
 - [x] Improve protected video startup and seeking performance.
