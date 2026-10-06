@@ -103,7 +103,7 @@ export function LoginModal({ open, onOpenChange, defaultEmail }: LoginModalProps
   };
 
   const handleForgot = async () => {
-    if (!email) {
+    if (!email.trim()) {
       toast({ title: "Enter your email first", variant: "destructive" });
       return;
     }
@@ -165,6 +165,29 @@ export function LoginModal({ open, onOpenChange, defaultEmail }: LoginModalProps
             </p>
           </DialogHeader>
 
+          {showForgot ? (
+            <div className="space-y-4 mt-6">
+              <p style={{ fontSize: 14, color: "rgba(238,234,226,0.75)", textAlign: "center" }}>
+                Enter your email and we'll send you a link to set a new password.
+              </p>
+              <Input
+                type="email"
+                autoFocus
+                placeholder="you@company.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                style={{ background: "rgba(10,42,46,0.55)", border: "1px solid rgba(238,234,226,0.18)", color: "#EEEAE2", borderRadius: 10, height: 46 }}
+              />
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowForgot(false)} style={{ flex: 1, padding: "13px 20px", background: "transparent", border: "1px solid rgba(238,234,226,0.25)", color: "#EEEAE2", borderRadius: 999, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
+                  back to sign in
+                </button>
+                <button type="button" onClick={handleForgot} disabled={isLoading} style={{ flex: 1, padding: "13px 20px", background: "#E8B14A", border: "none", color: "#0A2A2E", borderRadius: 999, fontWeight: 600, fontSize: 14, cursor: isLoading ? "wait" : "pointer", opacity: isLoading ? 0.7 : 1 }}>
+                  {isLoading ? "sending…" : "send reset link"}
+                </button>
+              </div>
+            </div>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-4 mt-6">
             <div className="space-y-2">
               <Label
@@ -231,7 +254,7 @@ export function LoginModal({ open, onOpenChange, defaultEmail }: LoginModalProps
             <div className="text-right">
               <button
                 type="button"
-                onClick={handleForgot}
+                onClick={() => setShowForgot(true)}
                 disabled={isLoading}
                 style={{
                   fontFamily: '"JetBrains Mono", ui-monospace, monospace',
@@ -306,6 +329,7 @@ export function LoginModal({ open, onOpenChange, defaultEmail }: LoginModalProps
               </a>
             </div>
           </form>
+          )}
         </div>
       </DialogContent>
     </Dialog>
