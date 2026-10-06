@@ -206,6 +206,64 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    if (action === "optimize") {
+      if (!isAdmin) return json({ error: "Admins only" }, 403);
+      if (!fileId) return json({ error: "Missing video" }, 400);
+      const allFiles = await listFolder();
+      const meta = allFiles.find((file) => file.id === fileId);
+      if (!meta) return json({ error: "Video not found" }, 404);
+      if (meta.mimeType !== "video/mp4" && !meta.name.toLowerCase().endsWith(".mp4"))
+        return json({ error: "Only MP4 videos can be optimized" }, 400);
+      const size = Number(meta.size ?? 0);
+      if (!size) return json({ error: "Unknown video size" }, 400);
+      const head = await rangeGet(fileId, 0, Math.min(size, 262144) - 1);
+      const boxes = parseBoxes(head, Math.min(size, head.length));
+      const moov = boxes.find((box) => box.type === "moov");
+      const mdat = boxes.find((box) => box.type === "mdat");
+      if (!moov || !mdat) return json({ error: "Could not read this video's structure" }, 400);
+      if (moov.start < mdat.start) return json({ ok: true, already: true });
+      if (moov.size > 64 * 1024 * 1024) return json({ error: "Video index too large to optimize" }, 400);
+      const moovBytes = await rangeGet(fileId, moov.start, moov.start + moov.size - 1);
+      if (!patchChunkOffsets(moovBytes, moov.size, moov.header))
+        return json({ error: "This video is too large to optimize automatically" }, 400);
+      const prefix = mdat.start <= head.length
+        ? head.subarray(0, mdat.start)
+        : await rangeGet(fileId, 0, mdat.start - 1);
+      const CHUNK = 8 * 1024 * 1024;
+      const ranges: [number, number][] = [[mdat.start, moov.start], [moov.start + moov.size, size]];
+      const stream = new ReadableStream<Uint8Array>({
+        async start(controller) {
+          controller.enqueue(prefix);
+          controller.enqueue(moovBytes);
+          for (const [from, to] of ranges) {
+            let pos = from;
+            while (pos < to) {
+              const end = Math.min(pos + CHUNK, to);
+              controller.enqueue(await rangeGet(fileId, pos, end - 1));
+              pos = end;
+            }
+          }
+          controller.close();
+        },
+      });
+      const upload = await fetch(`${GATEWAY}/upload/drive/v3/files/${fileId}?uploadType=media&supportsAllDrives=true`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "X-Connection-Api-Key": DRIVE_KEY ?? "",
+          "Content-Type": meta.mimeType || "video/mp4",
+          "Content-Length": String(size),
+        },
+        // @ts-expect-error streaming request body
+        body: stream,
+        // @ts-expect-error required for streaming bodies
+        duplex: "half",
+      });
+      if (!upload.ok) return json({ error: `Upload failed [${upload.status}]: ${await upload.text()}` }, 502);
+      folderCache = null;
+      return json({ ok: true });
+    }
+
     const files = await listFolder();
     const videos = files
     .filter((file) => file.mimeType.startsWith("video/"))
