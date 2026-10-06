@@ -63,6 +63,7 @@ Deno.serve(async (req) => {
 
     if (action === "invite") {
       const { email, full_name, role, roles, investor_profile_ids, investor_video_ids, app_origin } = body;
+      const sendEmail = body.send_email !== false;
       if (!email || typeof email !== "string") return json({ error: "Invalid email" }, 400);
 
       // Generate a strong temporary password
@@ -108,6 +109,12 @@ Deno.serve(async (req) => {
           )?.id;
         }
         if (!newUserId) return json({ error: error.message }, 400);
+        // Make the temp password in the welcome email actually work.
+        const { error: pwErr } = await admin.auth.admin.updateUserById(newUserId, {
+          password: tempPassword,
+          ban_duration: "none",
+        });
+        if (pwErr) return json({ error: pwErr.message }, 400);
       } else {
         newUserId = data.user?.id;
       }
@@ -119,7 +126,7 @@ Deno.serve(async (req) => {
           user_id: newUserId,
           email,
           full_name: full_name ?? "",
-          must_change_password: !userAlreadyExisted,
+          must_change_password: true,
           is_active: true,
         },
         { onConflict: "user_id" },
@@ -193,7 +200,7 @@ Deno.serve(async (req) => {
 
       // Send branded welcome email with credentials.
       const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-      if (RESEND_API_KEY) {
+      if (RESEND_API_KEY && sendEmail) {
         const portals: string[] = [];
         if (role === "investor" || (Array.isArray(roles) && roles.includes("investor"))) portals.push("Investor");
         if (Array.isArray(roles) && roles.includes("video")) portals.push("Video");
@@ -211,8 +218,8 @@ Deno.serve(async (req) => {
         const loginDestination = portals.includes("Video") && !portals.includes("Investor")
           ? `${requestOrigin}/investor/videos${loginParams}`
           : `${requestOrigin}/${loginParams}`;
-        if (userAlreadyExisted) {
-          // Existing user — send a password reset link instead of a temp password.
+        if (false) {
+          // (disabled) Existing user — send a password reset link instead of a temp password.
           try {
             const { data: linkData } = await admin.auth.admin.generateLink({
               type: "recovery",
@@ -258,13 +265,15 @@ Deno.serve(async (req) => {
             replyTo: tpl.replyTo,
           });
           if (!r.ok) console.error("Welcome email failed:", r.error);
+          else await admin.from("profiles").update({ invite_sent_at: new Date().toISOString() }).eq("user_id", newUserId);
         }
       }
 
       return json({
         ok: true,
         user_id: newUserId,
-        temp_password: userAlreadyExisted ? null : tempPassword,
+        temp_password: tempPassword,
+        email_sent: !!(RESEND_API_KEY && sendEmail),
         already_existed: userAlreadyExisted,
       });
     }
@@ -379,7 +388,7 @@ Deno.serve(async (req) => {
         const bytes = new Uint8Array(12);
         crypto.getRandomValues(bytes);
         const tempPassword = Array.from(bytes, (b) => b.toString(36).padStart(2, "0")).join("") + "A1!";
-        const { error: pwErr } = await admin.auth.admin.updateUserById(uid, { password: tempPassword });
+        const { error: pwErr } = await admin.auth.admin.updateUserById(uid, { password: tempPassword, ban_duration: "none" });
         if (pwErr) { results.push({ user_id: uid, email, ok: false, message: pwErr.message }); continue; }
         await admin.from("profiles").update({ must_change_password: true }).eq("user_id", uid);
         const loginParams = `?login=1&email=${encodeURIComponent(email)}`;
@@ -388,6 +397,7 @@ Deno.serve(async (req) => {
           : `${origin}/${loginParams}`;
         const tpl = welcomeEmail({ name: fullName, email, tempPassword, loginUrl, portals, investorProfiles: grantedProfiles });
         const r = await sendBrandedEmail(RESEND_API_KEY, { to: email, subject: tpl.subject, html: tpl.html, from: tpl.from, replyTo: tpl.replyTo });
+        if (r.ok) await admin.from("profiles").update({ invite_sent_at: new Date().toISOString(), is_active: true }).eq("user_id", uid);
         results.push({ user_id: uid, email, ok: r.ok, message: r.ok ? "Invite sent" : String(r.error) });
       }
       const sent = results.filter((r) => r.ok).length;
@@ -556,8 +566,23 @@ Deno.serve(async (req) => {
         const { error: delErr } = await admin.from(table).delete().eq("user_id", user_id);
         if (delErr) console.error(`Cleanup ${table} failed:`, delErr.message);
       }
+      const { data: target } = await admin.auth.admin.getUserById(user_id);
+      const targetEmail = target?.user?.email;
       const { error } = await admin.auth.admin.deleteUser(user_id);
-      if (error) return json({ error: error.message }, 400);
+      if (error && !/not.?found/i.test(error.message)) return json({ error: error.message }, 400);
+      if (targetEmail) {
+        await admin.from("profiles").delete().ilike("email", targetEmail);
+        // Remove any leftover duplicate account with the same email
+        const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+        for (const u of list?.users ?? []) {
+          if ((u.email || "").toLowerCase() === targetEmail.toLowerCase()) {
+            for (const t of relatedTables) await admin.from(t).delete().eq("user_id", u.id);
+            await admin.auth.admin.deleteUser(u.id);
+          }
+        }
+      }
+      const { data: still } = await admin.auth.admin.getUserById(user_id);
+      if (still?.user) return json({ error: "Account could not be fully removed — please try again" }, 500);
       return json({ ok: true });
     }
 
