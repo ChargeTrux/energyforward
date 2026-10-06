@@ -342,6 +342,58 @@ Deno.serve(async (req) => {
       return json({ ok: true, imported: created, total: results.length, results });
     }
 
+    if (action === "send_welcome") {
+      // First-time invite for existing (e.g. bulk-imported) accounts:
+      // sets a fresh temporary password and emails the branded welcome.
+      const { user_ids, app_origin } = body;
+      if (!Array.isArray(user_ids) || user_ids.length === 0) return json({ error: "Missing user_ids" }, 400);
+      if (user_ids.length > 200) return json({ error: "Maximum 200 at once" }, 400);
+      const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+      if (!RESEND_API_KEY) return json({ error: "Email provider not configured" }, 500);
+      const origin = (() => {
+        const raw = typeof app_origin === "string" ? app_origin : req.headers.get("origin");
+        try { const p = new URL(raw ?? EF_PORTAL_URL); return `${p.protocol}//${p.host}`; }
+        catch { return new URL(EF_PORTAL_URL).origin; }
+      })();
+      const results: { user_id: string; email?: string; ok: boolean; message: string }[] = [];
+      for (const uid of user_ids as unknown[]) {
+        if (typeof uid !== "string") continue;
+        const { data: prof } = await admin.from("profiles").select("email, full_name").eq("user_id", uid).maybeSingle();
+        const email = (prof as { email?: string } | null)?.email;
+        if (!email) { results.push({ user_id: uid, ok: false, message: "No profile" }); continue; }
+        const fullName = (prof as { full_name?: string | null }).full_name ?? "";
+        const { data: roleRows } = await admin.from("user_roles").select("role").eq("user_id", uid);
+        const portals: string[] = [];
+        for (const r of (roleRows ?? []) as Array<{ role: string }>) {
+          if (r.role === "investor") portals.push("Investor");
+          if (r.role === "video") portals.push("Video");
+          if (r.role === "customer") portals.push("Customer");
+        }
+        const { data: accessRows } = await admin.from("investor_profile_access").select("profile_id").eq("user_id", uid);
+        const pids = ((accessRows ?? []) as Array<{ profile_id: string }>).map((a) => a.profile_id);
+        let grantedProfiles: { name: string; description: string | null; drive_url: string | null }[] | null = null;
+        if (pids.length) {
+          const { data: pr } = await admin.from("investor_profiles").select("name, description, drive_url").in("id", pids).order("sort_order");
+          grantedProfiles = (pr ?? []) as typeof grantedProfiles;
+        }
+        const bytes = new Uint8Array(12);
+        crypto.getRandomValues(bytes);
+        const tempPassword = Array.from(bytes, (b) => b.toString(36).padStart(2, "0")).join("") + "A1!";
+        const { error: pwErr } = await admin.auth.admin.updateUserById(uid, { password: tempPassword });
+        if (pwErr) { results.push({ user_id: uid, email, ok: false, message: pwErr.message }); continue; }
+        await admin.from("profiles").update({ must_change_password: true }).eq("user_id", uid);
+        const loginParams = `?login=1&email=${encodeURIComponent(email)}`;
+        const loginUrl = portals.includes("Video") && !portals.includes("Investor")
+          ? `${origin}/investor/videos${loginParams}`
+          : `${origin}/${loginParams}`;
+        const tpl = welcomeEmail({ name: fullName, email, tempPassword, loginUrl, portals, investorProfiles: grantedProfiles });
+        const r = await sendBrandedEmail(RESEND_API_KEY, { to: email, subject: tpl.subject, html: tpl.html, from: tpl.from, replyTo: tpl.replyTo });
+        results.push({ user_id: uid, email, ok: r.ok, message: r.ok ? "Invite sent" : String(r.error) });
+      }
+      const sent = results.filter((r) => r.ok).length;
+      return json({ ok: true, sent, total: results.length, results });
+    }
+
     if (action === "set_role") {
       const { user_id, make_admin } = body;
       if (!user_id) return json({ error: "Missing user_id" }, 400);
