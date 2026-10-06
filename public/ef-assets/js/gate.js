@@ -38,7 +38,7 @@
       return fromLogin ? { kind: 'redirect', to: '/admin' } : { kind: 'unlock' };
     }
     // matches current portal → unlock in place
-    if (roles.has(role)) return { kind: 'unlock' };
+    if (roles.has(role)) return { kind: 'unlock', fresh: fromLogin };
     // no access to this portal — deny (do not auto-redirect to the other portal)
     return { kind: 'deny', msg: `this account does not have ${role} access` };
   }
