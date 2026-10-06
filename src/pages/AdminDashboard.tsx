@@ -511,10 +511,6 @@ export default function AdminDashboard() {
     return rows;
   }, [userRows, userSort]);
 
-  const visibleAccessProfiles = useMemo(() => profiles
-    .filter((u) => !u.is_admin || u.is_investor || u.is_video)
-    .filter((u) => `${u.full_name ?? ""} ${u.email}`.toLowerCase().includes(accessSearch.trim().toLowerCase())), [profiles, accessSearch]);
-
   const lastLogins = useMemo(() => {
     const result = new Map<string, string>();
     activity.forEach((row) => {
@@ -522,6 +518,39 @@ export default function AdminDashboard() {
     });
     return result;
   }, [activity]);
+
+  const accessStatuses = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof userAccessStatus>>();
+    profiles.forEach((u) => map.set(u.user_id, userAccessStatus(u, lastLogins.get(u.user_id), recentActivity.get(u.user_id), activityNow)));
+    return map;
+  }, [profiles, lastLogins, recentActivity, activityNow]);
+
+  const visibleAccessProfiles = useMemo(() => {
+    const search = accessSearch.trim().toLowerCase();
+    const statusRank: Record<string, number> = { active: 0, success: 1, pending: 2, neutral: 3, issue: 4 };
+    const rows = profiles
+      .filter((u) => !u.is_admin || u.is_investor || u.is_video)
+      .filter((u) => `${u.full_name ?? ""} ${u.email}`.toLowerCase().includes(search))
+      .filter((u) => accessStatusFilter === "all" || accessStatuses.get(u.user_id)?.tone === accessStatusFilter);
+    rows.sort((a, b) => {
+      const byName = (a.full_name ?? "").localeCompare(b.full_name ?? "") || a.email.localeCompare(b.email);
+      if (accessSort === "activity") {
+        const latest = (id: string) => Math.max(
+          new Date(lastLogins.get(id) ?? 0).getTime(),
+          new Date(recentActivity.get(id) ?? 0).getTime(),
+        );
+        return latest(b.user_id) - latest(a.user_id) || byName;
+      }
+      if (accessSort === "status") {
+        return (statusRank[accessStatuses.get(a.user_id)?.tone ?? "neutral"] - statusRank[accessStatuses.get(b.user_id)?.tone ?? "neutral"]) || byName;
+      }
+      if (accessSort === "added") {
+        return new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime() || byName;
+      }
+      return byName;
+    });
+    return rows;
+  }, [profiles, accessSearch, accessStatusFilter, accessStatuses, accessSort, lastLogins, recentActivity]);
 
   const filteredActivity = useMemo(() => {
     const search = activitySearch.trim().toLowerCase();
