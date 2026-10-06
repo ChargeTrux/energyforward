@@ -545,10 +545,23 @@ export default function AdminDashboard() {
       body: { action, ...payload },
     });
     setBusy(false);
-    if (error || (data && (data as { error?: string }).error)) {
+    // On a non-2xx response, read the function's real error message from the
+    // response body instead of showing the generic "non-2xx status code".
+    let message = (data as { error?: string } | null)?.error ?? null;
+    if (!message && error) {
+      const ctx = (error as { context?: Response }).context;
+      if (ctx) {
+        try {
+          const body = await ctx.clone().json();
+          message = (body as { error?: string }).error ?? null;
+        } catch { /* ignore */ }
+      }
+      if (!message) message = error.message;
+    }
+    if (error || message) {
       toast({
         title: "Action failed",
-        description: error?.message ?? (data as { error?: string }).error,
+        description: message ?? "Unknown error",
         variant: "destructive",
       });
       return null;
