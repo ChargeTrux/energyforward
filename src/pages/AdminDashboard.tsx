@@ -1,5 +1,6 @@
 import type React from "react";
-import { type ComponentProps, useEffect, useMemo, useState } from "react";
+import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react";
+import { activityInRange, userAccessStatus, type ActivityPreset } from "@/lib/admin-activity";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -127,6 +128,7 @@ interface PageViewRow {
 
 interface ActivityRow {
   key: string;
+  user_id: string;
   full_name: string | null;
   email: string;
   role: string;
@@ -140,7 +142,6 @@ interface ActivityRow {
 }
 
 type PortalRole = "admin" | "investor" | "customer" | "video";
-type ActivityPreset = "all" | "7" | "10" | "custom";
 type BadgeVariant = ComponentProps<typeof Badge>["variant"];
 type SortDir = "asc" | "desc";
 type UserSortKey = "name" | "email" | "role" | "status" | "signed_up";
@@ -234,10 +235,12 @@ export default function AdminDashboard() {
   >({});
   const [busy, setBusy] = useState(false);
   const [accessSearch, setAccessSearch] = useState("");
+  const accessListRef = useRef<HTMLDivElement>(null);
   const [tempCred, setTempCred] = useState<{ email: string; password: string } | null>(null);
   const [pendingAdminUser, setPendingAdminUser] = useState<UserListRow | null>(null);
   const [confirmAdminInvite, setConfirmAdminInvite] = useState(false);
-  const [activityPreset, setActivityPreset] = useState<ActivityPreset>("7");
+  const [activityPreset, setActivityPreset] = useState<ActivityPreset>("today");
+  const [activityUser, setActivityUser] = useState("all");
   const [activitySearch, setActivitySearch] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -350,6 +353,7 @@ export default function AdminDashboard() {
       if (sessionViews.length === 0) {
         rows.push({
           key: s.id,
+          user_id: s.user_id,
           full_name: prof?.full_name ?? null,
           email: prof?.email ?? "—",
           role,
@@ -370,6 +374,7 @@ export default function AdminDashboard() {
           .forEach(([path, secs]) => {
             rows.push({
               key: `${s.id}-${path}`,
+              user_id: s.user_id,
               full_name: prof?.full_name ?? null,
               email: prof?.email ?? "—",
               role,
@@ -383,11 +388,12 @@ export default function AdminDashboard() {
           });
       }
     });
-    // Add invited users (have an account but never logged in)
+    // Keep the actual latest invitation visible even after a successful login.
     enrichedProfiles.forEach((p) => {
-      if (loggedInUserIds.has(p.user_id)) return;
+      if (!p.invite_sent_at && loggedInUserIds.has(p.user_id)) return;
       rows.push({
         key: `invite-${p.user_id}`,
+        user_id: p.user_id,
         full_name: p.full_name,
         email: p.email,
         role: getRoleLabel(p),
@@ -471,38 +477,30 @@ export default function AdminDashboard() {
     return rows;
   }, [userRows, userSort]);
 
+  const visibleAccessProfiles = useMemo(() => profiles
+    .filter((u) => !u.is_admin || u.is_investor || u.is_video)
+    .filter((u) => `${u.full_name ?? ""} ${u.email}`.toLowerCase().includes(accessSearch.trim().toLowerCase())), [profiles, accessSearch]);
+
+  const lastLogins = useMemo(() => {
+    const result = new Map<string, string>();
+    activity.forEach((row) => {
+      if (row.login_at && (!result.has(row.user_id) || row.login_at > (result.get(row.user_id) ?? ""))) result.set(row.user_id, row.login_at);
+    });
+    return result;
+  }, [activity]);
+
   const filteredActivity = useMemo(() => {
     const search = activitySearch.trim().toLowerCase();
-    const now = Date.now();
-    const fromTs =
-      activityPreset === "7"
-        ? now - 7 * 24 * 60 * 60 * 1000
-        : activityPreset === "10"
-        ? now - 10 * 24 * 60 * 60 * 1000
-        : activityPreset === "custom" && fromDate
-        ? new Date(`${fromDate}T00:00:00`).getTime()
-        : null;
-    const toTs =
-      activityPreset === "custom" && toDate
-        ? new Date(`${toDate}T23:59:59`).getTime()
-        : null;
-
     return activity.filter((row) => {
-      if (row.login_at) {
-        const loginTs = new Date(row.login_at).getTime();
-        if (fromTs && loginTs < fromTs) return false;
-        if (toTs && loginTs > toTs) return false;
-      } else {
-        // Invite-sent rows: only include when no custom date filter is active
-        if (activityPreset === "custom" && (fromTs || toTs)) return false;
-      }
+      if (activityUser !== "all" && row.user_id !== activityUser) return false;
+      if (!activityInRange(row.login_at ?? row.invite_sent_at, activityPreset, fromDate, toDate)) return false;
       if (!search) return true;
       return [row.full_name ?? "", row.email, row.role, row.path]
         .join(" ")
         .toLowerCase()
         .includes(search);
     });
-  }, [activity, activityPreset, activitySearch, fromDate, toDate]);
+  }, [activity, activityPreset, activityUser, activitySearch, fromDate, toDate]);
 
   const sortedActivity = useMemo(() => {
     const rows = [...filteredActivity];
@@ -521,8 +519,8 @@ export default function AdminDashboard() {
         av = a.role;
         bv = b.role;
       } else if (key === "login") {
-        av = a.login_at ? new Date(a.login_at).getTime() : 0;
-        bv = b.login_at ? new Date(b.login_at).getTime() : 0;
+        av = new Date(a.login_at ?? a.invite_sent_at ?? 0).getTime();
+        bv = new Date(b.login_at ?? b.invite_sent_at ?? 0).getTime();
       } else if (key === "logout") {
         av = a.logout_at ? new Date(a.logout_at).getTime() : 0;
         bv = b.logout_at ? new Date(b.logout_at).getTime() : 0;
@@ -1085,7 +1083,7 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      <Card className="mb-8">
+      <Card className="mb-8 ef-access-manager">
         <CardHeader>
           <CardTitle>
             Access manager{" "}
@@ -1095,21 +1093,32 @@ export default function AdminDashboard() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="ef-access-toolbar">
           <Input
+            aria-label="Search access manager"
             placeholder="Search by name or email…"
             value={accessSearch}
             onChange={(e) => setAccessSearch(e.target.value)}
-            className="mb-3 max-w-sm"
+            className="max-w-sm"
           />
+          <span className="text-sm text-muted-foreground">{visibleAccessProfiles.length} users</span>
+          <div className="flex items-center gap-2 ml-auto">
+            <Button size="icon" variant="outline" className="ef-ghost-btn" aria-label="Scroll users up" title="Scroll users up" onClick={() => accessListRef.current?.scrollBy({ top: -420, behavior: "smooth" })}><ArrowUp className="h-4 w-4" /></Button>
+            <Button size="icon" variant="outline" className="ef-ghost-btn" aria-label="Scroll users down" title="Scroll users down" onClick={() => accessListRef.current?.scrollBy({ top: 420, behavior: "smooth" })}><ArrowDown className="h-4 w-4" /></Button>
+          </div>
+          </div>
+          <div className="ef-status-legend" aria-label="User status legend">
+            <span className="ef-user-status ef-user-status--success"><i aria-hidden="true" />Signed in</span>
+            <span className="ef-user-status ef-user-status--pending"><i aria-hidden="true" />Invite pending</span>
+            <span className="ef-user-status ef-user-status--neutral"><i aria-hidden="true" />Not invited</span>
+            <span className="ef-user-status ef-user-status--issue"><i aria-hidden="true" />Access blocked / needed</span>
+          </div>
           <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
             <Button
               size="sm"
               variant="outline"
               onClick={() => {
-                const visible = profiles
-                  .filter((u) => !u.is_admin || u.is_investor || u.is_video)
-                  .filter((u) => `${u.full_name ?? ""} ${u.email}`.toLowerCase().includes(accessSearch.toLowerCase()))
-                  .map((u) => u.user_id);
+                const visible = visibleAccessProfiles.map((u) => u.user_id);
                 setSelectedInvitees((s) => (s.length === visible.length ? [] : visible));
               }}
             >
@@ -1147,13 +1156,9 @@ export default function AdminDashboard() {
               Send reset link to selected
             </Button>
           </div>
-          <div className="space-y-3 max-h-[640px] overflow-y-auto pr-1">
-            {profiles
-              .filter((u) => !u.is_admin || u.is_investor || u.is_video)
-              .filter((u) =>
-                `${u.full_name ?? ""} ${u.email}`.toLowerCase().includes(accessSearch.toLowerCase()),
-              )
-              .map((u) => {
+          <div ref={accessListRef} className="ef-access-list always-scrollbar space-y-3" tabIndex={0} role="region" aria-label="User access list">
+            {visibleAccessProfiles.map((u) => {
+                 const status = userAccessStatus(u, lastLogins.get(u.user_id));
                 const folders = investorProfiles.filter((p) =>
                   investorAccess.some((a) => a.user_id === u.user_id && a.profile_id === p.id),
                 );
@@ -1161,17 +1166,20 @@ export default function AdminDashboard() {
                   videoAccess.some((a) => a.user_id === u.user_id && a.file_id === v.id),
                 );
                 return (
-                  <div key={u.user_id} className="rounded-md border border-border p-3">
+                  <div key={u.user_id} className={`ef-access-user ef-access-user--${status.tone}`}>
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <div>
                         <span className="font-semibold">{u.full_name || "—"}</span>{" "}
                         <span className="text-xs text-muted-foreground">{u.email}</span>
                       </div>
                       <div className="text-xs text-muted-foreground">
+                        <span className={`ef-user-status ef-user-status--${status.tone}`} title={lastLogins.get(u.user_id) ? `Last successful sign-in: ${formatCompact(lastLogins.get(u.user_id) ?? "")}` : status.label}><i aria-hidden="true" />{status.label}</span>
+                        <div className="mt-1">
                         {u.is_investor ? "Full investor portal" : u.is_video ? "Video page only" : "No portal access"}
                         {" · "}
                         {folders.length} folder{folders.length === 1 ? "" : "s"} · {vids.length} video
                         {vids.length === 1 ? "" : "s"}
+                        </div>
                       </div>
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -1217,7 +1225,7 @@ export default function AdminDashboard() {
                         Remove user
                       </Button>
                     </div>
-                    <div className="mt-2 grid gap-3 md:grid-cols-3 text-sm">
+                    <div className="ef-access-permissions mt-3 grid gap-3 md:grid-cols-3 text-sm">
                       <div>
                         <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">Portals</div>
                         <label className="flex items-center gap-2">
@@ -1265,7 +1273,7 @@ export default function AdminDashboard() {
                               checked={vids.some((x) => x.id === v.id)}
                               onChange={(e) => toggleVideoAccess(u.user_id, v.id, e.target.checked)}
                             />
-                            <span className="truncate">{v.name.replace(/\.[^.]+$/, "")}</span>
+                             <span className="min-w-0 break-words">{v.name.replace(/\.[^.]+$/, "")}</span>
                           </label>
                         ))}
                       </div>
@@ -1273,6 +1281,7 @@ export default function AdminDashboard() {
                   </div>
                 );
               })}
+            {visibleAccessProfiles.length === 0 && <p className="py-8 text-center text-muted-foreground">No users match your search.</p>}
           </div>
         </CardContent>
       </Card>
@@ -2009,7 +2018,7 @@ export default function AdminDashboard() {
             <Activity className="w-5 h-5" /> Login Activity & Time Spent
 </>}>
         <CardContent className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-[minmax(220px,1fr)_180px_180px_180px] items-end">
+          <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-[minmax(200px,1fr)_minmax(200px,1fr)_170px_150px_150px] items-end">
             <div>
               <Label htmlFor="activity-search" className="flex items-center gap-2">
                 <Search className="h-4 w-4" /> Search user, email, role, or page
@@ -2022,6 +2031,16 @@ export default function AdminDashboard() {
               />
             </div>
             <div>
+              <Label htmlFor="activity-user">User</Label>
+              <Select value={activityUser} onValueChange={setActivityUser}>
+                <SelectTrigger id="activity-user"><SelectValue placeholder="All users" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All users</SelectItem>
+                  {[...profiles].sort((a, b) => (a.full_name || a.email).localeCompare(b.full_name || b.email)).map((p) => <SelectItem key={p.user_id} value={p.user_id}>{p.full_name || p.email} · {p.email}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label htmlFor="activity-range" className="flex items-center gap-2">
                 <CalendarDays className="h-4 w-4" /> Date Range
               </Label>
@@ -2030,6 +2049,7 @@ export default function AdminDashboard() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="today">Today</SelectItem>
                   <SelectItem value="7">Last 7 days</SelectItem>
                   <SelectItem value="10">Last 10 days</SelectItem>
                   <SelectItem value="all">All time</SelectItem>
@@ -2081,12 +2101,12 @@ export default function AdminDashboard() {
                     </TableHead>
                     <TableHead className="w-[12%]">
                       <button type="button" onClick={() => toggleActivitySort("login")} className="flex items-center gap-1 hover:text-foreground">
-                        Login <SortIcon active={activitySort.key === "login"} dir={activitySort.dir} />
+                        Login / Invite <SortIcon active={activitySort.key === "login"} dir={activitySort.dir} />
                       </button>
                     </TableHead>
                     <TableHead className="w-[12%]">
                       <button type="button" onClick={() => toggleActivitySort("logout")} className="flex items-center gap-1 hover:text-foreground">
-                        Logout <SortIcon active={activitySort.key === "logout"} dir={activitySort.dir} />
+                        Logout / Status <SortIcon active={activitySort.key === "logout"} dir={activitySort.dir} />
                       </button>
                     </TableHead>
                     <TableHead className="w-[10%]">
@@ -2126,24 +2146,13 @@ export default function AdminDashboard() {
                         </span>
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm">
-                        {r.login_at ? formatCompact(r.login_at) : "—"}
+                        {r.login_at ? formatCompact(r.login_at) : r.invite_sent_at ? formatCompact(r.invite_sent_at) : "—"}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm">
                         {r.invite_status === "not_invited" ? (
-                          <span className="ef-badge ef-badge--off">Not invited yet</span>
+                          <span className="ef-user-status ef-user-status--neutral"><i aria-hidden="true" />Not invited yet</span>
                         ) : r.invite_status === "invite_sent" ? (
-                          <div className="flex items-center gap-2">
-                            <span className="ef-badge ef-badge--signup">Invite sent {r.invite_sent_at ? formatCompact(r.invite_sent_at) : ""}</span>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-6 px-2 text-xs"
-                              disabled={busy}
-                              onClick={() => callAdmin("send_reset", { email: r.email })}
-                            >
-                              Resend
-                            </Button>
-                          </div>
+                          <span className="ef-user-status ef-user-status--pending"><i aria-hidden="true" />Invite sent</span>
                         ) : r.logout_at ? (
                           formatCompact(r.logout_at)
                         ) : (
