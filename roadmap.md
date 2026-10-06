@@ -1,7 +1,8 @@
 # Roadmap
 
-- [ ] Add Today and individual-user audit filters, accurate invite events, user status lights, and visible Access manager scrolling.
-- [ ] Verify admin improvements without sending any emails (authenticated checks may require external sign-in).
+- [x] Add Today and individual-user audit filters, accurate invite events, user status lights, and visible Access manager scrolling.
+- [x] Verify date/status helpers and signed-out protection without sending any emails.
+- [ ] Verify the authenticated admin layout with real users (blocked: external sign-in cannot be injected into the preview).
 
 - [x] Refine the active video title and description presentation.
 - [x] Add automatic same-name text/Word descriptions with admin manual fallback editing.
