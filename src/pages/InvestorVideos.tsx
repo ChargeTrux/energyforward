@@ -99,7 +99,7 @@ export default function InvestorVideos() {
       }
       setLoading(false);
     })();
-  }, [user, authLoading, searchParams]);
+  }, [user, authLoading]);
 
   useEffect(() => {
     if (!active) return;
