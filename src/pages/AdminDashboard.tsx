@@ -235,6 +235,8 @@ export default function AdminDashboard() {
   >({});
   const [busy, setBusy] = useState(false);
   const [accessSearch, setAccessSearch] = useState("");
+  const [accessStatusFilter, setAccessStatusFilter] = useState<"all" | "active" | "success" | "pending" | "neutral" | "issue">("all");
+  const [accessSort, setAccessSort] = useState<"name" | "activity" | "status" | "added">("name");
   const accessListRef = useRef<HTMLDivElement>(null);
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [recentActivity, setRecentActivity] = useState<Map<string, string>>(new Map());
@@ -509,10 +511,6 @@ export default function AdminDashboard() {
     return rows;
   }, [userRows, userSort]);
 
-  const visibleAccessProfiles = useMemo(() => profiles
-    .filter((u) => !u.is_admin || u.is_investor || u.is_video)
-    .filter((u) => `${u.full_name ?? ""} ${u.email}`.toLowerCase().includes(accessSearch.trim().toLowerCase())), [profiles, accessSearch]);
-
   const lastLogins = useMemo(() => {
     const result = new Map<string, string>();
     activity.forEach((row) => {
@@ -520,6 +518,39 @@ export default function AdminDashboard() {
     });
     return result;
   }, [activity]);
+
+  const accessStatuses = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof userAccessStatus>>();
+    profiles.forEach((u) => map.set(u.user_id, userAccessStatus(u, lastLogins.get(u.user_id), recentActivity.get(u.user_id), activityNow)));
+    return map;
+  }, [profiles, lastLogins, recentActivity, activityNow]);
+
+  const visibleAccessProfiles = useMemo(() => {
+    const search = accessSearch.trim().toLowerCase();
+    const statusRank: Record<string, number> = { active: 0, success: 1, pending: 2, neutral: 3, issue: 4 };
+    const rows = profiles
+      .filter((u) => !u.is_admin || u.is_investor || u.is_video)
+      .filter((u) => `${u.full_name ?? ""} ${u.email}`.toLowerCase().includes(search))
+      .filter((u) => accessStatusFilter === "all" || accessStatuses.get(u.user_id)?.tone === accessStatusFilter);
+    rows.sort((a, b) => {
+      const byName = (a.full_name ?? "").localeCompare(b.full_name ?? "") || a.email.localeCompare(b.email);
+      if (accessSort === "activity") {
+        const latest = (id: string) => Math.max(
+          new Date(lastLogins.get(id) ?? 0).getTime(),
+          new Date(recentActivity.get(id) ?? 0).getTime(),
+        );
+        return latest(b.user_id) - latest(a.user_id) || byName;
+      }
+      if (accessSort === "status") {
+        return (statusRank[accessStatuses.get(a.user_id)?.tone ?? "neutral"] - statusRank[accessStatuses.get(b.user_id)?.tone ?? "neutral"]) || byName;
+      }
+      if (accessSort === "added") {
+        return new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime() || byName;
+      }
+      return byName;
+    });
+    return rows;
+  }, [profiles, accessSearch, accessStatusFilter, accessStatuses, accessSort, lastLogins, recentActivity]);
 
   const filteredActivity = useMemo(() => {
     const search = activitySearch.trim().toLowerCase();
@@ -1133,6 +1164,30 @@ export default function AdminDashboard() {
             onChange={(e) => setAccessSearch(e.target.value)}
             className="max-w-sm"
           />
+          <Select value={accessStatusFilter} onValueChange={(v) => setAccessStatusFilter(v as typeof accessStatusFilter)}>
+            <SelectTrigger className="w-[190px]" aria-label="Filter users by status">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="active">Recently active</SelectItem>
+              <SelectItem value="success">Signed in</SelectItem>
+              <SelectItem value="pending">Invite pending</SelectItem>
+              <SelectItem value="neutral">Not invited</SelectItem>
+              <SelectItem value="issue">Blocked / needs access</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={accessSort} onValueChange={(v) => setAccessSort(v as typeof accessSort)}>
+            <SelectTrigger className="w-[210px]" aria-label="Sort users">
+              <SelectValue placeholder="Sort: Name" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name">Sort: Name (A–Z)</SelectItem>
+              <SelectItem value="activity">Sort: Recently active first</SelectItem>
+              <SelectItem value="status">Sort: Status</SelectItem>
+              <SelectItem value="added">Sort: Newest sign-up</SelectItem>
+            </SelectContent>
+          </Select>
           <span className="text-sm text-muted-foreground">{visibleAccessProfiles.length} users</span>
           <div className="flex flex-wrap items-center gap-2 ml-auto">
             <Button size="sm" variant="outline" className="ef-ghost-btn" onClick={() => setExpandedUsers((current) => new Set([...current, ...visibleAccessProfiles.map((u) => u.user_id)]))}>Expand all</Button>
@@ -1193,7 +1248,7 @@ export default function AdminDashboard() {
           </div>
           <div ref={accessListRef} className="ef-access-list always-scrollbar space-y-3" tabIndex={0} role="region" aria-label="User access list">
             {visibleAccessProfiles.map((u) => {
-                 const status = userAccessStatus(u, lastLogins.get(u.user_id), recentActivity.get(u.user_id), activityNow);
+                 const status = accessStatuses.get(u.user_id) ?? userAccessStatus(u, lastLogins.get(u.user_id), recentActivity.get(u.user_id), activityNow);
                  const expanded = expandedUsers.has(u.user_id);
                 const folders = investorProfiles.filter((p) =>
                   investorAccess.some((a) => a.user_id === u.user_id && a.profile_id === p.id),
@@ -1310,7 +1365,7 @@ export default function AdminDashboard() {
                   </div>
                 );
               })}
-            {visibleAccessProfiles.length === 0 && <p className="py-8 text-center text-muted-foreground">No users match your search.</p>}
+            {visibleAccessProfiles.length === 0 && <p className="py-8 text-center text-muted-foreground">No users match your search or filters.</p>}
           </div>
         </CardContent>
       </Card>
