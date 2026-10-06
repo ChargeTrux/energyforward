@@ -3,6 +3,7 @@ const corsHeaders: Record<string, string> = {
   ...baseCors,
   "Access-Control-Allow-Headers": `${(baseCors as Record<string, string>)["Access-Control-Allow-Headers"] ?? "authorization, x-client-info, apikey, content-type"}, range`,
   "Access-Control-Expose-Headers": "Content-Length, Content-Range, Accept-Ranges",
+  "Access-Control-Max-Age": "600",
 };
 import { createClient } from "npm:@supabase/supabase-js@2";
 import JSZip from "npm:jszip@3.10.1";
@@ -25,9 +26,10 @@ function json(body: unknown, status = 200) {
   });
 }
 
-async function gateway(path: string, params: Record<string, string>, headers: Record<string, string> = {}) {
+async function gateway(path: string, params: Record<string, string>, headers: Record<string, string> = {}, signal?: AbortSignal) {
   const qs = new URLSearchParams(params).toString();
   return await fetch(`${GATEWAY}${path}${qs ? `?${qs}` : ""}`, {
+    signal,
     headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "X-Connection-Api-Key": DRIVE_KEY ?? "", ...headers },
   });
 }
@@ -185,9 +187,16 @@ Deno.serve(async (req) => {
     const { data: userData, error: userError } = await admin.auth.getUser(token);
     const user = userData?.user;
     if (!user) return json({ error: `Not signed in (${userError?.message ?? "invalid token"})` }, 401);
-    const { data: isAdmin } = await admin.rpc("has_role", { _user_id: user.id, _role: "admin" });
-    const { data: roleRows } = await admin.from("user_roles").select("role").eq("user_id", user.id);
+    // Read current roles and grants together on every request; never cache authorization.
+    const [roleResult, grantResult] = await Promise.all([
+      admin.from("user_roles").select("role").eq("user_id", user.id),
+      admin.from("investor_video_access").select("file_id").eq("user_id", user.id),
+    ]);
+    if (roleResult.error || grantResult.error) return json({ error: "Could not verify video access" }, 503);
+    const roleRows = roleResult.data;
     const roles = new Set((roleRows ?? []).map((row: { role: string }) => row.role));
+    const isAdmin = roles.has("admin");
+    const allowed = new Set((grantResult.data ?? []).map((grant: { file_id: string }) => grant.file_id));
     const canOpenVideos = Boolean(isAdmin) || roles.has("investor") || roles.has("video");
     const url = new URL(req.url);
     const action = url.searchParams.get("action") ?? "mine";
@@ -240,9 +249,7 @@ Deno.serve(async (req) => {
       const moovBytes = await rangeGet(fileId, moov.start, moov.start + moov.size - 1);
       if (!patchChunkOffsets(moovBytes, moov.size, moov.header))
         return json({ error: "This video is too large to optimize automatically" }, 400);
-      const prefix = mdat.start <= head.length
-        ? head.subarray(0, mdat.start)
-        : await rangeGet(fileId, 0, mdat.start - 1);
+      const prefix = mdat.start > 0 ? await rangeGet(fileId, 0, mdat.start - 1) : new Uint8Array();
       const CHUNK = 8 * 1024 * 1024;
       const ranges: [number, number][] = [[mdat.start, moov.start], [moov.start + moov.size, size]];
       const stream = new ReadableStream<Uint8Array>({
@@ -278,6 +285,11 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    if (action === "catalog" && !isAdmin) return json({ error: "Admins only" }, 403);
+    if (action !== "catalog" && !canOpenVideos) return json({ error: "You do not have access to the video portal" }, 403);
+    if (action === "stream" && !fileId) return json({ error: "Missing video" }, 400);
+    if (action === "stream" && !allowed.has(fileId) && !isAdmin) return json({ error: "Not authorized for this video" }, 403);
+
     const files = await listFolder();
     const videos = files
     .filter((file) => file.mimeType.startsWith("video/"))
@@ -290,8 +302,6 @@ Deno.serve(async (req) => {
     }
 
     if (!canOpenVideos) return json({ error: "You do not have access to the video portal" }, 403);
-    const { data: grants } = await admin.from("investor_video_access").select("file_id").eq("user_id", user.id);
-    const allowed = new Set((grants ?? []).map((grant: { file_id: string }) => grant.file_id));
 
     if (action === "mine") {
       const { data: manualRows } = await admin.from("investor_video_descriptions").select("file_id, description");
@@ -308,7 +318,7 @@ Deno.serve(async (req) => {
       const meta = videos.find((video) => video.id === fileId);
       if (!meta) return json({ error: "Video not found" }, 404);
       const range = req.headers.get("Range");
-      const res = await gateway(`/drive/v3/files/${fileId}`, { alt: "media", supportsAllDrives: "true" }, range ? { Range: range } : {});
+      const res = await gateway(`/drive/v3/files/${fileId}`, { alt: "media", supportsAllDrives: "true" }, range ? { Range: range } : {}, req.signal);
       if (!res.ok && res.status !== 206) {
         const details = await res.text();
         console.error(`stream failed [${res.status}]: ${details}`);
