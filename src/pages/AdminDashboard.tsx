@@ -589,6 +589,72 @@ export default function AdminDashboard() {
     }
   };
 
+  const downloadImportTemplate = () => {
+    const csv =
+      "first_name,last_name,email\nJane,Doe,jane@example.com\nJohn,Smith,john@example.com\n";
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "user-import-template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const parseImportFile = async (file: File) => {
+    const text = await file.text();
+    const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (lines.length === 0) return;
+    const splitLine = (line: string) => {
+      // Minimal CSV split with quote support
+      const out: string[] = [];
+      let cur = "";
+      let inQ = false;
+      for (const ch of line) {
+        if (ch === '"') inQ = !inQ;
+        else if (ch === "," && !inQ) { out.push(cur.trim()); cur = ""; }
+        else cur += ch;
+      }
+      out.push(cur.trim());
+      return out;
+    };
+    const header = splitLine(lines[0]).map((h) => h.toLowerCase());
+    const hasHeader = header.includes("email");
+    const emailIdx = hasHeader ? header.indexOf("email") : 2;
+    const firstIdx = hasHeader ? header.indexOf("first_name") : 0;
+    const lastIdx = hasHeader ? header.indexOf("last_name") : 1;
+    const rows: { full_name: string; email: string }[] = [];
+    for (const line of lines.slice(hasHeader ? 1 : 0)) {
+      const cols = splitLine(line);
+      const email = cols[emailIdx] ?? "";
+      if (!email) continue;
+      const full_name = [cols[firstIdx], cols[lastIdx]].filter(Boolean).join(" ").trim();
+      rows.push({ full_name, email });
+    }
+    setImportRows(rows);
+    setImportResults(null);
+    setImportFileName(file.name);
+    if (rows.length === 0) {
+      toast({ title: "No rows found", description: "The file needs an email column.", variant: "destructive" });
+    }
+  };
+
+  const runBulkImport = async () => {
+    if (importRows.length === 0) return;
+    const data = (await callAdmin("bulk_import", { people: importRows })) as {
+      imported?: number;
+      total?: number;
+      results?: { email: string; ok: boolean; message: string }[];
+    } | null;
+    if (data) {
+      setImportResults(data.results ?? []);
+      toast({
+        title: "Import finished",
+        description: `${data.imported ?? 0} of ${data.total ?? importRows.length} people added. Assign access and invite them from the Access manager above.`,
+      });
+    }
+  };
+
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail) return;
