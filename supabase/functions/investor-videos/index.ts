@@ -93,6 +93,68 @@ async function readDescriptionFile(file: DriveFile): Promise<string> {
   return cleanText(await res.text());
 }
 
+async function rangeGet(fileId: string, start: number, end: number): Promise<Uint8Array> {
+  const res = await gateway(`/drive/v3/files/${fileId}`, { alt: "media", supportsAllDrives: "true" }, { Range: `bytes=${start}-${end}` });
+  if (!res.ok && res.status !== 206) throw new Error(`[${res.status}]: ${await res.text()}`);
+  return new Uint8Array(await res.arrayBuffer());
+}
+
+type Box = { type: string; start: number; size: number; header: number };
+function boxType(buf: Uint8Array, pos: number) {
+  return String.fromCharCode(buf[pos + 4], buf[pos + 5], buf[pos + 6], buf[pos + 7]);
+}
+function parseBoxes(buf: Uint8Array, end: number): Box[] {
+  const boxes: Box[] = [];
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  let pos = 0;
+  while (pos + 8 <= end) {
+    let size = dv.getUint32(pos);
+    const type = boxType(buf, pos);
+    let header = 8;
+    if (size === 1) { size = Number(dv.getBigUint64(pos + 8)); header = 16; }
+    else if (size === 0) { size = end - pos; }
+    if (size < header || pos + size > end) break;
+    boxes.push({ type, start: pos, size, header });
+    pos += size;
+  }
+  return boxes;
+}
+
+const CONTAINERS = new Set(["moov", "trak", "mdia", "minf", "stbl", "edts", "dinf", "udta"]);
+function patchChunkOffsets(moov: Uint8Array, delta: number, moovHeader: number): boolean {
+  const dv = new DataView(moov.buffer, moov.byteOffset, moov.byteLength);
+  const walk = (start: number, end: number): boolean => {
+    let pos = start;
+    while (pos + 8 <= end) {
+      let size = dv.getUint32(pos);
+      const type = boxType(moov, pos);
+      let header = 8;
+      if (size === 1) { size = Number(dv.getBigUint64(pos + 8)); header = 16; }
+      if (size < header || pos + size > end) return false;
+      if (type === "stco") {
+        const count = dv.getUint32(pos + header + 4);
+        for (let i = 0; i < count; i++) {
+          const at = pos + header + 8 + i * 4;
+          const value = dv.getUint32(at) + delta;
+          if (value > 0xFFFFFFFF) return false;
+          dv.setUint32(at, value);
+        }
+      } else if (type === "co64") {
+        const count = dv.getUint32(pos + header + 4);
+        for (let i = 0; i < count; i++) {
+          const at = pos + header + 8 + i * 8;
+          dv.setBigUint64(at, dv.getBigUint64(at) + BigInt(delta));
+        }
+      } else if (CONTAINERS.has(type)) {
+        if (!walk(pos + header, pos + size)) return false;
+      }
+      pos += size;
+    }
+    return true;
+  };
+  return walk(moovHeader, moov.length);
+}
+
 async function enrichVideos(files: DriveFile[], manualRows: DescriptionRow[]) {
   const videos = files
     .filter((file) => file.mimeType.startsWith("video/"))
@@ -141,6 +203,64 @@ Deno.serve(async (req) => {
         { onConflict: "file_id" },
       );
       if (error) return json({ error: error.message }, 400);
+      return json({ ok: true });
+    }
+
+    if (action === "optimize") {
+      if (!isAdmin) return json({ error: "Admins only" }, 403);
+      if (!fileId) return json({ error: "Missing video" }, 400);
+      const allFiles = await listFolder();
+      const meta = allFiles.find((file) => file.id === fileId);
+      if (!meta) return json({ error: "Video not found" }, 404);
+      if (meta.mimeType !== "video/mp4" && !meta.name.toLowerCase().endsWith(".mp4"))
+        return json({ error: "Only MP4 videos can be optimized" }, 400);
+      const size = Number(meta.size ?? 0);
+      if (!size) return json({ error: "Unknown video size" }, 400);
+      const head = await rangeGet(fileId, 0, Math.min(size, 262144) - 1);
+      const boxes = parseBoxes(head, Math.min(size, head.length));
+      const moov = boxes.find((box) => box.type === "moov");
+      const mdat = boxes.find((box) => box.type === "mdat");
+      if (!moov || !mdat) return json({ error: "Could not read this video's structure" }, 400);
+      if (moov.start < mdat.start) return json({ ok: true, already: true });
+      if (moov.size > 64 * 1024 * 1024) return json({ error: "Video index too large to optimize" }, 400);
+      const moovBytes = await rangeGet(fileId, moov.start, moov.start + moov.size - 1);
+      if (!patchChunkOffsets(moovBytes, moov.size, moov.header))
+        return json({ error: "This video is too large to optimize automatically" }, 400);
+      const prefix = mdat.start <= head.length
+        ? head.subarray(0, mdat.start)
+        : await rangeGet(fileId, 0, mdat.start - 1);
+      const CHUNK = 8 * 1024 * 1024;
+      const ranges: [number, number][] = [[mdat.start, moov.start], [moov.start + moov.size, size]];
+      const stream = new ReadableStream<Uint8Array>({
+        async start(controller) {
+          controller.enqueue(prefix);
+          controller.enqueue(moovBytes);
+          for (const [from, to] of ranges) {
+            let pos = from;
+            while (pos < to) {
+              const end = Math.min(pos + CHUNK, to);
+              controller.enqueue(await rangeGet(fileId, pos, end - 1));
+              pos = end;
+            }
+          }
+          controller.close();
+        },
+      });
+      const upload = await fetch(`${GATEWAY}/upload/drive/v3/files/${fileId}?uploadType=media&supportsAllDrives=true`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "X-Connection-Api-Key": DRIVE_KEY ?? "",
+          "Content-Type": meta.mimeType || "video/mp4",
+          "Content-Length": String(size),
+        },
+        // @ts-expect-error streaming request body
+        body: stream,
+        // @ts-expect-error required for streaming bodies
+        duplex: "half",
+      });
+      if (!upload.ok) return json({ error: `Upload failed [${upload.status}]: ${await upload.text()}` }, 502);
+      folderCache = null;
       return json({ ok: true });
     }
 

@@ -222,6 +222,7 @@ export default function AdminDashboard() {
   const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>([]);
   const [videoCatalog, setVideoCatalog] = useState<VideoCatalogItem[]>([]);
   const [videoCatalogMsg, setVideoCatalogMsg] = useState("Loading videos…");
+  const [optimizingVideoId, setOptimizingVideoId] = useState<string | null>(null);
   const [videoAccess, setVideoAccess] = useState<{ user_id: string; file_id: string }[]>([]);
   const [selectedVideoIds, setSelectedVideoIds] = useState<string[]>([]);
   const [videoDescriptionDrafts, setVideoDescriptionDrafts] = useState<Record<string, string>>({});
@@ -823,6 +824,31 @@ export default function AdminDashboard() {
     const url = `${window.location.origin}/investor/videos?video=${encodeURIComponent(fileId)}&login=1`;
     await navigator.clipboard.writeText(url);
     toast({ title: "Video link copied", description: "The recipient must sign in and have access to this video." });
+  };
+
+  const optimizeVideo = async (video: VideoCatalogItem) => {
+    setOptimizingVideoId(video.id);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const res = await fetch(
+      `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/investor-videos?action=optimize&file_id=${encodeURIComponent(video.id)}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${sessionData.session?.access_token ?? ""}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
+        },
+      },
+    );
+    const body = await res.json().catch(() => ({}));
+    setOptimizingVideoId(null);
+    if (!res.ok) {
+      toast({ title: "Could not optimize", description: body.error ?? "Please try again.", variant: "destructive" });
+      return;
+    }
+    toast({
+      title: body.already ? "Already optimized" : "Video optimized",
+      description: body.already ? `${video.name} already starts playing fast.` : `${video.name} will now start playing much faster.`,
+    });
   };
 
   const saveVideoDescription = async (video: VideoCatalogItem) => {
@@ -1551,7 +1577,10 @@ export default function AdminDashboard() {
                     className="mt-3 min-h-[108px] resize-y"
                     maxLength={12000}
                   />
-                  <div className="mt-3 flex justify-end">
+                  <div className="mt-3 flex items-center justify-between gap-2">
+                    <Button type="button" size="sm" variant="outline" disabled={optimizingVideoId === video.id} onClick={() => optimizeVideo(video)}>
+                      {optimizingVideoId === video.id ? "Optimizing… (keep this page open)" : "Optimize for fast playback"}
+                    </Button>
                     <Button type="button" size="sm" className="ef-cta" disabled={video.descriptionSource === "document" || savingVideoId === video.id} onClick={() => saveVideoDescription(video)}>
                       {savingVideoId === video.id ? "Saving…" : "Save description"}
                     </Button>
