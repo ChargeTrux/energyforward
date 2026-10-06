@@ -93,6 +93,68 @@ async function readDescriptionFile(file: DriveFile): Promise<string> {
   return cleanText(await res.text());
 }
 
+async function rangeGet(fileId: string, start: number, end: number): Promise<Uint8Array> {
+  const res = await gateway(`/drive/v3/files/${fileId}`, { alt: "media", supportsAllDrives: "true" }, { Range: `bytes=${start}-${end}` });
+  if (!res.ok && res.status !== 206) throw new Error(`[${res.status}]: ${await res.text()}`);
+  return new Uint8Array(await res.arrayBuffer());
+}
+
+type Box = { type: string; start: number; size: number; header: number };
+function boxType(buf: Uint8Array, pos: number) {
+  return String.fromCharCode(buf[pos + 4], buf[pos + 5], buf[pos + 6], buf[pos + 7]);
+}
+function parseBoxes(buf: Uint8Array, end: number): Box[] {
+  const boxes: Box[] = [];
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  let pos = 0;
+  while (pos + 8 <= end) {
+    let size = dv.getUint32(pos);
+    const type = boxType(buf, pos);
+    let header = 8;
+    if (size === 1) { size = Number(dv.getBigUint64(pos + 8)); header = 16; }
+    else if (size === 0) { size = end - pos; }
+    if (size < header || pos + size > end) break;
+    boxes.push({ type, start: pos, size, header });
+    pos += size;
+  }
+  return boxes;
+}
+
+const CONTAINERS = new Set(["moov", "trak", "mdia", "minf", "stbl", "edts", "dinf", "udta"]);
+function patchChunkOffsets(moov: Uint8Array, delta: number, moovHeader: number): boolean {
+  const dv = new DataView(moov.buffer, moov.byteOffset, moov.byteLength);
+  const walk = (start: number, end: number): boolean => {
+    let pos = start;
+    while (pos + 8 <= end) {
+      let size = dv.getUint32(pos);
+      const type = boxType(moov, pos);
+      let header = 8;
+      if (size === 1) { size = Number(dv.getBigUint64(pos + 8)); header = 16; }
+      if (size < header || pos + size > end) return false;
+      if (type === "stco") {
+        const count = dv.getUint32(pos + header + 4);
+        for (let i = 0; i < count; i++) {
+          const at = pos + header + 8 + i * 4;
+          const value = dv.getUint32(at) + delta;
+          if (value > 0xFFFFFFFF) return false;
+          dv.setUint32(at, value);
+        }
+      } else if (type === "co64") {
+        const count = dv.getUint32(pos + header + 4);
+        for (let i = 0; i < count; i++) {
+          const at = pos + header + 8 + i * 8;
+          dv.setBigUint64(at, dv.getBigUint64(at) + BigInt(delta));
+        }
+      } else if (CONTAINERS.has(type)) {
+        if (!walk(pos + header, pos + size)) return false;
+      }
+      pos += size;
+    }
+    return true;
+  };
+  return walk(moovHeader, moov.length);
+}
+
 async function enrichVideos(files: DriveFile[], manualRows: DescriptionRow[]) {
   const videos = files
     .filter((file) => file.mimeType.startsWith("video/"))
