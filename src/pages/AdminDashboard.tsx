@@ -1248,7 +1248,7 @@ export default function AdminDashboard() {
           </div>
           <div ref={accessListRef} className="ef-access-list always-scrollbar space-y-3" tabIndex={0} role="region" aria-label="User access list">
             {visibleAccessProfiles.map((u) => {
-                 const status = userAccessStatus(u, lastLogins.get(u.user_id), recentActivity.get(u.user_id), activityNow);
+                 const status = accessStatuses.get(u.user_id) ?? userAccessStatus(u, lastLogins.get(u.user_id), recentActivity.get(u.user_id), activityNow);
                  const expanded = expandedUsers.has(u.user_id);
                 const folders = investorProfiles.filter((p) =>
                   investorAccess.some((a) => a.user_id === u.user_id && a.profile_id === p.id),
