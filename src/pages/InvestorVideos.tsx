@@ -103,6 +103,8 @@ export default function InvestorVideos() {
 
   useEffect(() => {
     if (!active) return;
+    if (activeIdRef.current === active.id) { pendingPlayRef.current = false; return; }
+    activeIdRef.current = active.id;
     let cancelled = false;
     setLoadingVideo(true);
     setSrc(null);
@@ -139,7 +141,7 @@ export default function InvestorVideos() {
   const selectNextVideo = () => {
     const currentIndex = videos.findIndex((video) => video.id === active?.id);
     const next = videos[currentIndex + 1];
-    if (next) selectVideo(next, false);
+    if (next) selectVideo(next, false, true);
   };
 
   return (
