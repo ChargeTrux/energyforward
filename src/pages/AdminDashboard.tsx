@@ -775,19 +775,23 @@ export default function AdminDashboard() {
   };
 
   const loadVideos = async () => {
-    const { data: s } = await supabase.auth.getSession();
-    const [res, { data: acc }] = await Promise.all([
-      fetch(
-        `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/investor-videos?action=catalog`,
-        {
-          headers: {
-            Authorization: `Bearer ${s.session?.access_token ?? ""}`,
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
-          },
+    const catalogUrl = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/investor-videos?action=catalog`;
+    const fetchCatalog = async (token: string) =>
+      fetch(catalogUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
         },
-      ),
-      supabase.from("investor_video_access").select("user_id, file_id"),
-    ]);
+      });
+    let { data: s } = await supabase.auth.getSession();
+    let res = await fetchCatalog(s.session?.access_token ?? "");
+    if (res.status === 401) {
+      // Token may be stale — force a refresh and retry once.
+      const refreshed = await supabase.auth.refreshSession();
+      s = { data: { session: refreshed.data.session } } as typeof s;
+      if (refreshed.data.session) res = await fetchCatalog(refreshed.data.session.access_token);
+    }
+    const { data: acc } = await supabase.from("investor_video_access").select("user_id, file_id");
     const body = await res.json().catch(() => ({}));
     if (res.ok) {
       const videos = (body.videos ?? []) as VideoCatalogItem[];
