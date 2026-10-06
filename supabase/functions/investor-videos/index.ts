@@ -216,8 +216,22 @@ Deno.serve(async (req) => {
         return json({ error: "Only MP4 videos can be optimized" }, 400);
       const size = Number(meta.size ?? 0);
       if (!size) return json({ error: "Unknown video size" }, 400);
-      const head = await rangeGet(fileId, 0, Math.min(size, 262144) - 1);
-      const boxes = parseBoxes(head, Math.min(size, head.length));
+      // Walk top-level boxes across the whole file by reading only each box header.
+      const boxes: Box[] = [];
+      let pos = 0;
+      for (let guard = 0; pos + 8 <= size && guard < 200; guard++) {
+        const hdr = await rangeGet(fileId, pos, Math.min(size, pos + 16) - 1);
+        if (hdr.length < 8) break;
+        const hv = new DataView(hdr.buffer, hdr.byteOffset, hdr.byteLength);
+        let bsize = hv.getUint32(0);
+        const type = boxType(hdr, 0);
+        let header = 8;
+        if (bsize === 1) { if (hdr.length < 16) break; bsize = Number(hv.getBigUint64(8)); header = 16; }
+        else if (bsize === 0) bsize = size - pos;
+        if (bsize < header || pos + bsize > size) break;
+        boxes.push({ type, start: pos, size: bsize, header });
+        pos += bsize;
+      }
       const moov = boxes.find((box) => box.type === "moov");
       const mdat = boxes.find((box) => box.type === "mdat");
       if (!moov || !mdat) return json({ error: "Could not read this video's structure" }, 400);
