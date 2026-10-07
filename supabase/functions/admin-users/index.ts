@@ -53,7 +53,7 @@ const forceEnergyForwardResetUrl = (url: string) => {
 // Avoids the auth server's fallback redirect and email scanners consuming the token.
 const directResetUrl = (hashed: string | undefined, fallback: string): string => {
   if (!hashed) return forceEnergyForwardResetUrl(fallback);
-  const u = new URL(RESET_BASE());
+  const u = new URL(getResetRedirectUrl());
   u.searchParams.set("token_hash", hashed);
   u.searchParams.set("type", "recovery");
   return u.toString();

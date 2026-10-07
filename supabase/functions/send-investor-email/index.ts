@@ -78,6 +78,14 @@ Deno.serve(async (req) => {
     }
   };
 
+  const directResetUrl = (hashed: string | undefined, fallback: string): string => {
+    if (!hashed) return forceEnergyForwardResetUrl(fallback);
+    const u = new URL(redirectTo);
+    u.searchParams.set("token_hash", hashed);
+    u.searchParams.set("type", "recovery");
+    return u.toString();
+  };
+
   if (!email || !EMAIL_RE.test(email) || email.length > 255) {
     return json({ error: "Invalid email" }, 400);
   }
