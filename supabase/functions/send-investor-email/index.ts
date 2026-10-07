@@ -193,7 +193,7 @@ Deno.serve(async (req) => {
 
     const tpl = resetEmail({
       name: displayName || "Investor",
-      resetUrl: forceEnergyForwardResetUrl(actionLink),
+      resetUrl: directResetUrl((data?.properties as { hashed_token?: string } | undefined)?.hashed_token, actionLink),
       expirationMinutes: 60,
       portals: portalParam ? [portalParam] : undefined,
     });

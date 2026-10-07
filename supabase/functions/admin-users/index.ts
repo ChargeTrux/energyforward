@@ -49,6 +49,15 @@ const forceEnergyForwardResetUrl = (url: string) => {
   }
 };
 
+// Link straight to our own reset page with the token; the page verifies it on load.
+// Avoids the auth server's fallback redirect and email scanners consuming the token.
+const directResetUrl = (hashed: string | undefined, fallback: string): string => {
+  if (!hashed) return forceEnergyForwardResetUrl(fallback);
+  const u = new URL(RESET_BASE());
+  u.searchParams.set("token_hash", hashed);
+  u.searchParams.set("type", "recovery");
+  return u.toString();
+};
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -246,7 +255,7 @@ Deno.serve(async (req) => {
             if (actionLink) {
               const tpl = resetEmail({
                 name: full_name ?? "",
-                resetUrl: forceEnergyForwardResetUrl(actionLink),
+                resetUrl: directResetUrl((linkData?.properties as { hashed_token?: string } | undefined)?.hashed_token, actionLink),
                 expirationMinutes: 60,
                 portals,
                 investorProfiles: grantedProfiles,
@@ -532,7 +541,7 @@ Deno.serve(async (req) => {
       } catch (_) { /* fall back to default investor branding */ }
       const tpl = resetEmail({
         name: (prof?.full_name as string | null) ?? "Investor",
-        resetUrl: forceEnergyForwardResetUrl(actionLink),
+        resetUrl: directResetUrl((linkData?.properties as { hashed_token?: string } | undefined)?.hashed_token, actionLink),
         expirationMinutes: 60,
         portals: userPortals,
       });
