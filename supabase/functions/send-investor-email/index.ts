@@ -78,6 +78,14 @@ Deno.serve(async (req) => {
     }
   };
 
+  const directResetUrl = (hashed: string | undefined, fallback: string): string => {
+    if (!hashed) return forceEnergyForwardResetUrl(fallback);
+    const u = new URL(redirectTo);
+    u.searchParams.set("token_hash", hashed);
+    u.searchParams.set("type", "recovery");
+    return u.toString();
+  };
+
   if (!email || !EMAIL_RE.test(email) || email.length > 255) {
     return json({ error: "Invalid email" }, 400);
   }
@@ -193,7 +201,7 @@ Deno.serve(async (req) => {
 
     const tpl = resetEmail({
       name: displayName || "Investor",
-      resetUrl: forceEnergyForwardResetUrl(actionLink),
+      resetUrl: directResetUrl((data?.properties as { hashed_token?: string } | undefined)?.hashed_token, actionLink),
       expirationMinutes: 60,
       portals: portalParam ? [portalParam] : undefined,
     });
