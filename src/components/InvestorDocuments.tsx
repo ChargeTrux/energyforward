@@ -167,6 +167,7 @@ export function InvestorDocuments() {
       return;
     }
     if (!activeProfile) return;
+    if (user) void supabase.from("content_views").insert({ user_id: user.id, content_type: "document", item_id: f.id, item_name: f.name });
     setLoading(true);
     setError(null);
     revokePreview();
