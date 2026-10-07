@@ -59,6 +59,36 @@ export type Database = {
         }
         Relationships: []
       }
+      content_views: {
+        Row: {
+          content_type: string
+          duration_seconds: number | null
+          id: string
+          item_id: string
+          item_name: string
+          user_id: string
+          viewed_at: string
+        }
+        Insert: {
+          content_type: string
+          duration_seconds?: number | null
+          id?: string
+          item_id: string
+          item_name?: string
+          user_id: string
+          viewed_at?: string
+        }
+        Update: {
+          content_type?: string
+          duration_seconds?: number | null
+          id?: string
+          item_id?: string
+          item_name?: string
+          user_id?: string
+          viewed_at?: string
+        }
+        Relationships: []
+      }
       email_signups: {
         Row: {
           created_at: string
