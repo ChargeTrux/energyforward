@@ -275,6 +275,13 @@ export default function AdminDashboard() {
   const [confirmAdminInvite, setConfirmAdminInvite] = useState(false);
   const [activityPreset, setActivityPreset] = useState<ActivityPreset>("today");
   const [activityUser, setActivityUser] = useState("all");
+  const [activityType, setActivityType] = useState<"logins" | "content" | "video" | "document">("logins");
+  const [contentViews, setContentViews] = useState<{ id: string; user_id: string; content_type: string; item_id: string; item_name: string; viewed_at: string; duration_seconds: number | null }[]>([]);
+  useEffect(() => {
+    if (!isAdmin) return;
+    supabase.from("content_views").select("*").order("viewed_at", { ascending: false }).limit(1000)
+      .then(({ data }) => setContentViews(data ?? []));
+  }, [isAdmin, activityType]);
   const [activitySearch, setActivitySearch] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -564,6 +571,18 @@ export default function AdminDashboard() {
         .includes(search);
     });
   }, [activity, activityPreset, activityUser, activitySearch, fromDate, toDate]);
+
+  const filteredContentViews = useMemo(() => {
+    const search = activitySearch.trim().toLowerCase();
+    return contentViews.filter((v) => {
+      if (activityType === "video" || activityType === "document") { if (v.content_type !== activityType) return false; }
+      if (activityUser !== "all" && v.user_id !== activityUser) return false;
+      if (!activityInRange(v.viewed_at, activityPreset, fromDate, toDate)) return false;
+      if (!search) return true;
+      const p = profiles.find((x) => x.user_id === v.user_id);
+      return [p?.full_name ?? "", p?.email ?? "", v.item_name].join(" ").toLowerCase().includes(search);
+    });
+  }, [contentViews, activityType, activityUser, activityPreset, activitySearch, fromDate, toDate, profiles]);
 
   const sortedActivity = useMemo(() => {
     const rows = [...filteredActivity];
@@ -2163,7 +2182,59 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="rounded-md border overflow-hidden">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="w-64">
+              <Label htmlFor="activity-type">Activity type</Label>
+              <Select value={activityType} onValueChange={(v) => setActivityType(v as typeof activityType)}>
+                <SelectTrigger id="activity-type"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="logins">Logins & pages</SelectItem>
+                  <SelectItem value="content">Videos & documents</SelectItem>
+                  <SelectItem value="video">Videos watched</SelectItem>
+                  <SelectItem value="document">Documents opened</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {activityType !== "logins" && (
+            <div className="rounded-md border overflow-hidden">
+              <div className="max-h-[34rem] overflow-y-auto always-scrollbar">
+                <Table className="w-full">
+                  <TableHeader className="sticky top-0 z-20 bg-card [&_th]:bg-card">
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Video / document</TableHead>
+                      <TableHead>When</TableHead>
+                      <TableHead className="text-right">Watched</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredContentViews.map((v) => {
+                      const p = profiles.find((x) => x.user_id === v.user_id);
+                      return (
+                        <TableRow key={v.id}>
+                          <TableCell className="truncate">{p?.full_name || "—"}</TableCell>
+                          <TableCell className="truncate">{p?.email ?? "—"}</TableCell>
+                          <TableCell><span className={"ef-badge " + (v.content_type === "video" ? "ef-badge--investor" : "ef-badge--admin")}>{v.content_type === "video" ? "Video" : "Document"}</span></TableCell>
+                          <TableCell className="truncate" title={v.item_name}>{v.item_name || "—"}</TableCell>
+                          <TableCell className="whitespace-nowrap text-sm">{formatCompact(v.viewed_at)}</TableCell>
+                          <TableCell className="text-right whitespace-nowrap">{v.content_type === "video" ? (v.duration_seconds ? formatDuration(v.duration_seconds) : "Started") : "—"}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {filteredContentViews.length === 0 && (
+                      <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">No video or document views match the selected filters.</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+
+          <div className={"rounded-md border overflow-hidden" + (activityType !== "logins" ? " hidden" : "")}>
             <div className="max-h-[34rem] overflow-y-auto always-scrollbar">
               <Table className="w-full table-fixed">
                 <TableHeader className="sticky top-0 z-20 bg-card [&_th]:bg-card [&_th]:shadow-[inset_0_-1px_0_hsl(var(--border))]">
