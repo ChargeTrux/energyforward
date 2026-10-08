@@ -274,7 +274,7 @@ export default function AdminDashboard() {
   const [tempCred, setTempCred] = useState<{ email: string; password: string } | null>(null);
   const [pendingAdminUser, setPendingAdminUser] = useState<UserListRow | null>(null);
   const [confirmAdminInvite, setConfirmAdminInvite] = useState(false);
-  const [activityPreset, setActivityPreset] = useState<ActivityPreset>("today");
+  const [activityPreset, setActivityPreset] = useState<ActivityPreset>("7");
   const [activityUser, setActivityUser] = useState("all");
   const [activityType, setActivityType] = useState<"logins" | "content" | "video" | "document">("logins");
   const [contentViews, setContentViews] = useState<{ id: string; user_id: string; content_type: string; item_id: string; item_name: string; viewed_at: string; duration_seconds: number | null }[]>([]);
