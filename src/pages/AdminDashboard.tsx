@@ -71,6 +71,7 @@ import {
   LogOut,
   Mail,
   ExternalLink,
+  Download,
 } from "lucide-react";
 
 function Collapse({ title, children, nested = false, defaultOpen = false }: { title: React.ReactNode; children: React.ReactNode; nested?: boolean; defaultOpen?: boolean }) {
@@ -583,6 +584,64 @@ export default function AdminDashboard() {
       return [p?.full_name ?? "", p?.email ?? "", v.item_name].join(" ").toLowerCase().includes(search);
     });
   }, [contentViews, activityType, activityUser, activityPreset, activitySearch, fromDate, toDate, profiles]);
+
+  const exportReport = () => {
+    const csvCell = (v: string | number | null | undefined) => {
+      const s = v === null || v === undefined ? "" : String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const fmt = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleString() : "");
+    const loginsByUser = new Map<string, { count: number; last: string }>();
+    activity.forEach((row) => {
+      if (!row.login_at) return;
+      const cur = loginsByUser.get(row.user_id) ?? { count: 0, last: "" };
+      cur.count += 1;
+      if (row.login_at > cur.last) cur.last = row.login_at;
+      loginsByUser.set(row.user_id, cur);
+    });
+    const viewsByUser = new Map<string, { videos: Map<string, { count: number; last: string }>; docs: Map<string, { count: number; last: string }> }>();
+    contentViews.forEach((v) => {
+      const cur = viewsByUser.get(v.user_id) ?? { videos: new Map(), docs: new Map() };
+      const bucket = v.content_type === "video" ? cur.videos : v.content_type === "document" ? cur.docs : null;
+      if (bucket) {
+        const item = bucket.get(v.item_name) ?? { count: 0, last: "" };
+        item.count += 1;
+        if (v.viewed_at > item.last) item.last = v.viewed_at;
+        bucket.set(v.item_name, item);
+      }
+      viewsByUser.set(v.user_id, cur);
+    });
+    const header = ["Name", "Email", "Portals", "Status", "Invite sent", "Sign-ins", "Last sign-in", "Videos watched", "Video views", "Last video watched", "Documents opened", "Document views", "Last document opened"];
+    const lines = [header.join(",")];
+    [...profiles]
+      .sort((a, b) => (a.full_name || a.email).localeCompare(b.full_name || b.email))
+      .forEach((p) => {
+        const portals = [p.is_admin && "Admin", p.is_investor && "Investor portal", p.is_customer && "Customer portal", p.is_video && "Video portal"].filter(Boolean).join(" + ") || "None";
+        const status = !p.is_active ? "Suspended" : p.invite_sent_at ? "Invite sent" : "Not invited";
+        const logins = loginsByUser.get(p.user_id);
+        const views = viewsByUser.get(p.user_id);
+        const videoNames = views ? [...views.videos.keys()].join(" | ") : "";
+        const videoViews = views ? [...views.videos.values()].reduce((n, x) => n + x.count, 0) : 0;
+        const lastVideo = views ? [...views.videos.values()].reduce((m, x) => (x.last > m ? x.last : m), "") : "";
+        const docNames = views ? [...views.docs.keys()].join(" | ") : "";
+        const docViews = views ? [...views.docs.values()].reduce((n, x) => n + x.count, 0) : 0;
+        const lastDoc = views ? [...views.docs.values()].reduce((m, x) => (x.last > m ? x.last : m), "") : "";
+        lines.push([
+          csvCell(p.full_name ?? ""), csvCell(p.email), csvCell(portals), csvCell(status),
+          csvCell(fmt(p.invite_sent_at)), logins?.count ?? 0, csvCell(fmt(logins?.last)),
+          csvCell(videoNames), videoViews, csvCell(fmt(lastVideo)),
+          csvCell(docNames), docViews, csvCell(fmt(lastDoc)),
+        ].join(","));
+      });
+    const blob = new Blob([`﻿${lines.join("\n")}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `user-activity-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Report downloaded", description: `${profiles.length} users exported to CSV.` });
+  };
 
   const sortedActivity = useMemo(() => {
     const rows = [...filteredActivity];
