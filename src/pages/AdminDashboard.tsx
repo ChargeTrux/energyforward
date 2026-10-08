@@ -2180,6 +2180,12 @@ export default function AdminDashboard() {
             <Activity className="w-5 h-5" /> Login Activity & Time Spent
 </>}>
         <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">Download a spreadsheet of every user: invite status, sign-ins, videos watched and documents opened.</p>
+            <Button type="button" variant="outline" onClick={exportReport} className="gap-2">
+              <Download className="h-4 w-4" /> Export report (CSV)
+            </Button>
+          </div>
           <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-[minmax(200px,1fr)_minmax(200px,1fr)_170px_150px_150px] items-end">
             <div>
               <Label htmlFor="activity-search" className="flex items-center gap-2">
