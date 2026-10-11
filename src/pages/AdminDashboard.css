@@ -191,8 +191,8 @@
 }
 
 /* User management: persistent scroll controls and readable status signals. */
-.ef-admin .ef-access-manager { border-top: 2px solid hsl(var(--admin-status-success)); }
-.ef-admin .ef-access-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 14px; }
+.ef-admin .ef-access-manager { border-top: 2px solid hsl(var(--admin-status-success)); padding-top: 20px !important; }
+.ef-admin .ef-access-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 14px; padding-top: 4px; }
 .ef-admin .ef-status-legend { display: flex; flex-wrap: wrap; gap: 12px 20px; margin-bottom: 18px; }
 .ef-admin .ef-user-status { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; line-height: 1.5; color: var(--user-status-color); }
 .ef-admin .ef-user-status i { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: var(--user-status-color); }
