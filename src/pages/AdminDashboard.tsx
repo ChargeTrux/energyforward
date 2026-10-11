@@ -548,7 +548,6 @@ export default function AdminDashboard() {
     const search = accessSearch.trim().toLowerCase();
     const statusRank: Record<string, number> = { active: 0, success: 1, pending: 2, neutral: 3, issue: 4 };
     const rows = profiles
-      .filter((u) => !u.is_admin || u.is_investor || u.is_video)
       .filter((u) => `${u.full_name ?? ""} ${u.email}`.toLowerCase().includes(search))
       .filter((u) => accessStatusFilter === "all" || accessStatuses.get(u.user_id)?.tone === accessStatusFilter);
     rows.sort((a, b) => {
@@ -1709,10 +1708,12 @@ export default function AdminDashboard() {
               <Button
                 type="button"
                 variant="outline"
-                disabled={busy || !inviteEmail || inviteAdmin}
+                disabled={busy || !inviteEmail}
                 className="mr-3"
                 onClick={() => {
+                  if (inviteAdmin && !window.confirm(`Create ${inviteEmail} with full admin access? No email will be sent.`)) return;
                   const r: PortalRole[] = [];
+                  if (inviteAdmin) r.push("admin");
                   if (inviteInvestor) r.push("investor");
                   if (inviteCustomer) r.push("customer");
                   if (inviteVideo) r.push("video");
