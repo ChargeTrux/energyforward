@@ -1,0 +1,101 @@
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+// "Project Run" Drive folder (under Investors). Its id is never sent to browsers.
+const ROOT_FOLDER = "13tAkcFzs6eneJ-TFqPESFFpFqFW3JFqB";
+const GATEWAY = "https://connector-gateway.lovable.dev/google_drive";
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+const DRIVE_KEY = Deno.env.get("GOOGLE_DRIVE_API_KEY");
+const ORDER_RE = /^\s*(\d+)\s*[-_.)\]]\s*/;
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+}
+
+function gateway(path: string, params: Record<string, string>) {
+  const qs = new URLSearchParams(params).toString();
+  return fetch(`${GATEWAY}${path}${qs ? `?${qs}` : ""}`, {
+    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "X-Connection-Api-Key": DRIVE_KEY ?? "" },
+  });
+}
+
+type Page = { id: string; name: string; order: number };
+
+async function listPages(): Promise<Page[]> {
+  const res = await gateway("/drive/v3/files", {
+    q: `'${ROOT_FOLDER}' in parents and trashed = false and (mimeType = 'text/html' or name contains '.html' or name contains '.htm')`,
+    fields: "files(id,name,mimeType)",
+    pageSize: "200",
+    supportsAllDrives: "true",
+    includeItemsFromAllDrives: "true",
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`[${res.status}]: ${text}`);
+  const files = (JSON.parse(text).files ?? []) as { id: string; name: string }[];
+  return files
+    .map((f) => {
+      const m = f.name.match(ORDER_RE);
+      const clean = f.name.replace(ORDER_RE, "").replace(/\.html?$/i, "").trim();
+      return { id: f.id, name: clean || f.name, order: m ? Number(m[1]) : Number.MAX_SAFE_INTEGER };
+    })
+    .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  try {
+    if (!LOVABLE_API_KEY || !DRIVE_KEY) return json({ error: "Google Drive is not connected yet." }, 500);
+    const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+    if (!token) return json({ error: "Not signed in" }, 401);
+    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: u, error: ue } = await admin.auth.getUser(token);
+    const user = u?.user;
+    if (ue || !user) return json({ error: ue?.message ?? "Not signed in" }, 401);
+
+    const url = new URL(req.url);
+    const action = url.searchParams.get("action") ?? "";
+    const fileId = url.searchParams.get("file_id") ?? "";
+
+    const [{ data: roleRows }, { data: grants }] = await Promise.all([
+      admin.from("user_roles").select("role").eq("user_id", user.id),
+      admin.from("project_page_access").select("file_id").eq("user_id", user.id),
+    ]);
+    const roles = new Set((roleRows ?? []).map((r: { role: string }) => r.role));
+    const isAdmin = roles.has("admin");
+    const granted = new Set((grants ?? []).map((g: { file_id: string }) => g.file_id));
+
+    if (action === "catalog") {
+      if (!isAdmin) return json({ error: "Admins only" }, 403);
+      return json({ pages: await listPages() });
+    }
+
+    if (action === "mine") {
+      if (!isAdmin && !roles.has("project")) return json({ pages: [] });
+      const pages = await listPages();
+      return json({ pages: isAdmin ? pages : pages.filter((p) => granted.has(p.id)) });
+    }
+
+    if (action === "view") {
+      if (!fileId) return json({ error: "Missing page" }, 400);
+      if (!isAdmin && !(roles.has("project") && granted.has(fileId))) return json({ error: "Not authorized for this page" }, 403);
+      const metaRes = await gateway(`/drive/v3/files/${encodeURIComponent(fileId)}`, { fields: "id,name,parents", supportsAllDrives: "true" });
+      const metaText = await metaRes.text();
+      if (!metaRes.ok) return json({ error: "Page not available", status: metaRes.status, details: metaText }, metaRes.status);
+      const meta = JSON.parse(metaText) as { parents?: string[] };
+      if (!(meta.parents ?? []).includes(ROOT_FOLDER)) return json({ error: "Page is outside Project Run" }, 403);
+      const res = await gateway(`/drive/v3/files/${encodeURIComponent(fileId)}`, { alt: "media", supportsAllDrives: "true" });
+      if (!res.ok) {
+        const t = await res.text();
+        return json({ error: "Could not open page", status: res.status, details: t }, res.status);
+      }
+      return new Response(await res.text(), {
+        headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8", "Cache-Control": "private, no-store" },
+      });
+    }
+
+    return json({ error: "Unknown action" }, 400);
+  } catch (e) {
+    console.error("project-pages error", e);
+    return json({ error: e instanceof Error ? e.message : "Unexpected error" }, 500);
+  }
+});
