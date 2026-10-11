@@ -642,6 +642,7 @@ export default function AdminDashboard() {
           csvCell(fmt(p.invite_sent_at)), logins?.count ?? 0, csvCell(fmt(logins?.last)),
           csvCell(videoNames), videoViews, csvCell(fmt(lastVideo)),
           csvCell(docNames), docViews, csvCell(fmt(lastDoc)),
+          csvCell(views ? [...views.proj.keys()].join(" | ") : ""),
         ].join(","));
       });
     const blob = new Blob([`﻿${lines.join("\n")}`], { type: "text/csv;charset=utf-8" });
