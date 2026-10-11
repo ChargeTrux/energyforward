@@ -39,7 +39,8 @@ export const LandingStealth = () => <EFFrame src="/ef-assets/site/index.html" ti
 export const CustomerPortal = () => <EFFrame src="/ef-assets/site/customer/index.html" title="energyforward · customer portal" />;
 export const InvestorPortal = () => {
   const { user, loading } = useAuth();
-  const [destination, setDestination] = useState<"investor" | "video" | "home" | null>(null);
+  const [destination, setDestination] = useState<"investor" | "video" | "project" | "home" | null>(null);
+  const [hasProject, setHasProject] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -47,12 +48,13 @@ export const InvestorPortal = () => {
     supabase.from("user_roles").select("role").eq("user_id", user.id)
       .then(({ data }) => {
         const roles = new Set((data ?? []).map((row) => row.role as string));
-        setDestination(roles.has("admin") || roles.has("investor") ? "investor" : roles.has("video") ? "video" : "home");
+        setHasProject(roles.has("admin") || roles.has("project"));
+        setDestination(roles.has("admin") || roles.has("investor") ? "investor" : roles.has("video") ? "video" : roles.has("project") ? "project" : "home");
       });
   }, [user, loading]);
 
   if (loading || destination === null) return <div className="min-h-screen grid place-items-center">Loading…</div>;
-  if (destination !== "investor") return <Navigate to={destination === "video" ? "/investor/videos" : "/?login=1"} replace />;
+  if (destination !== "investor") return <Navigate to={destination === "video" ? "/investor/videos" : destination === "project" ? "/investor/project" : "/?login=1"} replace />;
 
   return <>
     <EFFrame src="/ef-assets/site/investor/index.html" title="energyforward · investor portal" />
@@ -68,6 +70,17 @@ export const InvestorPortal = () => {
     >
       <PlayCircle size={20} /> Videos
     </Link>
+    {hasProject && <Link
+      to="/investor/project"
+      style={{
+        position: "fixed", left: 160, bottom: 22, zIndex: 60, display: "flex", alignItems: "center", gap: 10,
+        padding: "14px 22px", borderRadius: 999, background: "#EEEAE2", color: "#0A2A2E",
+        fontFamily: "'General Sans', Arial, sans-serif", fontWeight: 600, fontSize: 15, textDecoration: "none",
+        boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+      }}
+    >
+      Project Run
+    </Link>}
   </>;
 };
 export const ContactPage = () => <EFFrame src="/ef-assets/site/contact/index.html" title="energyforward · contact" />;
