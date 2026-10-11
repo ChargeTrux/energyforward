@@ -109,6 +109,27 @@ Deno.serve(async (req) => {
     const rootFolder = folderIdFromUrl(profile?.drive_url ?? null);
     if (!rootFolder) return json({ error: "This profile has no folder yet." }, 404);
 
+    if (action === "rename_folder") {
+      if (!isAdmin) return json({ error: "Admins only" }, 403);
+      const name = String(profile?.name ?? "").trim();
+      if (!name) return json({ error: "Missing name" }, 400);
+      const r = await fetch(`${GATEWAY}/drive/v3/files/${rootFolder}?supportsAllDrives=true&fields=id,name`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "X-Connection-Api-Key": DRIVE_KEY ?? "",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name }),
+      });
+      if (!r.ok) {
+        const details = await r.text();
+        console.error(`Drive rename failed [${r.status}]: ${details}`);
+        return json({ error: "Could not rename the Drive folder", status: r.status, details }, r.status);
+      }
+      return json({ ok: true, name });
+    }
+
     if (action === "list") {
       const folder = url.searchParams.get("folder_id") || rootFolder;
       // Only the root folder or a descendant reached through it is listable;

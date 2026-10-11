@@ -910,6 +910,22 @@ export default function AdminDashboard() {
       toast({ title: "Save failed", description: error.message, variant: "destructive" });
       return;
     }
+    const newName = draft.name.trim();
+    if (newName && newName !== p.name && draft.drive_url.trim()) {
+      const { data: rn, error: rnErr } = await supabase.functions.invoke("investor-drive", {
+        body: { action: "rename_folder", profile_id: p.id },
+      });
+      if (rnErr || !rn?.ok) {
+        let details = rnErr?.message ?? "";
+        try { details = await (rnErr as { context?: Response })?.context?.text?.() ?? details; } catch { /* ignore */ }
+        toast({ title: "Saved, but Drive folder not renamed", description: details || "Google Drive refused the rename.", variant: "destructive" });
+        await load();
+        return;
+      }
+      toast({ title: "Profile saved", description: `${newName} updated here and in Google Drive.` });
+      await load();
+      return;
+    }
     toast({ title: "Profile saved", description: `${draft.name} updated.` });
     await load();
   };
