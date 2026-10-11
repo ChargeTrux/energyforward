@@ -610,10 +610,10 @@ export default function AdminDashboard() {
       if (row.login_at > cur.last) cur.last = row.login_at;
       loginsByUser.set(row.user_id, cur);
     });
-    const viewsByUser = new Map<string, { videos: Map<string, { count: number; last: string }>; docs: Map<string, { count: number; last: string }> }>();
+    const viewsByUser = new Map<string, { videos: Map<string, { count: number; last: string }>; docs: Map<string, { count: number; last: string }>; proj: Map<string, { count: number; last: string }> }>();
     contentViews.forEach((v) => {
-      const cur = viewsByUser.get(v.user_id) ?? { videos: new Map(), docs: new Map() };
-      const bucket = v.content_type === "video" ? cur.videos : v.content_type === "document" ? cur.docs : null;
+      const cur = viewsByUser.get(v.user_id) ?? { videos: new Map(), docs: new Map(), proj: new Map() };
+      const bucket = v.content_type === "video" ? cur.videos : v.content_type === "document" ? cur.docs : v.content_type === "project" ? cur.proj : null;
       if (bucket) {
         const item = bucket.get(v.item_name) ?? { count: 0, last: "" };
         item.count += 1;
@@ -622,7 +622,7 @@ export default function AdminDashboard() {
       }
       viewsByUser.set(v.user_id, cur);
     });
-    const header = ["Name", "Email", "Portals", "Status", "Invite sent", "Sign-ins", "Last sign-in", "Videos watched", "Video views", "Last video watched", "Documents opened", "Document views", "Last document opened"];
+    const header = ["Name", "Email", "Portals", "Status", "Invite sent", "Sign-ins", "Last sign-in", "Videos watched", "Video views", "Last video watched", "Documents opened", "Document views", "Last document opened", "Project Run pages opened"];
     const lines = [header.join(",")];
     [...profiles]
       .sort((a, b) => (a.full_name || a.email).localeCompare(b.full_name || b.email))
