@@ -203,7 +203,7 @@ type VideoCatalogItem = {
 
 
 export default function AdminDashboard() {
-  const { isAdmin, loading } = useAuth();
+  const { isAdmin, loading, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
