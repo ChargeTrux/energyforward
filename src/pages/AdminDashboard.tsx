@@ -1442,6 +1442,23 @@ export default function AdminDashboard() {
                     <div className="ef-access-permissions mt-3 grid gap-3 md:grid-cols-4 text-sm">
                       <div>
                         <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">Portals</div>
+                        <label className="flex items-center gap-2 font-semibold">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(u.is_admin)}
+                            disabled={u.user_id === user?.id}
+                            title={u.user_id === user?.id ? "You can't remove your own admin access" : undefined}
+                            onChange={(e) => {
+                              const on = e.target.checked;
+                              const msg = on
+                                ? `Give ${u.email} full admin access? They will be able to do everything you can: invite, remove and manage all users, access, videos and reports.`
+                                : `Remove full admin access from ${u.email}?`;
+                              if (!window.confirm(msg)) return;
+                              callAdmin("set_role", { user_id: u.user_id, make_admin: on });
+                            }}
+                          />
+                          Full admin access
+                        </label>
                         <label className="flex items-center gap-2">
                           <input
                             type="checkbox"
