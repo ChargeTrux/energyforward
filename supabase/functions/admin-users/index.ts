@@ -167,10 +167,10 @@ Deno.serve(async (req) => {
       // existing account.
       if (Array.isArray(roles)) {
         const valid = (roles as unknown[]).filter(
-          (r): r is "admin" | "investor" | "customer" | "video" =>
-            r === "admin" || r === "investor" || r === "customer" || r === "video",
+          (r): r is "admin" | "investor" | "customer" | "video" | "project" =>
+            r === "admin" || r === "investor" || r === "customer" || r === "video" || r === "project",
         );
-        const portalRoles = ["investor", "customer", "video"] as const;
+        const portalRoles = ["investor", "customer", "video", "project"] as const;
         const rolesToRemove = portalRoles.filter((portalRole) => !valid.includes(portalRole));
         if (rolesToRemove.length > 0) {
           await admin
@@ -186,6 +186,11 @@ Deno.serve(async (req) => {
         }
       }
 
+      if (Array.isArray(body.project_page_ids)) {
+        for (const fileId of (body.project_page_ids as unknown[]).filter((v): v is string => typeof v === "string")) {
+          await admin.from("project_page_access").upsert({ user_id: newUserId, file_id: fileId }, { onConflict: "user_id,file_id" });
+        }
+      }
       if (Array.isArray(investor_video_ids)) {
         const videoIds = (investor_video_ids as unknown[]).filter((v): v is string => typeof v === "string");
         for (const fileId of videoIds) {
@@ -228,6 +233,7 @@ Deno.serve(async (req) => {
         const portals: string[] = [];
         if (role === "investor" || (Array.isArray(roles) && roles.includes("investor"))) portals.push("Investor");
         if (Array.isArray(roles) && roles.includes("video")) portals.push("Video");
+        if (Array.isArray(roles) && roles.includes("project")) portals.push("Project Run");
         if (Array.isArray(roles) && roles.includes("customer")) portals.push("Customer");
         const requestOrigin = (() => {
           const raw = typeof app_origin === "string" ? app_origin : req.headers.get("origin");
@@ -397,6 +403,7 @@ Deno.serve(async (req) => {
         for (const r of (roleRows ?? []) as Array<{ role: string }>) {
           if (r.role === "investor") portals.push("Investor");
           if (r.role === "video") portals.push("Video");
+          if (r.role === "project") portals.push("Project Run");
           if (r.role === "customer") portals.push("Customer");
         }
         const { data: accessRows } = await admin.from("investor_profile_access").select("profile_id").eq("user_id", uid);
@@ -491,6 +498,17 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    if (action === "set_project") {
+      const { user_id, make_project } = body;
+      if (!user_id) return json({ error: "Missing user_id" }, 400);
+      const query = make_project
+        ? admin.from("user_roles").upsert({ user_id, role: "project" }, { onConflict: "user_id,role" })
+        : admin.from("user_roles").delete().eq("user_id", user_id).eq("role", "project");
+      const { error } = await query;
+      if (error) return json({ error: error.message }, 400);
+      return json({ ok: true });
+    }
+
     if (action === "send_reset") {
       const { email } = body;
       if (!email) return json({ error: "Missing email" }, 400);
@@ -535,6 +553,7 @@ Deno.serve(async (req) => {
           for (const row of (roleRows ?? []) as Array<{ role: string }>) {
             if (row.role === "investor") userPortals.push("Investor");
             if (row.role === "video") userPortals.push("Video");
+            if (row.role === "project") userPortals.push("Project Run");
             if (row.role === "customer") userPortals.push("Customer");
           }
         }
@@ -576,6 +595,8 @@ Deno.serve(async (req) => {
         "page_views",
         "login_sessions",
         "investor_video_access",
+        "project_page_access",
+        "content_views",
         "investor_profile_access",
         "page_access",
         "user_roles",
