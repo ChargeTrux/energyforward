@@ -30,6 +30,7 @@ export default function ProjectRun() {
   const [html, setHtml] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sideOpen, setSideOpen] = useState(false);
   const reqRef = useRef(0);
 
   useEffect(() => {
@@ -91,21 +92,45 @@ export default function ProjectRun() {
         </nav>
       </header>
 
-      <div style={{ display: "flex", flex: 1, minHeight: 0, flexWrap: "wrap" }}>
-        <aside style={{ width: "min(300px, 100%)", borderRight: "1px solid rgba(238,234,226,0.12)", padding: "18px 16px" }}>
+      <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative" }}>
+        <div
+          onMouseEnter={() => setSideOpen(true)}
+          onMouseLeave={() => setSideOpen(false)}
+          style={{ position: "absolute", top: 0, left: 0, bottom: 0, zIndex: 20, display: "flex", pointerEvents: "none" }}
+        >
+          <aside style={{
+            width: "min(300px, 85vw)", background: teal, borderRight: "1px solid rgba(238,234,226,0.18)", padding: "18px 16px",
+            boxShadow: sideOpen ? "8px 0 24px rgba(0,0,0,0.35)" : "none", overflowY: "auto",
+            transform: sideOpen ? "translateX(0)" : "translateX(-100%)", transition: "transform .25s ease",
+            pointerEvents: sideOpen ? "auto" : "none",
+          }}>
           <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: amber, margin: "0 0 10px" }}>Project Run</p>
           {loading && <div style={{ fontSize: 13, opacity: 0.7 }}>Loading…</div>}
           {!loading && pages.length === 0 && !error && <div style={{ fontSize: 13, opacity: 0.7 }}>No pages have been shared with you yet.</div>}
           {pages.map((p) => (
-            <button key={p.id} type="button" onClick={() => open(p)} style={{
+            <button key={p.id} type="button" onClick={() => { open(p); setSideOpen(false); }} style={{
               display: "block", width: "100%", textAlign: "left", border: "none", borderTop: "1px solid rgba(238,234,226,0.10)",
               background: active?.id === p.id ? "rgba(232,177,74,0.14)" : "transparent", color: pearl, padding: "10px 6px", cursor: "pointer", fontSize: 14,
             }}>
               <span style={{ color: amber, marginRight: 8 }}>•</span>{p.name}
             </button>
           ))}
-        </aside>
-        <main style={{ flex: 1, minWidth: 280, display: "flex", flexDirection: "column", minHeight: "70vh" }}>
+          </aside>
+          <button
+            type="button"
+            aria-label={sideOpen ? "Hide pages list" : "Show pages list"}
+            onClick={() => setSideOpen((v) => !v)}
+            style={{
+              pointerEvents: "auto", alignSelf: "flex-start", marginTop: 24, marginLeft: sideOpen ? 0 : "calc(-1 * min(300px, 85vw))",
+              transition: "margin-left .25s ease", background: amber, color: teal, border: "none", borderRadius: "0 10px 10px 0",
+              padding: "14px 8px", cursor: "pointer", writingMode: "vertical-rl", fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", boxShadow: "4px 0 14px rgba(0,0,0,0.3)",
+            }}
+          >
+            {sideOpen ? "◀ Hide" : `Pages (${pages.length}) ▶`}
+          </button>
+        </div>
+        <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", minHeight: "70vh" }}>
           {error && <div style={{ padding: 16, color: "#f4b5a3", fontSize: 14 }}>{error}</div>}
           {html !== null ? (
             <iframe title={active?.name ?? "Project Run"} srcDoc={html} sandbox="allow-scripts" style={{ flex: 1, width: "100%", border: "none", background: "#fff" }} />
