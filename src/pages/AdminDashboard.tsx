@@ -53,6 +53,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Users,
   ChevronDown,
@@ -76,7 +77,7 @@ import {
 
 function Collapse({ title, children, nested = false, defaultOpen = false }: { title: React.ReactNode; children: React.ReactNode; nested?: boolean; defaultOpen?: boolean }) {
   return (
-    <details open={defaultOpen} className={`ef-collapse group rounded-lg border bg-card text-card-foreground ${nested ? "" : "mb-8 shadow-sm"}`}>
+    <details open={defaultOpen} className={`ef-collapse group rounded-lg border bg-card text-card-foreground ${nested ? "ef-collapse--nested" : "mb-5 shadow-sm"}`}>
       <summary className={`cursor-pointer list-none flex items-center justify-between gap-3 ${nested ? "px-4 py-3 text-base" : "p-6 text-xl"} font-semibold`}>
         <span className="flex items-center gap-2 flex-wrap">{title}</span>
         <ChevronDown className="w-5 h-5 shrink-0 transition-transform group-open:rotate-180" />
@@ -97,6 +98,7 @@ interface ProfileRow {
   is_investor?: boolean;
   is_customer?: boolean;
   is_video?: boolean;
+  is_project?: boolean;
 }
 
 interface SignupRow {
@@ -142,7 +144,7 @@ interface ActivityRow {
   invite_sent_at?: string | null;
 }
 
-type PortalRole = "admin" | "investor" | "customer" | "video";
+type PortalRole = "admin" | "investor" | "customer" | "video" | "project";
 type BadgeVariant = ComponentProps<typeof Badge>["variant"];
 type SortDir = "asc" | "desc";
 type UserSortKey = "name" | "email" | "role" | "status" | "signed_up";
@@ -215,6 +217,11 @@ export default function AdminDashboard() {
   const [inviteInvestor, setInviteInvestor] = useState(true);
   const [inviteCustomer, setInviteCustomer] = useState(false);
   const [inviteVideo, setInviteVideo] = useState(false);
+  const [inviteProject, setInviteProject] = useState(false);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
+  const [projectCatalog, setProjectCatalog] = useState<{ id: string; name: string }[]>([]);
+  const [projectCatalogMsg, setProjectCatalogMsg] = useState("Loading pages…");
+  const [projectAccess, setProjectAccess] = useState<{ user_id: string; file_id: string }[]>([]);
   const [inviteAdmin, setInviteAdmin] = useState(false);
   const [importRows, setImportRows] = useState<{ full_name: string; email: string }[]>([]);
   const [importFileName, setImportFileName] = useState("");
@@ -237,7 +244,7 @@ export default function AdminDashboard() {
   const [busy, setBusy] = useState(false);
   const [accessSearch, setAccessSearch] = useState("");
   const [accessStatusFilter, setAccessStatusFilter] = useState<"all" | "active" | "success" | "pending" | "neutral" | "issue">("all");
-  const [accessSort, setAccessSort] = useState<"name" | "activity" | "status" | "added">("name");
+  const [accessSort, setAccessSort] = useState<"name" | "activity" | "status" | "added">("activity");
   const accessListRef = useRef<HTMLDivElement>(null);
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [recentActivity, setRecentActivity] = useState<Map<string, string>>(new Map());
@@ -276,7 +283,7 @@ export default function AdminDashboard() {
   const [confirmAdminInvite, setConfirmAdminInvite] = useState(false);
   const [activityPreset, setActivityPreset] = useState<ActivityPreset>("7");
   const [activityUser, setActivityUser] = useState("all");
-  const [activityType, setActivityType] = useState<"logins" | "content" | "video" | "document">("logins");
+  const [activityType, setActivityType] = useState<"logins" | "content" | "video" | "document" | "project">("logins");
   const [contentViews, setContentViews] = useState<{ id: string; user_id: string; content_type: string; item_id: string; item_name: string; viewed_at: string; duration_seconds: number | null }[]>([]);
   useEffect(() => {
     if (!isAdmin) return;
@@ -363,12 +370,16 @@ export default function AdminDashboard() {
     const videoSet = new Set(
       (roles ?? []).filter((r) => r.role === "video").map((r) => r.user_id),
     );
+    const projectSet = new Set(
+      (roles ?? []).filter((r) => (r.role as string) === "project").map((r) => r.user_id),
+    );
     const enrichedProfiles = (profs ?? []).map((p) => ({
       ...(p as ProfileRow),
       is_admin: adminSet.has(p.user_id),
       is_investor: investorSet.has(p.user_id),
       is_customer: customerSet.has(p.user_id),
       is_video: videoSet.has(p.user_id),
+      is_project: projectSet.has(p.user_id),
     }));
     const profileMap = new Map(enrichedProfiles.map((p) => [p.user_id, p]));
 
@@ -576,7 +587,7 @@ export default function AdminDashboard() {
   const filteredContentViews = useMemo(() => {
     const search = activitySearch.trim().toLowerCase();
     return contentViews.filter((v) => {
-      if (activityType === "video" || activityType === "document") { if (v.content_type !== activityType) return false; }
+      if (activityType === "video" || activityType === "document" || activityType === "project") { if (v.content_type !== activityType) return false; }
       if (activityUser !== "all" && v.user_id !== activityUser) return false;
       if (!activityInRange(v.viewed_at, activityPreset, fromDate, toDate)) return false;
       if (!search) return true;
@@ -616,7 +627,7 @@ export default function AdminDashboard() {
     [...profiles]
       .sort((a, b) => (a.full_name || a.email).localeCompare(b.full_name || b.email))
       .forEach((p) => {
-        const portals = [p.is_admin && "Admin", p.is_investor && "Investor portal", p.is_customer && "Customer portal", p.is_video && "Video portal"].filter(Boolean).join(" + ") || "None";
+        const portals = [p.is_admin && "Admin", p.is_investor && "Investor portal", p.is_customer && "Customer portal", p.is_video && "Video portal", p.is_project && "Project Run"].filter(Boolean).join(" + ") || "None";
         const status = !p.is_active ? "Suspended" : p.invite_sent_at ? "Invite sent" : "Not invited";
         const logins = loginsByUser.get(p.user_id);
         const views = viewsByUser.get(p.user_id);
@@ -730,6 +741,7 @@ export default function AdminDashboard() {
       app_origin: window.location.origin,
       investor_profile_ids: rolesArr.includes("investor") ? selectedProfileIds : [],
       investor_video_ids: rolesArr.includes("video") || rolesArr.includes("investor") ? selectedVideoIds : [],
+      project_page_ids: rolesArr.includes("project") ? selectedProjectIds : [],
     })) as { temp_password?: string } | null;
     if (data) {
       const list = rolesArr.length ? rolesArr.join(", ") : "no portal";
@@ -741,6 +753,8 @@ export default function AdminDashboard() {
       setInviteInvestor(true);
       setInviteCustomer(false);
       setInviteVideo(false);
+      setInviteProject(false);
+      setSelectedProjectIds([]);
       setInviteAdmin(false);
       setSelectedProfileIds([]);
       setSelectedVideoIds([]);
@@ -824,6 +838,7 @@ export default function AdminDashboard() {
     if (inviteInvestor) rolesArr.push("investor");
     if (inviteCustomer) rolesArr.push("customer");
     if (inviteVideo) rolesArr.push("video");
+    if (inviteProject) rolesArr.push("project");
     await createInvite(rolesArr);
   };
 
@@ -950,6 +965,40 @@ export default function AdminDashboard() {
     if (isAdmin) loadVideos();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin]);
+
+  const loadProject = async () => {
+    const url = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/project-pages?action=catalog`;
+    const go = (t: string) => fetch(url, { headers: { Authorization: `Bearer ${t}`, apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string } });
+    const { data: s } = await supabase.auth.getSession();
+    let res = await go(s.session?.access_token ?? "");
+    if (res.status === 401) {
+      const { data: r } = await supabase.auth.refreshSession();
+      if (r.session) res = await go(r.session.access_token);
+    }
+    const body = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setProjectCatalog(body.pages ?? []);
+      setProjectCatalogMsg((body.pages ?? []).length ? "" : "No HTML pages in the Project Run folder yet.");
+    } else setProjectCatalogMsg(body.error ?? "Could not load Project Run pages.");
+    const { data: acc } = await supabase.from("project_page_access").select("user_id, file_id");
+    setProjectAccess((acc ?? []) as { user_id: string; file_id: string }[]);
+  };
+
+  useEffect(() => {
+    if (isAdmin) loadProject();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin]);
+
+  const toggleProjectAccess = async (userId: string, fileId: string, grant: boolean) => {
+    const { error } = grant
+      ? await supabase.from("project_page_access").upsert({ user_id: userId, file_id: fileId }, { onConflict: "user_id,file_id" })
+      : await supabase.from("project_page_access").delete().eq("user_id", userId).eq("file_id", fileId);
+    if (error) {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    await loadProject();
+  };
 
   const toggleVideoAccess = async (userId: string, fileId: string, grant: boolean) => {
     const { error } = grant
@@ -1224,16 +1273,18 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      <Card className="mb-8 ef-access-manager">
-        <CardHeader>
-          <CardTitle>
-            Access manager{" "}
+      <div className="ef-panel-controls">
+        <Button size="sm" variant="outline" className="ef-ghost-btn" onClick={() => document.querySelectorAll<HTMLDetailsElement>("details.ef-collapse:not(.ef-collapse--nested)").forEach((d) => { d.open = true; })}>Expand all sections</Button>
+        <Button size="sm" variant="outline" className="ef-ghost-btn" onClick={() => document.querySelectorAll<HTMLDetailsElement>("details.ef-collapse").forEach((d) => { d.open = false; })}>Collapse all sections</Button>
+      </div>
+
+      <Collapse defaultOpen title={<>
+            <Users className="w-5 h-5" /> Access manager{" "}
             <span className="text-sm font-normal text-muted-foreground">
-              — who can see which portals, folders and videos
+              — who can see which portals, folders, videos and Project Run pages
             </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      </>}>
+        <CardContent className="ef-access-manager">
           <div className="ef-access-toolbar">
           <Input
             aria-label="Search access manager"
@@ -1270,8 +1321,6 @@ export default function AdminDashboard() {
           <div className="flex flex-wrap items-center gap-2 ml-auto">
             <Button size="sm" variant="outline" className="ef-ghost-btn" onClick={() => setExpandedUsers((current) => new Set([...current, ...visibleAccessProfiles.map((u) => u.user_id)]))}>Expand all</Button>
             <Button size="sm" variant="outline" className="ef-ghost-btn" onClick={() => setExpandedUsers(new Set())}>Collapse all</Button>
-            <Button size="icon" variant="outline" className="ef-ghost-btn" aria-label="Scroll users up" title="Scroll users up" onClick={() => accessListRef.current?.scrollBy({ top: -420, behavior: "smooth" })}><ArrowUp className="h-4 w-4" /></Button>
-            <Button size="icon" variant="outline" className="ef-ghost-btn" aria-label="Scroll users down" title="Scroll users down" onClick={() => accessListRef.current?.scrollBy({ top: 420, behavior: "smooth" })}><ArrowDown className="h-4 w-4" /></Button>
           </div>
           </div>
           <div className="ef-status-legend" aria-label="User status legend">
@@ -1324,7 +1373,7 @@ export default function AdminDashboard() {
               Send reset link to selected
             </Button>
           </div>
-          <div ref={accessListRef} className="ef-access-list always-scrollbar space-y-3" tabIndex={0} role="region" aria-label="User access list">
+          <div ref={accessListRef} className="ef-access-list space-y-1.5" tabIndex={0} role="region" aria-label="User access list">
             {visibleAccessProfiles.map((u) => {
                  const status = accessStatuses.get(u.user_id) ?? userAccessStatus(u, lastLogins.get(u.user_id), recentActivity.get(u.user_id), activityNow);
                  const expanded = expandedUsers.has(u.user_id);
@@ -1333,6 +1382,9 @@ export default function AdminDashboard() {
                 );
                 const vids = videoCatalog.filter((v) =>
                   videoAccess.some((a) => a.user_id === u.user_id && a.file_id === v.id),
+                );
+                const projPages = projectCatalog.filter((pg) =>
+                  projectAccess.some((a) => a.user_id === u.user_id && a.file_id === pg.id),
                 );
                 return (
                   <div key={u.user_id} className={`ef-access-user ef-access-user--${status.tone}`}>
@@ -1346,7 +1398,7 @@ export default function AdminDashboard() {
                         <span className="ef-access-identity">
                           <span className="block font-semibold">{u.full_name || "—"}</span>
                           <span className="block text-xs text-muted-foreground">{u.email}</span>
-                          <span className="block mt-1 text-xs text-muted-foreground">{getRoleLabel(u)} · {folders.length} folders · {vids.length} videos</span>
+                          <span className="block mt-1 text-xs text-muted-foreground">{getRoleLabel(u)} · {folders.length} folders · {vids.length} videos{u.is_project ? ` · Project Run (${projPages.length})` : ""}</span>
                         </span>
                         <span className="ef-access-indicator">
                           <span className={`ef-user-status ef-user-status--${status.tone}`} title={status.tone === "active" ? `Activity recorded: ${formatCompact(recentActivity.get(u.user_id) ?? "")} (within five minutes)` : lastLogins.get(u.user_id) ? `Last successful sign-in: ${formatCompact(lastLogins.get(u.user_id) ?? "")}` : status.label}><i aria-hidden="true" />{status.label}</span>
@@ -1386,7 +1438,7 @@ export default function AdminDashboard() {
                         Remove user
                       </Button>
                     </div>
-                    <div className="ef-access-permissions mt-3 grid gap-3 md:grid-cols-3 text-sm">
+                    <div className="ef-access-permissions mt-3 grid gap-3 md:grid-cols-4 text-sm">
                       <div>
                         <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">Portals</div>
                         <label className="flex items-center gap-2">
@@ -1408,6 +1460,16 @@ export default function AdminDashboard() {
                             }
                           />
                           Video portal
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(u.is_project)}
+                            onChange={(e) =>
+                              callAdmin("set_project", { user_id: u.user_id, make_project: e.target.checked })
+                            }
+                          />
+                          Project Run
                         </label>
                       </div>
                       <div>
@@ -1438,6 +1500,21 @@ export default function AdminDashboard() {
                           </label>
                         ))}
                       </div>
+                      <div>
+                        <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">Project Run pages</div>
+                        {projectCatalog.length === 0 && <span className="text-muted-foreground">{projectCatalogMsg}</span>}
+                        {projectCatalog.map((pg) => (
+                          <label key={pg.id} className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={projPages.some((x) => x.id === pg.id)}
+                              onChange={(e) => toggleProjectAccess(u.user_id, pg.id, e.target.checked)}
+                            />
+                            <span className="min-w-0 break-words">{pg.name}</span>
+                          </label>
+                        ))}
+                        {projectCatalog.length > 0 && !u.is_project && <span className="block text-xs text-muted-foreground mt-1">Tick "Project Run" under Portals so they see the tab.</span>}
+                      </div>
                     </div>
                     </div>
                   </div>
@@ -1446,12 +1523,18 @@ export default function AdminDashboard() {
             {visibleAccessProfiles.length === 0 && <p className="py-8 text-center text-muted-foreground">No users match your search or filters.</p>}
           </div>
         </CardContent>
-      </Card>
+      </Collapse>
 
 <Collapse title={<>
-            <UserPlus className="w-5 h-5" /> Invite New User
+            <UserPlus className="w-5 h-5" /> Add users
 </>}>
-        <CardContent>
+        <Tabs defaultValue="invite" className="px-6 pt-1">
+          <TabsList>
+            <TabsTrigger value="invite">Invite one person</TabsTrigger>
+            <TabsTrigger value="import">Import a list</TabsTrigger>
+          </TabsList>
+        <TabsContent value="invite">
+        <CardContent className="px-0">
           <form
             onSubmit={handleInvite}
             className="grid md:grid-cols-12 gap-3 items-end"
@@ -1498,6 +1581,13 @@ export default function AdminDashboard() {
                   <div>
                     <div className="ttl">Video Portal</div>
                     <div className="sub">Dedicated video page only</div>
+                  </div>
+                </label>
+                <label className={`ef-portal-card ${inviteProject ? "active" : ""}`}>
+                  <input type="checkbox" checked={inviteProject} onChange={(e)=>setInviteProject(e.target.checked)} />
+                  <div>
+                    <div className="ttl">Project Run</div>
+                    <div className="sub">Selected Project Run pages</div>
                   </div>
                 </label>
                 <label className={`ef-portal-card ${inviteAdmin ? "active" : ""}`} style={{flexBasis:"160px"}}>
@@ -1564,6 +1654,23 @@ export default function AdminDashboard() {
                 </div>
               </div>
             )}
+            {inviteProject && (
+              <div className="md:col-span-12">
+                <Label>Project Run pages</Label>
+                {projectCatalog.length === 0 && <p className="text-sm text-muted-foreground mt-1">{projectCatalogMsg}</p>}
+                <div className="ef-portal-grid mt-1">
+                  {projectCatalog.map((pg) => {
+                    const on = selectedProjectIds.includes(pg.id);
+                    return (
+                      <label key={pg.id} className={`ef-portal-card ${on ? "active" : ""}`}>
+                        <input type="checkbox" checked={on} onChange={(e) => setSelectedProjectIds((prev) => e.target.checked ? [...prev, pg.id] : prev.filter((id) => id !== pg.id))} />
+                        <div><div className="ttl">{pg.name}</div><div className="sub">Secure in-page viewing</div></div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <div className="md:col-span-12 flex justify-end">
               <Button
                 type="button"
@@ -1575,6 +1682,7 @@ export default function AdminDashboard() {
                   if (inviteInvestor) r.push("investor");
                   if (inviteCustomer) r.push("customer");
                   if (inviteVideo) r.push("video");
+                  if (inviteProject) r.push("project");
                   createInvite(r, inviteEmail, inviteName, false);
                 }}
               >
@@ -1590,12 +1698,9 @@ export default function AdminDashboard() {
             change it on first sign-in.
           </p>
         </CardContent>
-      </Collapse>
-
-<Collapse title={<>
-            <Users className="w-5 h-5" /> Import Users
-</>}>
-        <CardContent className="space-y-4">
+        </TabsContent>
+        <TabsContent value="import">
+        <CardContent className="space-y-4 px-0">
           <p className="text-sm text-muted-foreground">
             Upload a list of people to create their accounts all at once. No emails are sent during
             import — afterwards, assign each person's access and send their invite individually from
@@ -1679,9 +1784,11 @@ export default function AdminDashboard() {
             </div>
           )}
         </CardContent>
+        </TabsContent>
+        </Tabs>
       </Collapse>
 
-<Collapse title={<><FolderOpen className="w-5 h-5" /> Investor Materials</>}><div className="px-6 pb-6 space-y-4"><Collapse nested title={<>Documents — profile folders
+<Collapse title={<><FolderOpen className="w-5 h-5" /> Material config</>}><div className="px-6 pb-6 space-y-4"><Collapse nested title={<>Documents — profile folders
 </>}>
         <CardContent>
           <div className="space-y-4">
@@ -1846,6 +1953,25 @@ export default function AdminDashboard() {
                 </div>
               ))}
             </div>
+          )}
+        </CardContent>
+      </Collapse>
+<Collapse nested title={<>Project Run — HTML pages</>}>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-3">
+            HTML files in the "Project Run" Google Drive folder. Start a file name with a number (e.g. "1 - Overview.html") to set the order; the number isn't shown. Choose who can open each page in the Access manager.
+          </p>
+          {projectCatalog.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{projectCatalogMsg}</p>
+          ) : (
+            <ul className="space-y-2 text-sm">
+              {projectCatalog.map((pg) => (
+                <li key={pg.id} className="flex flex-wrap items-center justify-between gap-2 rounded border p-3">
+                  <span className="font-medium">{pg.name}</span>
+                  <span className="text-muted-foreground">{projectAccess.filter((a) => a.file_id === pg.id).length} people</span>
+                </li>
+              ))}
+            </ul>
           )}
         </CardContent>
       </Collapse></div></Collapse>
@@ -2257,6 +2383,7 @@ export default function AdminDashboard() {
                   <SelectItem value="content">Videos & documents</SelectItem>
                   <SelectItem value="video">Videos watched</SelectItem>
                   <SelectItem value="document">Documents opened</SelectItem>
+                  <SelectItem value="project">Project Run pages opened</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -2283,7 +2410,7 @@ export default function AdminDashboard() {
                         <TableRow key={v.id}>
                           <TableCell className="truncate">{p?.full_name || "—"}</TableCell>
                           <TableCell className="truncate">{p?.email ?? "—"}</TableCell>
-                          <TableCell><span className={"ef-badge " + (v.content_type === "video" ? "ef-badge--investor" : "ef-badge--admin")}>{v.content_type === "video" ? "Video" : "Document"}</span></TableCell>
+                          <TableCell><span className={"ef-badge " + (v.content_type === "video" ? "ef-badge--investor" : "ef-badge--admin")}>{v.content_type === "video" ? "Video" : v.content_type === "project" ? "Project Run" : "Document"}</span></TableCell>
                           <TableCell className="truncate" title={v.item_name}>{v.item_name || "—"}</TableCell>
                           <TableCell className="whitespace-nowrap text-sm">{formatCompact(v.viewed_at)}</TableCell>
                           <TableCell className="text-right whitespace-nowrap">{v.content_type === "video" ? (v.duration_seconds ? formatDuration(v.duration_seconds) : "Started") : "—"}</TableCell>
