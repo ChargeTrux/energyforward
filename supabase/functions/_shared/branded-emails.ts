@@ -23,7 +23,7 @@ export function brandingForPortals(portals?: string[] | null): {
   relationsLabel: string;
 } {
   const list = (portals ?? []).map((p) => String(p).toLowerCase());
-  const hasInvestor = list.includes("investor") || list.includes("video");
+  const hasInvestor = list.includes("investor") || list.includes("video") || list.includes("project run");
   const hasCustomer = list.includes("customer");
   if (hasCustomer && !hasInvestor) {
     return {
