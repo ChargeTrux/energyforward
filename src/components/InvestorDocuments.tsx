@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { FolderLock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { PortalNav } from "@/components/PortalNav";
 
 const navLink = {
   background: "none",
@@ -309,7 +310,7 @@ export function InvestorDocuments({ standalone = false }: { standalone?: boolean
           <span>Documents</span>
           <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>Secure access</span>
         </span>
-      </button>
+      </button>}
 
       {open && (
         <div
@@ -420,7 +421,7 @@ export function InvestorDocuments({ standalone = false }: { standalone?: boolean
               {loading && <div style={{ fontSize: 13, opacity: 0.7 }}>Loading…</div>}
               {error && <div style={{ fontSize: 13, color: "#f4b5a3" }}>{error}</div>}
               {!loading && !error && files.length === 0 && (
-                <div style={{ fontSize: 13, opacity: 0.65 }}>No documents have been published here yet.</div>
+                <div style={{ fontSize: 13, opacity: 0.65 }}>{profiles.length === 0 ? "No document folders have been shared with you yet." : "No documents have been published here yet."}</div>
               )}
               {renderTree("root", 0)}
             </div>
