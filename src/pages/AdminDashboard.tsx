@@ -1509,14 +1509,24 @@ export default function AdminDashboard() {
                         <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">Folders</div>
                         {investorProfiles.length === 0 && <span className="text-muted-foreground">None set up</span>}
                         {investorProfiles.map((p) => (
-                          <label key={p.id} className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={folders.some((f) => f.id === p.id)}
-                              onChange={(e) => toggleUserProfileAccess(u.user_id, p.id, e.target.checked)}
-                            />
-                            {p.name}
-                          </label>
+                          <div key={p.id}>
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={folders.some((f) => f.id === p.id)}
+                                onChange={(e) => toggleUserProfileAccess(u.user_id, p.id, e.target.checked)}
+                              />
+                              {p.name}
+                            </label>
+                            {p.drive_url && (
+                              <ProfileItemPicker
+                                userId={u.user_id}
+                                profileId={p.id}
+                                hasProfile={folders.some((f) => f.id === p.id)}
+                                onProfileGranted={load}
+                              />
+                            )}
+                          </div>
                         ))}
                       </div>
                       <div>
