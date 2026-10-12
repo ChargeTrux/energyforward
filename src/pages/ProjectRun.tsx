@@ -32,10 +32,14 @@ export default function ProjectRun() {
   const [error, setError] = useState<string | null>(null);
   const [sideOpen, setSideOpen] = useState(false);
   const reqRef = useRef(0);
-  const [tabTop, setTabTop] = useState<number>(() => {
-    try { const v = Number(localStorage.getItem("pr-tab-top")); return Number.isFinite(v) && v > 0 ? v : 24; } catch { return 24; }
-  });
-  const dragRef = useRef<{ startY: number; startTop: number; moved: boolean } | null>(null);
+  const peekedRef = useRef(false);
+  useEffect(() => {
+    if (loading || peekedRef.current) return;
+    peekedRef.current = true;
+    setSideOpen(true);
+    const t = setTimeout(() => setSideOpen(false), 2500);
+    return () => clearTimeout(t);
+  }, [loading]);
 
   useEffect(() => {
     if (!user) return;
@@ -83,9 +87,24 @@ export default function ProjectRun() {
   return (
     <div onContextMenu={(e) => e.preventDefault()} style={{ minHeight: "100vh", background: teal, color: pearl, fontFamily: "'General Sans', Arial, sans-serif", display: "flex", flexDirection: "column" }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px clamp(16px,4vw,56px)", borderBottom: "1px solid rgba(238,234,226,0.12)", flexWrap: "wrap", gap: 12 }}>
-        <Link to="/" style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: 18, color: pearl, textDecoration: "none" }}>
-          energyforward<span style={{ color: amber }}>.</span>
-        </Link>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <button
+            type="button"
+            aria-label={sideOpen ? "Hide pages list" : "Show pages list"}
+            title={sideOpen ? "Hide pages" : `Show pages (${pages.length})`}
+            onClick={() => setSideOpen((v) => !v)}
+            style={{
+              width: 22, height: 34, border: "none", cursor: "pointer", padding: 0, marginLeft: "calc(-1 * clamp(16px,4vw,56px))",
+              background: amber, borderRadius: "0 17px 17px 0", boxShadow: "0 0 0 3px rgba(232,177,74,0.25)",
+              color: teal, fontSize: 11, fontWeight: 700,
+            }}
+          >
+            {sideOpen ? "◀" : "▶"}
+          </button>
+          <Link to="/" style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: 18, color: pearl, textDecoration: "none" }}>
+            energyforward<span style={{ color: amber }}>.</span>
+          </Link>
+        </div>
         <nav style={{ display: "flex", gap: 20, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", alignItems: "center", flexWrap: "wrap" }}>
           <a href="/?public=1" style={navLink}>Home</a>
           {(roles.has("investor") || roles.has("admin")) && <Link to="/investor" style={navLink}>Investor portal</Link>}
@@ -98,7 +117,6 @@ export default function ProjectRun() {
 
       <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative" }}>
         <div
-          onMouseEnter={() => setSideOpen(true)}
           onMouseLeave={() => setSideOpen(false)}
           style={{ position: "absolute", top: 0, left: 0, bottom: 0, zIndex: 20, display: "flex", pointerEvents: "none" }}
         >
@@ -120,43 +138,6 @@ export default function ProjectRun() {
             </button>
           ))}
           </aside>
-          <button
-            type="button"
-            aria-label={sideOpen ? "Hide pages list" : "Show pages list (drag to move up or down)"}
-            title="Drag up or down to move"
-            onPointerDown={(e) => {
-              dragRef.current = { startY: e.clientY, startTop: tabTop, moved: false };
-              (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-            }}
-            onPointerMove={(e) => {
-              const d = dragRef.current;
-              if (!d) return;
-              const dy = e.clientY - d.startY;
-              if (Math.abs(dy) > 4) d.moved = true;
-              if (d.moved) {
-                const max = Math.max(0, window.innerHeight - 220);
-                setTabTop(Math.min(max, Math.max(0, d.startTop + dy)));
-              }
-            }}
-            onPointerUp={() => {
-              const d = dragRef.current;
-              dragRef.current = null;
-              if (d?.moved) {
-                try { localStorage.setItem("pr-tab-top", String(tabTop)); } catch { /* ignore */ }
-              } else {
-                setSideOpen((v) => !v);
-              }
-            }}
-            style={{
-              touchAction: "none",
-              pointerEvents: "auto", alignSelf: "flex-start", marginTop: tabTop, marginLeft: sideOpen ? 0 : "calc(-1 * min(300px, 85vw))",
-              transition: "margin-left .25s ease", background: amber, color: teal, border: "none", borderRadius: "0 10px 10px 0",
-              padding: "14px 8px", cursor: "pointer", writingMode: "vertical-rl", fontFamily: "'JetBrains Mono', monospace",
-              fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", boxShadow: "4px 0 14px rgba(0,0,0,0.3)",
-            }}
-          >
-            {sideOpen ? "◀ Hide" : `⋮⋮ Pages (${pages.length}) ▶`}
-          </button>
         </div>
         <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", minHeight: "70vh" }}>
           {error && <div style={{ padding: 16, color: "#f4b5a3", fontSize: 14 }}>{error}</div>}
