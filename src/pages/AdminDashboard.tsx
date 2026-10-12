@@ -5,6 +5,9 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import "./AdminDashboard.css";
+import { ProfileItemPicker } from "@/components/admin/ProfileItemPicker";
+
+let namesSynced = false;
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -321,6 +324,12 @@ export default function AdminDashboard() {
   }, []);
 
   const load = async () => {
+    if (!namesSynced) {
+      namesSynced = true;
+      // Pull current Drive folder names into the portal, then refresh.
+      void supabase.functions.invoke("investor-drive", { body: { action: "sync_names" } })
+        .then(({ data }) => { if (data?.ok) void load(); });
+    }
     const [
       { data: profs },
       { data: roles },
@@ -942,7 +951,11 @@ export default function AdminDashboard() {
           .from("investor_profile_access")
           .delete()
           .eq("user_id", userId)
-          .eq("profile_id", profileId);
+          .eq("profile_id", profileId)
+          .then(async (r) => {
+            await supabase.from("investor_document_access").delete().eq("user_id", userId).eq("profile_id", profileId);
+            return r;
+          });
     if (error) {
       toast({ title: "Update failed", description: error.message, variant: "destructive" });
       return;
@@ -1509,14 +1522,24 @@ export default function AdminDashboard() {
                         <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">Folders</div>
                         {investorProfiles.length === 0 && <span className="text-muted-foreground">None set up</span>}
                         {investorProfiles.map((p) => (
-                          <label key={p.id} className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={folders.some((f) => f.id === p.id)}
-                              onChange={(e) => toggleUserProfileAccess(u.user_id, p.id, e.target.checked)}
-                            />
-                            {p.name}
-                          </label>
+                          <div key={p.id}>
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={folders.some((f) => f.id === p.id)}
+                                onChange={(e) => toggleUserProfileAccess(u.user_id, p.id, e.target.checked)}
+                              />
+                              {p.name}
+                            </label>
+                            {p.drive_url && (
+                              <ProfileItemPicker
+                                userId={u.user_id}
+                                profileId={p.id}
+                                hasProfile={folders.some((f) => f.id === p.id)}
+                                onProfileGranted={load}
+                              />
+                            )}
+                          </div>
                         ))}
                       </div>
                       <div>
