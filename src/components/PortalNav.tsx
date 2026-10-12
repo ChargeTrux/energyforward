@@ -30,7 +30,7 @@ export function usePortalAccess() {
         admin,
         investor: admin || roles.has("investor"),
         customer: admin || roles.has("customer"),
-        videos: admin || roles.has("video") || roles.has("investor"),
+        videos: admin || roles.has("video"),
         project: admin || roles.has("project"),
         documents: admin || (d ?? []).length > 0,
       });
