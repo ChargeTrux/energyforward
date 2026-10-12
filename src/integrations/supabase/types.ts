@@ -113,6 +113,44 @@ export type Database = {
         }
         Relationships: []
       }
+      investor_document_access: {
+        Row: {
+          granted_at: string
+          id: string
+          is_folder: boolean
+          item_id: string
+          item_name: string
+          profile_id: string
+          user_id: string
+        }
+        Insert: {
+          granted_at?: string
+          id?: string
+          is_folder?: boolean
+          item_id: string
+          item_name?: string
+          profile_id: string
+          user_id: string
+        }
+        Update: {
+          granted_at?: string
+          id?: string
+          is_folder?: boolean
+          item_id?: string
+          item_name?: string
+          profile_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "investor_document_access_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "investor_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       investor_profile_access: {
         Row: {
           granted_at: string
