@@ -46,10 +46,13 @@ export function InvestorDocuments() {
   }, []);
 
   const openFile = useCallback(async (profileId: string, f: DocFile) => {
+    const run = ++openSeq.current;
     setActiveFileId(f.id);
     setHtmlDoc(null);
     setPreview(null);
+    setSheets(null);
     setError(null);
+    setProgress(null);
     revoke();
     if (user) void supabase.from("content_views").insert({ user_id: user.id, content_type: "document", item_id: f.id, item_name: f.name });
     setLoading(true);
@@ -58,10 +61,26 @@ export function InvestorDocuments() {
       const res = await callFn(`?${qs}`);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setError(body.error ?? "Could not open this document.");
+        if (run === openSeq.current) setError(body.error ?? "Could not open this document.");
         return;
       }
-      const blob = await res.blob();
+      // Read with a live MB counter so large files show progress instead of a silent wait.
+      const type = res.headers.get("Content-Type") ?? "";
+      const chunks: Uint8Array[] = [];
+      let got = 0;
+      const reader = res.body?.getReader();
+      if (reader) {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (run !== openSeq.current) { void reader.cancel(); return; }
+          chunks.push(value);
+          got += value.length;
+          setProgress(`Downloading… ${(got / 1048576).toFixed(1)} MB`);
+        }
+      }
+      const blob = reader ? new Blob(chunks, { type }) : await res.blob();
+      if (run !== openSeq.current) return;
       const mime = blob.type || f.mimeType;
       if (mime.startsWith("text/html") || /\.html?$/i.test(f.name)) {
         setHtmlDoc(await blob.text());
@@ -69,26 +88,36 @@ export function InvestorDocuments() {
         return;
       }
       if (/spreadsheet|ms-excel|text\/csv/i.test(mime + " " + f.mimeType) || /\.(xlsx|xlsm|xls|csv)$/i.test(f.name)) {
-
-        const wb = XLSX.read(await blob.arrayBuffer(), { type: "array" });
-        const sheets = wb.SheetNames.map((n) =>
-          `<h2>${n.replace(/</g, "&lt;")}</h2>${XLSX.utils.sheet_to_html(wb.Sheets[n], { header: "", footer: "" })}`).join("");
-        setHtmlDoc(`<!doctype html><html><head><meta charset="utf-8"><style>
-          body{font-family:Arial,sans-serif;margin:16px;color:#111}h2{font-size:15px;margin:20px 0 8px}
-          table{border-collapse:collapse;font-size:12px}td,th{border:1px solid #ccc;padding:4px 8px;white-space:nowrap}
-          tr:first-child td{background:#f3f3f3;font-weight:bold}</style></head><body>${sheets}</body></html>`);
+        setProgress("Preparing spreadsheet…");
+        const result = await parseSpreadsheet(await blob.arrayBuffer());
+        if (run !== openSeq.current) return;
+        setSheets(result);
+        setSheetIdx(0);
         setPreview({ name: f.name, url: "", mime: "text/html" });
         return;
       }
       const u = URL.createObjectURL(blob);
       urlRef.current = u;
       setPreview({ name: f.name, url: u, mime });
-    } catch {
-      setError("Could not open this document.");
+    } catch (e) {
+      if (run === openSeq.current) setError(e instanceof Error && e.message ? e.message : "Could not open this document.");
     } finally {
-      setLoading(false);
+      if (run === openSeq.current) { setLoading(false); setProgress(null); }
     }
   }, [user, revoke]);
+
+  useEffect(() => {
+    if (!sheets) return;
+    const s = sheets.sheets[sheetIdx];
+    if (!s) return;
+    const note = s.truncated
+      ? `<p class="note">Showing the first ${Math.min(s.totalRows, sheets.maxRows).toLocaleString()} of ${s.totalRows.toLocaleString()} rows${s.totalCols > sheets.maxCols ? ` and ${sheets.maxCols} of ${s.totalCols} columns` : ""}. Contact us for the complete file.</p>`
+      : "";
+    setHtmlDoc(`<!doctype html><html><head><meta charset="utf-8"><style>
+      body{font-family:Arial,sans-serif;margin:16px;color:#111}.note{font-size:12px;color:#7a5a12;background:#fff6dd;padding:6px 10px;border-radius:6px;display:inline-block}
+      table{border-collapse:collapse;font-size:12px}td,th{border:1px solid #ccc;padding:4px 8px;white-space:nowrap}
+      tr:first-child td{background:#f3f3f3;font-weight:bold}</style></head><body>${note}${s.html}</body></html>`);
+  }, [sheets, sheetIdx]);
 
   useEffect(() => {
     const p = initial.current;
