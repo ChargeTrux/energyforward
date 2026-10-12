@@ -105,14 +105,7 @@ export default function ProjectRun() {
             energyforward<span style={{ color: amber }}>.</span>
           </Link>
         </div>
-        <nav style={{ display: "flex", gap: 20, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", alignItems: "center", flexWrap: "wrap" }}>
-          <a href="/?public=1" style={navLink}>Home</a>
-          {(roles.has("investor") || roles.has("admin")) && <Link to="/investor" style={navLink}>Investor portal</Link>}
-          {(roles.has("video") || roles.has("investor") || roles.has("admin")) && <Link to="/investor/videos" style={navLink}>Videos</Link>}
-          {roles.has("admin") && <Link to="/admin" style={navLink}>Admin</Link>}
-          <span style={{ color: amber }}>Project Run</span>
-          <Link to="/signout" style={navLink}>Sign out</Link>
-        </nav>
+        <PortalNav current="project" />
       </header>
 
       <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative" }}>

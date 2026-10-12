@@ -154,15 +154,7 @@ export default function InvestorVideos() {
         <Link to="/" style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: 18, color: pearl, textDecoration: "none" }}>
           energyforward<span style={{ color: amber }}>.</span>
         </Link>
-        <nav style={{ display: "flex", gap: 20, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", alignItems: "center", flexWrap: "wrap" }}>
-          <a href="/?public=1" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Home</a>
-          {(fullPortalAccess || roles.has("investor") || roles.has("admin")) && <Link to="/investor" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Investor portal</Link>}
-          {(roles.has("project") || roles.has("admin")) && <Link to="/investor/project" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Project Run</Link>}
-          {(fullPortalAccess || roles.has("investor") || roles.has("admin")) && (roles.has("customer") || roles.has("admin")) && <Link to="/customer" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Customer portal</Link>}
-          {roles.has("admin") && <Link to="/admin" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Admin</Link>}
-          <span style={{ color: amber }}>Videos</span>
-          {user && <Link to="/signout" style={{ color: pearl, opacity: 0.75, textDecoration: "none" }}>Sign out</Link>}
-        </nav>
+        <PortalNav current="videos" />
       </header>
 
       <main style={{ maxWidth: 1040, margin: "0 auto", padding: "clamp(24px,4vw,44px) clamp(18px,5vw,64px) 80px" }}>
