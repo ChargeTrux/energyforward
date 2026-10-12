@@ -1446,6 +1446,20 @@ export default function AdminDashboard() {
                       )}
                       <Button
                         size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          const name = window.prompt("Full name", u.full_name || "");
+                          if (name === null) return;
+                          const email = window.prompt("Email address", u.email || "");
+                          if (email === null) return;
+                          if (name.trim() !== (u.full_name || "")) await callAdmin("update_name", { user_id: u.user_id, full_name: name.trim() });
+                          if (email.trim().toLowerCase() !== (u.email || "").toLowerCase()) await callAdmin("update_email", { user_id: u.user_id, email: email.trim() });
+                        }}
+                      >
+                        Edit name / email
+                      </Button>
+                      <Button
+                        size="sm"
                         onClick={() => {
                           if (!window.confirm(`Send a first-time invite to ${u.email}? A new temporary password will be emailed.`)) return;
                           callAdmin("send_welcome", { user_ids: [u.user_id], app_origin: window.location.origin });

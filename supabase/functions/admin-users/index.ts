@@ -644,6 +644,21 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    if (action === "update_email") {
+      const { user_id } = body;
+      const email = String(body.email ?? "").trim().toLowerCase();
+      if (!user_id || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 255) {
+        return json({ error: "A valid email is required" }, 400);
+      }
+      const { data: clash } = await admin.from("profiles").select("user_id").ilike("email", email).neq("user_id", user_id).limit(1);
+      if (clash && clash.length) return json({ error: "Another account already uses this email" }, 400);
+      const { error: aErr } = await admin.auth.admin.updateUserById(user_id, { email, email_confirm: true });
+      if (aErr) return json({ error: aErr.message }, 400);
+      const { error: pErr } = await admin.from("profiles").update({ email }).eq("user_id", user_id);
+      if (pErr) return json({ error: pErr.message }, 400);
+      return json({ ok: true });
+    }
+
     if (action === "delete_signup") {
       const { email } = body;
       if (!email || typeof email !== "string") return json({ error: "Missing email" }, 400);
