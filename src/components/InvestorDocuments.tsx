@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { PortalNav } from "@/components/PortalNav";
 import { PortalSidebar } from "@/components/PortalSidebar";
+import { ZoomFrame } from "@/components/ZoomFrame";
 
 const navLink = {
   background: "none",
@@ -439,7 +440,8 @@ export function InvestorDocuments({ standalone = false }: { standalone?: boolean
                   <div style={{ padding: "10px 16px", ...label, color: amber, borderBottom: "1px solid rgba(238,234,226,0.12)" }}>
                     {preview.name}
                   </div>
-                  <div style={{ flex: 1, minHeight: 0, background: "#04191b" }}>
+                  <div style={{ flex: 1, minHeight: 0, background: "#04191b", display: "flex", flexDirection: "column" }}>
+                    <ZoomFrame resetKey={preview.name}>
                     {preview.mime === "text/html" && htmlDoc !== null ? (
                       <iframe title={preview.name} srcDoc={htmlDoc} sandbox="allow-scripts" style={{ width: "100%", height: "100%", border: "none", background: "#fff" }} />
                     ) : preview.mime.startsWith("image/") ? (
@@ -462,10 +464,11 @@ export function InvestorDocuments({ standalone = false }: { standalone?: boolean
                     ) : (
                       <iframe
                         title={preview.name}
-                        src={`${preview.url}#toolbar=0&navpanes=0&scrollbar=0`}
+                        src={`${preview.url}#toolbar=0&navpanes=0&view=FitH`}
                         style={{ width: "100%", height: "100%", border: "none", background: "#fff" }}
                       />
                     )}
+                    </ZoomFrame>
                   </div>
                 </>
               ) : (

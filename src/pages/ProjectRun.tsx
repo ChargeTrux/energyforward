@@ -1,3 +1,4 @@
+import { ZoomFrame } from "@/components/ZoomFrame";
 import { PortalSidebar } from "@/components/PortalSidebar";
 import { useEffect, useRef, useState } from "react";
 import { PortalNav } from "@/components/PortalNav";
@@ -141,7 +142,7 @@ export default function ProjectRun() {
         <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", minHeight: "70vh" }}>
           {error && <div style={{ padding: 16, color: "#f4b5a3", fontSize: 14 }}>{error}</div>}
           {html !== null ? (
-            <iframe title={active?.name ?? "Project Run"} srcDoc={html} sandbox="allow-scripts" style={{ flex: 1, width: "100%", border: "none", background: "#fff" }} />
+            <ZoomFrame resetKey={active?.id}><iframe title={active?.name ?? "Project Run"} srcDoc={html} sandbox="allow-scripts" style={{ flex: 1, width: "100%", height: "100%", border: "none", background: "#fff" }} /></ZoomFrame>
           ) : active && !error ? (
             <div style={{ margin: "auto", opacity: 0.7, fontSize: 14 }}>Loading {active.name}…</div>
           ) : null}
