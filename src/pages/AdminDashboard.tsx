@@ -1588,7 +1588,7 @@ export default function AdminDashboard() {
             onSubmit={handleInvite}
             className="grid md:grid-cols-12 gap-3 items-end"
           >
-            <div className="md:col-span-3">
+            <div className="md:col-span-5">
               <Label htmlFor="iname">Full Name</Label>
               <Input
                 id="iname"
@@ -1597,7 +1597,7 @@ export default function AdminDashboard() {
                 placeholder="Jane Doe"
               />
             </div>
-            <div className="md:col-span-4">
+            <div className="md:col-span-7">
               <Label htmlFor="iemail">Email</Label>
               <Input
                 id="iemail"
