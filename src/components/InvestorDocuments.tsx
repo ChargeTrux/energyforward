@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import * as XLSX from "xlsx";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,6 +22,35 @@ async function callFn(path: string) {
   });
 }
 
+type SheetResult = {
+  sheets: { name: string; html: string; truncated: boolean; totalRows: number; totalCols: number }[];
+  maxRows: number;
+  maxCols: number;
+};
+
+/** Parse spreadsheets off the main thread with a hard timeout so the page never freezes. */
+function parseSpreadsheet(buf: ArrayBuffer): Promise<SheetResult> {
+  return new Promise((resolve, reject) => {
+    const w = new Worker(new URL("../workers/xlsxPreview.worker.ts", import.meta.url), { type: "module" });
+    const t = window.setTimeout(() => {
+      w.terminate();
+      reject(new Error("This spreadsheet is too large to preview. Please ask us for a PDF version or a smaller extract."));
+    }, 90_000);
+    w.onmessage = (e) => {
+      window.clearTimeout(t);
+      w.terminate();
+      if (e.data?.ok) resolve(e.data as SheetResult);
+      else reject(new Error("This spreadsheet could not be read. Try saving it again as .xlsx."));
+    };
+    w.onerror = () => {
+      window.clearTimeout(t);
+      w.terminate();
+      reject(new Error("This spreadsheet could not be read. Try saving it again as .xlsx."));
+    };
+    w.postMessage(buf, [buf]);
+  });
+}
+
 /** Documents (Data Room) page: viewer full width, folders in the shared slide-out menu. */
 export function InvestorDocuments() {
   const { user } = useAuth();
@@ -37,6 +65,10 @@ export function InvestorDocuments() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<string | null>(null);
+  const [sheets, setSheets] = useState<SheetResult | null>(null);
+  const [sheetIdx, setSheetIdx] = useState(0);
+  const openSeq = useRef(0);
   const urlRef = useRef<string | null>(null);
   const initial = useRef(new URLSearchParams(window.location.search));
 
