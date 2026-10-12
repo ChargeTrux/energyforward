@@ -150,6 +150,13 @@ export default function InvestorVideos() {
     if (next) selectVideo(next, false, true);
   };
 
+  const [maxed, setMaxed] = useState(false);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMaxed(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   return (
     <div style={{ minHeight: "100vh", background: teal, color: pearl, fontFamily: "'General Sans', Arial, sans-serif" }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px clamp(16px,4vw,56px)", borderBottom: "1px solid rgba(238,234,226,0.12)", flexWrap: "wrap", gap: 12 }}>
@@ -173,13 +180,6 @@ export default function InvestorVideos() {
       </PortalDrawer>}
 
       <main style={{ maxWidth: 1040, margin: "0 auto", padding: "clamp(24px,4vw,44px) clamp(18px,5vw,64px) 80px" }}>
-        <section style={{ maxWidth: 680, margin: "0 auto", marginBottom: "clamp(24px,4vw,36px)", textAlign: "center" }}>
-          <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: amber, margin: 0 }}>Confidential · Authorized viewing</p>
-          <h1 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(26px,3.4vw,40px)", margin: "10px 0 12px", lineHeight: 1.05, color: pearl }}>Moving energy forward.</h1>
-          <p style={{ fontSize: "clamp(14px,1.5vw,17px)", lineHeight: 1.55, margin: 0, color: "rgba(238,234,226,0.78)" }}>
-            Energy Forward is building the delivery infrastructure for the next era of energy—connecting technology, operations and execution to move critical projects from ambition to reality.
-          </p>
-        </section>
 
         {(loading || authLoading) && <p style={{ opacity: 0.7 }}>Loading your videos…</p>}
         {!authLoading && !user && (
@@ -196,7 +196,13 @@ export default function InvestorVideos() {
             <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: amber, margin: "0 0 9px" }}>Now viewing</p>
             <h2 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(18px,2vw,26px)", margin: "0 0 10px", lineHeight: 1.22, color: "rgba(238,234,226,0.94)" }}>{active.name}</h2>
             {active.description && <p style={{ maxWidth: 720, margin: "0 auto 20px", fontSize: "clamp(14px,1.5vw,17px)", lineHeight: 1.65, color: "rgba(238,234,226,0.68)", whiteSpace: "pre-line", textAlign: "center" }}>{active.description}</p>}
-            <div style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", background: "#061719", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(238,234,226,0.14)", boxShadow: "0 18px 48px rgba(0,0,0,0.24)" }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+              <button type="button" onClick={() => setMaxed(true)} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", background: amber, color: teal, border: "none", borderRadius: 999, padding: "6px 14px", cursor: "pointer", fontWeight: 700 }}>Maximize</button>
+            </div>
+            <div style={maxed
+              ? { position: "fixed", inset: 0, zIndex: 300, background: "#000" }
+              : { position: "relative", width: "100%", aspectRatio: "16 / 9", background: "#061719", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(238,234,226,0.14)", boxShadow: "0 18px 48px rgba(0,0,0,0.24)" }}>
+              {maxed && <button type="button" onClick={() => setMaxed(false)} style={{ position: "absolute", top: 16, right: 16, zIndex: 301, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", background: amber, color: teal, border: "none", borderRadius: 999, padding: "10px 18px", cursor: "pointer", fontWeight: 700, boxShadow: "0 4px 18px rgba(0,0,0,0.35)" }}>Exit ✕</button>}
               {src ? (
                 <video ref={videoElRef} key={src} src={src} controls preload="auto" playsInline controlsList="nodownload noremoteplayback" disablePictureInPicture onLoadedData={handleVideoReady}
                   onPlay={() => {
@@ -217,23 +223,6 @@ export default function InvestorVideos() {
           </section>
         )}
 
-        {videos.length > 1 && (
-          <section style={{ marginTop: 48, borderTop: "1px solid rgba(238,234,226,0.14)", paddingTop: 28 }}>
-            <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", opacity: 0.7, marginBottom: 14 }}>Your authorized videos</p>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 16 }}>
-              {videos.map((video) => {
-                const selected = video.id === active?.id;
-                return (
-                  <button key={video.id} onClick={() => selectVideo(video, true, true)} style={{ textAlign: "left", cursor: "pointer", padding: 18, borderRadius: 8, background: selected ? "rgba(232,177,74,0.12)" : "rgba(238,234,226,0.05)", border: `1px solid ${selected ? amber : "rgba(238,234,226,0.14)"}`, color: pearl, display: "flex", gap: 14, alignItems: "flex-start", font: "inherit" }}>
-                    <span style={{ flex: "0 0 40px", height: 40, borderRadius: "50%", background: selected ? amber : "rgba(238,234,226,0.1)", display: "grid", placeItems: "center", color: selected ? teal : pearl }}><Play size={16} /></span>
-                    <span><span style={{ display: "block", fontSize: 15, lineHeight: 1.35 }}>{video.name}</span>{video.description && <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", marginTop: 6, fontSize: 12, lineHeight: 1.45, color: "rgba(238,234,226,0.58)" }}>{video.description}</span>}{selected && <span style={{ display: "block", fontSize: 10, color: amber, letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 7 }}>Selected</span>}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        )}
-        <footer style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 48, paddingTop: 24, borderTop: "1px solid rgba(238,234,226,0.12)", color: "rgba(238,234,226,0.55)", fontSize: 12 }}><LockKeyhole size={15} color={amber} /> Access is personal and verified each time a video is requested.</footer>
       </main>
     </div>
   );
