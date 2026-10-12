@@ -243,7 +243,7 @@ export function InvestorDocuments({ standalone = false }: { standalone?: boolean
             }}
           >
             <span style={{ color: amber, width: 12, display: "inline-block" }}>{isFolder ? (isOpen ? "▾" : "▸") : "•"}</span>
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{f.name}</span>
+            <span style={{ overflowWrap: "anywhere", lineHeight: 1.35 }}>{f.name}</span>
           </button>
           {isFolder && isOpen && (
             <div>
@@ -414,7 +414,7 @@ export function InvestorDocuments({ standalone = false }: { standalone?: boolean
           <div style={{ display: "flex", flex: 1, minHeight: 0, flexDirection: "row" }}>
             <div
               style={{
-                width: "min(320px, 38vw)",
+                width: "clamp(300px, 32vw, 460px)", resize: "horizontal", minWidth: 260, maxWidth: "70vw",
                 borderRight: "1px solid rgba(238,234,226,0.14)",
                 overflowY: "auto",
                 padding: "14px 16px",

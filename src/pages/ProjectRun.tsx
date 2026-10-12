@@ -119,7 +119,7 @@ export default function ProjectRun() {
           style={{ position: "absolute", top: 0, left: 0, bottom: 0, zIndex: 20, display: "flex", pointerEvents: "none" }}
         >
           <aside style={{
-            width: "min(300px, 85vw)", background: teal, borderRight: "1px solid rgba(238,234,226,0.18)", padding: "18px 16px",
+            width: "min(420px, 90vw)", background: teal, borderRight: "1px solid rgba(238,234,226,0.18)", padding: "18px 16px",
             boxShadow: sideOpen ? "8px 0 24px rgba(0,0,0,0.35)" : "none", overflowY: "auto",
             transform: sideOpen ? "translateX(0)" : "translateX(-100%)", transition: "transform .25s ease",
             pointerEvents: sideOpen ? "auto" : "none",
