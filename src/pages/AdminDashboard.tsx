@@ -951,7 +951,11 @@ export default function AdminDashboard() {
           .from("investor_profile_access")
           .delete()
           .eq("user_id", userId)
-          .eq("profile_id", profileId);
+          .eq("profile_id", profileId)
+          .then(async (r) => {
+            await supabase.from("investor_document_access").delete().eq("user_id", userId).eq("profile_id", profileId);
+            return r;
+          });
     if (error) {
       toast({ title: "Update failed", description: error.message, variant: "destructive" });
       return;
