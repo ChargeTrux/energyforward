@@ -744,7 +744,6 @@ export default function AdminDashboard() {
     if (!email) return;
     // Picking videos / 3D pages grants that section; investor portal stays independent.
     rolesArr = [...rolesArr];
-    if (!rolesArr.includes("investor")) rolesArr = rolesArr.filter((r) => r !== "video" && r !== "project");
     if (selectedVideoIds.length && rolesArr.includes("investor") && !rolesArr.includes("video")) rolesArr.push("video");
     if (selectedProjectIds.length && rolesArr.includes("investor") && !rolesArr.includes("project")) rolesArr.push("project");
     const data = (await callAdmin("invite", {
@@ -1526,13 +1525,13 @@ export default function AdminDashboard() {
                       </div>
                       <div className="grid gap-4 md:grid-cols-3">
                       <div>
-                        <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 ${!u.is_investor && !u.is_project ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_investor ? "Enable Investor portal first" : undefined}>
+                        <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 ${!u.is_investor && !u.is_project ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_investor && !u.is_project ? "Enable Investor portal first" : undefined}>
                           <input type="checkbox" disabled={!u.is_investor && !u.is_project} checked={Boolean(u.is_project)} onChange={(e) => callAdmin("set_project", { user_id: u.user_id, make_project: e.target.checked })} />
                           Project 3D Demo
                         </label>
                         {projectCatalog.length === 0 && <span className="text-muted-foreground">{projectCatalogMsg}</span>}
                         {projectCatalog.map((pg) => (
-                          <label key={pg.id} className={`flex items-center gap-2 ml-5 ${!u.is_project && !projPages.some((x) => x.id === pg.id) ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_project ? (u.is_investor ? "Enable Project 3D Demo first" : "Enable Investor portal first") : undefined}>
+                          <label key={pg.id} className={`flex items-center gap-2 ml-5 ${!u.is_project && !projPages.some((x) => x.id === pg.id) ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_project && !projPages.some((x) => x.id === pg.id) ? (u.is_investor ? "Enable Project 3D Demo first" : "Enable Investor portal first") : undefined}>
                             <input
                               type="checkbox"
                               disabled={!u.is_project && !projPages.some((x) => x.id === pg.id)}
@@ -1546,13 +1545,13 @@ export default function AdminDashboard() {
                         ))}
                       </div>
                       <div>
-                        <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 ${!u.is_investor && !u.is_video ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_investor ? "Enable Investor portal first" : undefined}>
+                        <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 ${!u.is_investor && !u.is_video ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_investor && !u.is_video ? "Enable Investor portal first" : undefined}>
                           <input type="checkbox" disabled={!u.is_investor && !u.is_video} checked={Boolean(u.is_video)} onChange={(e) => callAdmin("set_video", { user_id: u.user_id, make_video: e.target.checked })} />
                           Videos
                         </label>
                         {videoCatalog.length === 0 && <span className="text-muted-foreground">{videoCatalogMsg}</span>}
                         {videoCatalog.map((v) => (
-                          <label key={v.id} className={`flex items-center gap-2 ml-5 ${!u.is_video && !vids.some((x) => x.id === v.id) ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_video ? (u.is_investor ? "Enable Videos first" : "Enable Investor portal first") : undefined}>
+                          <label key={v.id} className={`flex items-center gap-2 ml-5 ${!u.is_video && !vids.some((x) => x.id === v.id) ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_video && !vids.some((x) => x.id === v.id) ? (u.is_investor ? "Enable Videos first" : "Enable Investor portal first") : undefined}>
                             <input
                               type="checkbox"
                               disabled={!u.is_video && !vids.some((x) => x.id === v.id)}
@@ -1569,7 +1568,7 @@ export default function AdminDashboard() {
                         {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up</span>}
                         {investorProfiles.map((p) => (
                           <div key={p.id}>
-                            <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 ${!u.is_investor && !folders.some((f) => f.id === p.id) ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_investor ? "Enable Investor portal first" : undefined}>
+                            <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 ${!u.is_investor && !folders.some((f) => f.id === p.id) ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_investor && !folders.some((f) => f.id === p.id) ? "Enable Investor portal first" : undefined}>
                               <input
                                 type="checkbox"
                                 disabled={!u.is_investor && !folders.some((f) => f.id === p.id)}
