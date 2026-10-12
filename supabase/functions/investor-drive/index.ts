@@ -4,6 +4,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const GATEWAY = "https://connector-gateway.lovable.dev/google_drive";
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const DRIVE_KEY = Deno.env.get("GOOGLE_DRIVE_API_KEY");
+const FOLDER = "application/vnd.google-apps.folder";
 
 const GOOGLE_EXPORT: Record<string, string> = {
   "application/vnd.google-apps.document": "application/pdf",
@@ -154,10 +155,51 @@ Deno.serve(async (req) => {
       return json({ ok: true, name });
     }
 
+    // Specific subfolder/file grants. None for this profile = whole folder.
+    let allowed: Set<string> | null = null;
+    if (!isAdmin) {
+      const { data: items } = await admin
+        .from("investor_document_access")
+        .select("item_id")
+        .eq("user_id", user.id)
+        .eq("profile_id", profileId);
+      if (items && items.length) allowed = new Set(items.map((i: { item_id: string }) => i.item_id));
+    }
+    // Is `id` (or one of its ancestors) in `targets`? Walks up to 8 levels.
+    const within = async (id: string, targets: Set<string>) => {
+      let frontier = [id];
+      for (let d = 0; d < 8 && frontier.length; d++) {
+        if (frontier.some((f) => targets.has(f))) return true;
+        const next: string[] = [];
+        for (const f of frontier) {
+          if (f === rootFolder) continue;
+          const r = await gateway(`/drive/v3/files/${f}`, { fields: "parents", supportsAllDrives: "true" });
+          if (!r.ok) { await r.body?.cancel(); continue; }
+          next.push(...((await r.json()).parents ?? []));
+        }
+        frontier = next;
+      }
+      return false;
+    };
+
     if (action === "list") {
-      const folder = url.searchParams.get("folder_id") || rootFolder;
-      // Only the root folder or a descendant reached through it is listable;
-      // callers pass ids returned by a previous list call.
+      const requested = url.searchParams.get("folder_id");
+      const folder = requested || rootFolder;
+      if (requested && requested !== rootFolder) {
+        if (!(await within(requested, new Set([rootFolder])))) return json({ error: "Folder is outside your authorized folder" }, 403);
+        if (allowed && !(await within(requested, allowed))) return json({ error: "Not authorized for this folder" }, 403);
+      } else if (allowed) {
+        // Top level for restricted users = exactly the items they were given.
+        const metas = await Promise.all([...allowed].map(async (id) => {
+          const r = await gateway(`/drive/v3/files/${id}`, { fields: "id,name,mimeType,size,modifiedTime,trashed", supportsAllDrives: "true" });
+          if (!r.ok) { await r.body?.cancel(); return null; }
+          const m = await r.json();
+          return m.trashed ? null : m;
+        }));
+        const files = metas.filter(Boolean).sort((a, b) =>
+          (a.mimeType === FOLDER ? 0 : 1) - (b.mimeType === FOLDER ? 0 : 1) || a.name.localeCompare(b.name));
+        return json({ folder: rootFolder, files });
+      }
       const res = await gateway("/drive/v3/files", {
         q: `'${folder.replace(/'/g, "")}' in parents and trashed = false`,
         fields: "files(id,name,mimeType,size,modifiedTime,iconLink)",
@@ -177,6 +219,7 @@ Deno.serve(async (req) => {
 
     if (action === "file") {
       if (!fileId) return json({ error: "Missing file" }, 400);
+      if (allowed && !(await within(fileId, allowed))) return json({ error: "Not authorized for this file" }, 403);
       // Confirm the file lives inside this profile's folder tree.
       const metaRes = await gateway(`/drive/v3/files/${fileId}`, {
         fields: "id,name,mimeType,parents",
