@@ -233,7 +233,7 @@ Deno.serve(async (req) => {
         const portals: string[] = [];
         if (role === "investor" || (Array.isArray(roles) && roles.includes("investor"))) portals.push("Investor");
         if (Array.isArray(roles) && roles.includes("video")) portals.push("Video");
-        if (Array.isArray(roles) && roles.includes("project")) portals.push("Project Run");
+        if (Array.isArray(roles) && roles.includes("project")) portals.push("Project 3D Demo");
         if (Array.isArray(roles) && roles.includes("customer")) portals.push("Customer");
         const requestOrigin = (() => {
           const raw = typeof app_origin === "string" ? app_origin : req.headers.get("origin");
@@ -403,7 +403,7 @@ Deno.serve(async (req) => {
         for (const r of (roleRows ?? []) as Array<{ role: string }>) {
           if (r.role === "investor") portals.push("Investor");
           if (r.role === "video") portals.push("Video");
-          if (r.role === "project") portals.push("Project Run");
+          if (r.role === "project") portals.push("Project 3D Demo");
           if (r.role === "customer") portals.push("Customer");
         }
         const { data: accessRows } = await admin.from("investor_profile_access").select("profile_id").eq("user_id", uid);

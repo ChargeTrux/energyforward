@@ -310,7 +310,7 @@ export function InvestorDocuments({ standalone = false }: { standalone?: boolean
       >
         <FolderLock size={20} aria-hidden="true" />
         <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.15, textAlign: "left" }}>
-          <span>Documents</span>
+          <span>Documents (Data Room)</span>
           <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>Secure access</span>
         </span>
       </button>}
@@ -407,7 +407,7 @@ export function InvestorDocuments({ standalone = false }: { standalone?: boolean
               <a href="/customer" style={navLink}>Customer portal</a>
             )}
             {isAdmin && <a href="/admin" style={navLink}>Admin</a>}
-            <span style={{ ...navLink, color: amber, cursor: "default" }}>Documents</span>
+            <span style={{ ...navLink, color: amber, cursor: "default" }}>Documents (Data Room)</span>
             {user && <a href="/signout" style={{ ...navLink, marginLeft: "auto" }}>Sign out</a>}
             </>}
           </div>

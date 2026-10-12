@@ -142,7 +142,7 @@ export default function ProjectRun() {
         <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", minHeight: "70vh" }}>
           {error && <div style={{ padding: 16, color: "#f4b5a3", fontSize: 14 }}>{error}</div>}
           {html !== null ? (
-            <ZoomFrame resetKey={active?.id}><iframe title={active?.name ?? "Project Run"} srcDoc={html} sandbox="allow-scripts" style={{ flex: 1, width: "100%", height: "100%", border: "none", background: "#fff" }} /></ZoomFrame>
+            <ZoomFrame resetKey={active?.id}><iframe title={active?.name ?? "Project 3D Demo"} srcDoc={html} sandbox="allow-scripts" style={{ flex: 1, width: "100%", height: "100%", border: "none", background: "#fff" }} /></ZoomFrame>
           ) : active && !error ? (
             <div style={{ margin: "auto", opacity: 0.7, fontSize: 14 }}>Loading {active.name}…</div>
           ) : null}

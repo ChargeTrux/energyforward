@@ -216,12 +216,23 @@ export function welcomeEmail(args: {
       ? `the <strong style="color:${PEARL};">${escapeHtml(portals[0])} Portal</strong>`
       : `the <strong style="color:${PEARL};">${escapeHtml(portals.slice(0, -1).join(", "))} and ${escapeHtml(portals[portals.length - 1])} Portals</strong>`;
   const contactUrl = "https://energyforward.com/contact";
+  const lower = portals.map((p) => p.toLowerCase());
+  const folders = (args.investorProfiles ?? []).map((p) => p.name).filter(Boolean);
+  const items: { title: string; text: string }[] = [];
+  if (lower.some((p) => p.includes("project"))) items.push({ title: "Project 3D Demo", text: "A 3D animated simulation of one 24-hour period of the EnergyForward loop, following energy from the solar project through the EnergyHub and EnergyPort to the customer's vehicles. A guided tour walks you through the full day in a few minutes, so you can see how the whole system fits together before reading anything else." });
+  if (lower.some((p) => p.includes("video") || p.includes("investor"))) items.push({ title: "Videos", text: "Short video overviews of the EnergyForward business, from the introduction of the company through each part of the model. These are built to bring a new reader, whether an investor or a member of an investor's team, up to speed on EnergyForward quickly. They make the written materials in the data room easier to work through." });
+  if (folders.length) items.push({ title: "Documents (Data Room)", text: `You have been granted access to the following folder(s): <strong style="color:${PEARL};">${folders.map(escapeHtml).join(", ")}</strong>. The data room holds narrative documents, memos, financial models and other due diligence materials.` });
+  const itemsHtml = items.length
+    ? `<p style="margin:0 0 8px;"><strong style="color:${PEARL};">Your investor access includes:</strong></p>
+      ${items.map((it, i) => `<p style="margin:0 0 14px;"><strong style="color:${AMBER};">${i + 1}. ${it.title}</strong><br/>${it.title === "Documents (Data Room)" ? it.text : escapeHtml(it.text)}</p>`).join("")}
+      ${items.length > 1 ? `<p style="margin:0 0 14px;"><strong style="color:${PEARL};">Suggested viewing order</strong><br/>We suggest working through your materials in the order they are listed above. Each item builds on the one before it and makes the next easier to understand.</p>` : ""}`
+    : `<div style="margin:6px 0 16px;">${portalsHtml}</div>`;
+  void portalSentence;
   const body = `
     <p style="margin:0 0 14px;">Dear ${name},</p>
-    <p style="margin:0 0 14px;">Welcome to <strong style="color:${PEARL};">energyforward<span style="color:${AMBER};">.</span></strong> — your access request has been reviewed and <strong style="color:${PEARL};">approved</strong>. You are now authorized to access ${portalSentence}.</p>
-    <div style="margin:6px 0 16px;">${portalsHtml}</div>
-    ${investorProfilesHtml(args.investorProfiles)}
-    <p style="margin:0 0 10px;">Use the credentials below to sign in for the first time:</p>
+    <p style="margin:0 0 14px;">Welcome to EnergyForward. Your access request has been reviewed and approved. You are now authorized to access the following through the EnergyForward investor portal.</p>
+    ${itemsHtml}
+    <p style="margin:0 0 10px;"><strong style="color:${PEARL};">Signing in</strong><br/>Use the credentials below to sign in for the first time. On your first sign-in you will be prompted to set a new password of your own; the temporary password below is for that first sign-in only. Once you are logged in, the content you have been granted appears in the navigation on the left; click any item to open it. Your account settings are in the top right corner.</p>
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:6px 0 4px;border:1px solid ${BORDER};border-radius:8px;background:#0d1730;">
       <tr><td style="padding:14px 16px;font-family:Arial,Helvetica,sans-serif;font-size:13px;">
         <div style="color:${MUTED};text-transform:uppercase;letter-spacing:1px;font-size:11px;font-weight:700;">Email</div>
@@ -242,7 +253,7 @@ export function welcomeEmail(args: {
     </div>
   `;
   return {
-    subject: "Welcome to EnergyForward",
+    subject: "Your EnergyForward investor portal access is approved",
     html: shell({
       preheader: "Your EnergyForward access has been approved.",
       heading: "Your EnergyForward access is approved",
