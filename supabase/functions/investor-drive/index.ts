@@ -28,7 +28,7 @@ function orderFiles<T extends Named>(files: T[]): T[] {
 
 const GOOGLE_EXPORT: Record<string, string> = {
   "application/vnd.google-apps.document": "application/pdf",
-  "application/vnd.google-apps.spreadsheet": "application/pdf",
+  "application/vnd.google-apps.spreadsheet": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.google-apps.presentation": "application/pdf",
   "application/vnd.google-apps.drawing": "application/pdf",
 };
