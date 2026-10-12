@@ -597,6 +597,7 @@ Deno.serve(async (req) => {
         "investor_video_access",
         "project_page_access",
         "content_views",
+        "investor_document_access",
         "investor_profile_access",
         "page_access",
         "user_roles",
