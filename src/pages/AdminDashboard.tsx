@@ -744,8 +744,9 @@ export default function AdminDashboard() {
     if (!email) return;
     // Picking videos / 3D pages grants that section; investor portal stays independent.
     rolesArr = [...rolesArr];
-    if (selectedVideoIds.length && !rolesArr.includes("video")) rolesArr.push("video");
-    if (selectedProjectIds.length && !rolesArr.includes("project")) rolesArr.push("project");
+    if (!rolesArr.includes("investor")) rolesArr = rolesArr.filter((r) => r !== "video" && r !== "project");
+    if (selectedVideoIds.length && rolesArr.includes("investor") && !rolesArr.includes("video")) rolesArr.push("video");
+    if (selectedProjectIds.length && rolesArr.includes("investor") && !rolesArr.includes("project")) rolesArr.push("project");
     const data = (await callAdmin("invite", {
       send_email: sendEmail,
       email,
@@ -753,7 +754,7 @@ export default function AdminDashboard() {
       roles: rolesArr,
       app_origin: window.location.origin,
       replace_access: true,
-      investor_profile_ids: selectedProfileIds,
+      investor_profile_ids: rolesArr.includes("investor") ? selectedProfileIds : [],
       investor_video_ids: rolesArr.includes("video") ? selectedVideoIds : [],
       project_page_ids: rolesArr.includes("project") ? selectedProjectIds : [],
     })) as { temp_password?: string } | null;
@@ -1509,26 +1510,35 @@ export default function AdminDashboard() {
                           <input
                             type="checkbox"
                             checked={Boolean(u.is_investor)}
-                            onChange={(e) => callAdmin("set_investor", { user_id: u.user_id, make_investor: e.target.checked })}
+                            onChange={async (e) => {
+                              const on = e.target.checked;
+                              if (!on && (u.is_project || u.is_video || folders.length) && !window.confirm(`Turning off Investor portal also removes ${u.email}'s Project 3D Demo, Videos and Documents access. Continue?`)) return;
+                              await callAdmin("set_investor", { user_id: u.user_id, make_investor: on });
+                              if (!on) {
+                                if (u.is_project) await callAdmin("set_project", { user_id: u.user_id, make_project: false });
+                                if (u.is_video) await callAdmin("set_video", { user_id: u.user_id, make_video: false });
+                                for (const f of folders) await toggleUserProfileAccess(u.user_id, f.id, false);
+                              }
+                            }}
                           />
                           Investor portal <span className="font-normal text-xs text-muted-foreground">(portal pages only)</span>
                         </label>
                       </div>
                       <div className="grid gap-4 md:grid-cols-3">
                       <div>
-                        <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
-                          <input type="checkbox" checked={Boolean(u.is_project)} onChange={(e) => callAdmin("set_project", { user_id: u.user_id, make_project: e.target.checked })} />
+                        <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 ${!u.is_investor && !u.is_project ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_investor ? "Enable Investor portal first" : undefined}>
+                          <input type="checkbox" disabled={!u.is_investor && !u.is_project} checked={Boolean(u.is_project)} onChange={(e) => callAdmin("set_project", { user_id: u.user_id, make_project: e.target.checked })} />
                           Project 3D Demo
                         </label>
                         {projectCatalog.length === 0 && <span className="text-muted-foreground">{projectCatalogMsg}</span>}
                         {projectCatalog.map((pg) => (
-                          <label key={pg.id} className="flex items-center gap-2 ml-5">
+                          <label key={pg.id} className={`flex items-center gap-2 ml-5 ${!u.is_project && !projPages.some((x) => x.id === pg.id) ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_project ? (u.is_investor ? "Enable Project 3D Demo first" : "Enable Investor portal first") : undefined}>
                             <input
                               type="checkbox"
+                              disabled={!u.is_project && !projPages.some((x) => x.id === pg.id)}
                               checked={projPages.some((x) => x.id === pg.id)}
                               onChange={async (e) => {
                                 await toggleProjectAccess(u.user_id, pg.id, e.target.checked);
-                                if (e.target.checked && !u.is_project) await callAdmin("set_project", { user_id: u.user_id, make_project: true });
                               }}
                             />
                             <span className="min-w-0 break-words">{pg.name}</span>
@@ -1536,19 +1546,19 @@ export default function AdminDashboard() {
                         ))}
                       </div>
                       <div>
-                        <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
-                          <input type="checkbox" checked={Boolean(u.is_video)} onChange={(e) => callAdmin("set_video", { user_id: u.user_id, make_video: e.target.checked })} />
+                        <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 ${!u.is_investor && !u.is_video ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_investor ? "Enable Investor portal first" : undefined}>
+                          <input type="checkbox" disabled={!u.is_investor && !u.is_video} checked={Boolean(u.is_video)} onChange={(e) => callAdmin("set_video", { user_id: u.user_id, make_video: e.target.checked })} />
                           Videos
                         </label>
                         {videoCatalog.length === 0 && <span className="text-muted-foreground">{videoCatalogMsg}</span>}
                         {videoCatalog.map((v) => (
-                          <label key={v.id} className="flex items-center gap-2 ml-5">
+                          <label key={v.id} className={`flex items-center gap-2 ml-5 ${!u.is_video && !vids.some((x) => x.id === v.id) ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_video ? (u.is_investor ? "Enable Videos first" : "Enable Investor portal first") : undefined}>
                             <input
                               type="checkbox"
+                              disabled={!u.is_video && !vids.some((x) => x.id === v.id)}
                               checked={vids.some((x) => x.id === v.id)}
                               onChange={async (e) => {
                                 await toggleVideoAccess(u.user_id, v.id, e.target.checked);
-                                if (e.target.checked && !u.is_video) await callAdmin("set_video", { user_id: u.user_id, make_video: true });
                               }}
                             />
                             <span className="min-w-0 break-words">{v.name.replace(/\.[^.]+$/, "")}</span>
@@ -1559,9 +1569,10 @@ export default function AdminDashboard() {
                         {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up</span>}
                         {investorProfiles.map((p) => (
                           <div key={p.id}>
-                            <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
+                            <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 ${!u.is_investor && !folders.some((f) => f.id === p.id) ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_investor ? "Enable Investor portal first" : undefined}>
                               <input
                                 type="checkbox"
+                                disabled={!u.is_investor && !folders.some((f) => f.id === p.id)}
                                 checked={folders.some((f) => f.id === p.id)}
                                 onChange={(e) => toggleUserProfileAccess(u.user_id, p.id, e.target.checked)}
                               />
@@ -1630,7 +1641,10 @@ export default function AdminDashboard() {
                   Full admin access
                 </label>
                 <label className="flex items-center gap-2 font-semibold">
-                  <input type="checkbox" checked={inviteInvestor} onChange={(e) => setInviteInvestor(e.target.checked)} />
+                  <input type="checkbox" checked={inviteInvestor} onChange={(e) => {
+                    setInviteInvestor(e.target.checked);
+                    if (!e.target.checked) { setInviteProject(false); setInviteVideo(false); setSelectedProjectIds([]); setSelectedVideoIds([]); setSelectedProfileIds([]); }
+                  }} />
                   Investor portal <span className="font-normal text-xs text-muted-foreground">(portal pages only)</span>
                 </label>
                 <label className="flex items-center gap-2 font-semibold">
@@ -1640,20 +1654,20 @@ export default function AdminDashboard() {
               </div>
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
-                  <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
-                    <input type="checkbox" checked={inviteProject} onChange={(e) => { setInviteProject(e.target.checked); if (!e.target.checked) setSelectedProjectIds([]); }} />
+                  <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 ${!inviteInvestor ? "opacity-50 cursor-not-allowed" : ""}`} title={!inviteInvestor ? "Enable Investor portal first" : undefined}>
+                    <input type="checkbox" disabled={!inviteInvestor} checked={inviteProject} onChange={(e) => { setInviteProject(e.target.checked); if (!e.target.checked) setSelectedProjectIds([]); }} />
                     Project 3D Demo
                   </label>
                   {projectCatalog.length === 0 && <span className="text-muted-foreground">{projectCatalogMsg}</span>}
                   {projectCatalog.map((pg) => (
-                    <label key={pg.id} className="flex items-center gap-2 ml-5">
+                    <label key={pg.id} className={`flex items-center gap-2 ml-5 ${!inviteProject ? "opacity-50 cursor-not-allowed" : ""}`} title={!inviteProject ? (inviteInvestor ? "Enable Project 3D Demo first" : "Enable Investor portal first") : undefined}>
                       <input
                         type="checkbox"
+                        disabled={!inviteProject}
                         checked={selectedProjectIds.includes(pg.id)}
                         onChange={(e) => {
                           const on = e.target.checked;
                           setSelectedProjectIds((prev) => on ? [...prev, pg.id] : prev.filter((id) => id !== pg.id));
-                          if (on) setInviteProject(true);
                         }}
                       />
                       <span className="min-w-0 break-words">{pg.name}</span>
@@ -1661,20 +1675,20 @@ export default function AdminDashboard() {
                   ))}
                 </div>
                 <div>
-                  <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
-                    <input type="checkbox" checked={inviteVideo} onChange={(e) => { setInviteVideo(e.target.checked); if (!e.target.checked) setSelectedVideoIds([]); }} />
+                  <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 ${!inviteInvestor ? "opacity-50 cursor-not-allowed" : ""}`} title={!inviteInvestor ? "Enable Investor portal first" : undefined}>
+                    <input type="checkbox" disabled={!inviteInvestor} checked={inviteVideo} onChange={(e) => { setInviteVideo(e.target.checked); if (!e.target.checked) setSelectedVideoIds([]); }} />
                     Videos
                   </label>
                   {videoCatalog.length === 0 && <span className="text-muted-foreground">{videoCatalogMsg}</span>}
                   {videoCatalog.map((v) => (
-                    <label key={v.id} className="flex items-center gap-2 ml-5">
+                    <label key={v.id} className={`flex items-center gap-2 ml-5 ${!inviteVideo ? "opacity-50 cursor-not-allowed" : ""}`} title={!inviteVideo ? (inviteInvestor ? "Enable Videos first" : "Enable Investor portal first") : undefined}>
                       <input
                         type="checkbox"
+                        disabled={!inviteVideo}
                         checked={selectedVideoIds.includes(v.id)}
                         onChange={(e) => {
                           const on = e.target.checked;
                           setSelectedVideoIds((prev) => on ? [...prev, v.id] : prev.filter((id) => id !== v.id));
-                          if (on) setInviteVideo(true);
                         }}
                       />
                       <span className="min-w-0 break-words">{v.name.replace(/\.[^.]+$/, "")}</span>
@@ -1685,9 +1699,10 @@ export default function AdminDashboard() {
                   {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up</span>}
                   {investorProfiles.map((p) => (
                     <div key={p.id}>
-                      <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
+                      <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 ${!inviteInvestor ? "opacity-50 cursor-not-allowed" : ""}`} title={!inviteInvestor ? "Enable Investor portal first" : undefined}>
                         <input
                           type="checkbox"
+                          disabled={!inviteInvestor}
                           checked={selectedProfileIds.includes(p.id)}
                           onChange={(e) => setSelectedProfileIds((prev) => e.target.checked ? [...prev, p.id] : prev.filter((id) => id !== p.id))}
                         />
