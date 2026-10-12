@@ -52,7 +52,7 @@ async function callFn(path: string, init?: RequestInit) {
   });
 }
 
-export function InvestorDocuments() {
+export function InvestorDocuments({ standalone = false }: { standalone?: boolean } = {}) {
   const { user, isAdmin } = useAuth();
   const [roles, setRoles] = useState<Set<string>>(new Set());
   useEffect(() => {
@@ -60,7 +60,7 @@ export function InvestorDocuments() {
     supabase.from("user_roles").select("role").eq("user_id", user.id)
       .then(({ data }) => setRoles(new Set((data ?? []).map((r) => r.role as string))));
   }, [user]);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(standalone);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [activeProfile, setActiveProfile] = useState<string | null>(null);
   const [trail, setTrail] = useState<{ id: string; name: string }[]>([]);
@@ -257,13 +257,14 @@ export function InvestorDocuments() {
 
   useEffect(() => () => revokePreview(), [revokePreview]);
 
-  if (!user || profiles.length === 0) return null;
+  if (!user) return null;
+  if (profiles.length === 0 && !standalone) return null;
 
   const label = { fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase" as const };
 
   return (
     <>
-      <button
+      {!standalone && <button
         type="button"
         aria-label="Open secure documents. Drag to move this button."
         title="Drag to move · Click to open"
@@ -355,7 +356,7 @@ export function InvestorDocuments() {
                 </button>
               ))}
             </div>
-            <button
+            {!standalone && <button
               type="button"
               onClick={() => {
                 revokePreview();
@@ -373,7 +374,7 @@ export function InvestorDocuments() {
               }}
             >
               Close
-            </button>
+            </button>}
           </div>
 
           <div
@@ -386,6 +387,7 @@ export function InvestorDocuments() {
               borderBottom: "1px solid rgba(238,234,226,0.14)",
             }}
           >
+            {standalone ? <PortalNav current="documents" /> : <>
             <a href="/?public=1" style={navLink}>Home</a>
             <button
               type="button"
@@ -403,6 +405,7 @@ export function InvestorDocuments() {
             {isAdmin && <a href="/admin" style={navLink}>Admin</a>}
             <span style={{ ...navLink, color: amber, cursor: "default" }}>Documents</span>
             {user && <a href="/signout" style={{ ...navLink, marginLeft: "auto" }}>Sign out</a>}
+            </>}
           </div>
 
           <div style={{ display: "flex", flex: 1, minHeight: 0, flexDirection: "row" }}>
