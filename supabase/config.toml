@@ -15,3 +15,5 @@ project_id = "scyqmmakqmnzpnhrrnlx"
     verify_jwt = false
   [functions.investor-videos]
     verify_jwt = false
+  [functions.investor-drive]
+    verify_jwt = false

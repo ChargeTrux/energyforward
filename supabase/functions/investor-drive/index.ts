@@ -56,12 +56,61 @@ async function gateway(path: string, params: Record<string, string>) {
   });
 }
 
+// Short-lived encrypted download tickets so the browser's own download manager can
+// fetch large spreadsheets directly (no auth header on navigations, no Drive ids in URLs).
+const TICKET_TTL_MS = 120_000;
+let ticketKey: Promise<CryptoKey> | null = null;
+function getTicketKey() {
+  ticketKey ??= crypto.subtle
+    .digest("SHA-256", new TextEncoder().encode(`dl-ticket:${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""}`))
+    .then((raw) => crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]));
+  return ticketKey;
+}
+const b64u = (b: Uint8Array) => btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const unb64u = (s: string) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+async function makeTicket(data: { f: string; n: string; m: string }) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await getTicketKey(),
+    new TextEncoder().encode(JSON.stringify({ ...data, e: Date.now() + TICKET_TTL_MS }))));
+  const out = new Uint8Array(iv.length + ct.length); out.set(iv); out.set(ct, iv.length);
+  return b64u(out);
+}
+async function readTicket(t: string): Promise<{ f: string; n: string; m: string } | null> {
+  try {
+    const raw = unb64u(t);
+    const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: raw.slice(0, 12) }, await getTicketKey(), raw.slice(12));
+    const d = JSON.parse(new TextDecoder().decode(pt));
+    return typeof d.e === "number" && d.e > Date.now() ? d : null;
+  } catch { return null; }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
     if (!LOVABLE_API_KEY || !DRIVE_KEY) {
       return json({ error: "Google Drive is not connected yet." }, 500);
+    }
+
+    const early = new URL(req.url);
+    if (early.searchParams.get("action") === "download") {
+      const t = await readTicket(early.searchParams.get("t") ?? "");
+      if (!t) return new Response("This download link has expired. Please click the file again.", { status: 410, headers: corsHeaders });
+      const r = t.m.startsWith("application/vnd.google-apps.")
+        ? await gateway(`/drive/v3/files/${t.f}/export`, { mimeType: GOOGLE_EXPORT[t.m] ?? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+        : await gateway(`/drive/v3/files/${t.f}`, { alt: "media", supportsAllDrives: "true" });
+      if (!r.ok) { await r.body?.cancel(); return new Response("Could not download this file.", { status: 502, headers: corsHeaders }); }
+      const name = /\.(xlsx|xlsm|xls|csv)$/i.test(t.n) ? t.n : `${t.n}.xlsx`;
+      const len = r.headers.get("Content-Length");
+      return new Response(r.body, {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": r.headers.get("Content-Type") ?? "application/octet-stream",
+          "Content-Disposition": `attachment; filename="${name.replace(/[^\x20-\x7e]|"/g, "_")}"; filename*=UTF-8''${encodeURIComponent(name)}`,
+          ...(len ? { "Content-Length": len } : {}),
+          "Cache-Control": "private, no-store",
+        },
+      });
     }
 
     const authHeader = req.headers.get("Authorization") ?? "";
@@ -264,6 +313,12 @@ Deno.serve(async (req) => {
         frontier = lists.flat();
       }
       if (!inTree) return json({ error: "File is outside your authorized folder" }, 403);
+
+      if (url.searchParams.get("mode") === "ticket") {
+        const isSheet = /spreadsheet|ms-excel|text\/csv/i.test(meta.mimeType) || /\.(xlsx|xlsm|xls|csv)$/i.test(meta.name);
+        if (!isSheet) return json({ error: "Only spreadsheets can be downloaded" }, 403);
+        return json({ ticket: await makeTicket({ f: fileId, n: meta.name, m: meta.mimeType }) });
+      }
 
       const exportMime = GOOGLE_EXPORT[meta.mimeType];
       const contentRes = exportMime
