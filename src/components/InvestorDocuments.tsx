@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import * as XLSX from "xlsx";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -67,8 +68,8 @@ export function InvestorDocuments() {
         setPreview({ name: f.name, url: "", mime: "text/html" });
         return;
       }
-      if (/spreadsheetml|ms-excel|text\/csv/i.test(mime) || /\.(xlsx|xlsm|xls|csv)$/i.test(f.name)) {
-        const XLSX = await import("xlsx");
+      if (/spreadsheet|ms-excel|text\/csv/i.test(mime + " " + f.mimeType) || /\.(xlsx|xlsm|xls|csv)$/i.test(f.name)) {
+
         const wb = XLSX.read(await blob.arrayBuffer(), { type: "array" });
         const sheets = wb.SheetNames.map((n) =>
           `<h2>${n.replace(/</g, "&lt;")}</h2>${XLSX.utils.sheet_to_html(wb.Sheets[n], { header: "", footer: "" })}`).join("");
