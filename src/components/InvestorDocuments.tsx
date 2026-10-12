@@ -123,7 +123,8 @@ export function InvestorDocuments({ standalone = false }: { standalone?: boolean
         const body = await res.json();
         const list: Profile[] = body.profiles ?? [];
         setProfiles(list);
-        setActiveProfile((cur) => cur ?? list[0]?.id ?? null);
+        const want = new URLSearchParams(window.location.search).get("profile");
+        setActiveProfile((cur) => list.find((p) => p.id === want)?.id ?? cur ?? list[0]?.id ?? null);
       } catch {
         setProfiles([]);
       }
@@ -418,12 +419,17 @@ export function InvestorDocuments({ standalone = false }: { standalone?: boolean
                 padding: "14px 16px",
               }}
             >
-              {loading && <div style={{ fontSize: 13, opacity: 0.7 }}>Loading…</div>}
-              {error && <div style={{ fontSize: 13, color: "#f4b5a3" }}>{error}</div>}
-              {!loading && !error && files.length === 0 && (
-                <div style={{ fontSize: 13, opacity: 0.65 }}>{profiles.length === 0 ? "No document folders have been shared with you yet." : "No documents have been published here yet."}</div>
-              )}
-              {renderTree("root", 0)}
+              {(() => {
+                const body = <>
+                  {loading && <div style={{ fontSize: 13, opacity: 0.7 }}>Loading…</div>}
+                  {error && <div style={{ fontSize: 13, color: "#f4b5a3" }}>{error}</div>}
+                  {!loading && !error && files.length === 0 && (
+                    <div style={{ fontSize: 13, opacity: 0.65 }}>{profiles.length === 0 ? "No document folders have been shared with you yet." : "No documents have been published here yet."}</div>
+                  )}
+                  {renderTree("root", 0)}
+                </>;
+                return standalone ? <PortalSidebar current="documents">{body}</PortalSidebar> : body;
+              })()}
             </div>
 
             <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
