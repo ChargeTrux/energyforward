@@ -5,6 +5,26 @@ const GATEWAY = "https://connector-gateway.lovable.dev/google_drive";
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const DRIVE_KEY = Deno.env.get("GOOGLE_DRIVE_API_KEY");
 const FOLDER = "application/vnd.google-apps.folder";
+// Leading order number like "1 - ", "4-1 ", "2.3_" sets the order and is hidden.
+const NUM_RE = /^\s*(\d+(?:[-.]\d+)*)\s*(?:[-_.)\]]\s*|\s+)/;
+type Named = { name: string; mimeType?: string };
+function orderFiles<T extends Named>(files: T[]): T[] {
+  const key = (n: string) => { const m = n.match(NUM_RE); return m ? m[1].split(/[-.]/).map(Number) : null; };
+  return files
+    .map((f) => ({ f, k: key(f.name) }))
+    .sort((a, b) => {
+      const fa = a.f.mimeType === FOLDER ? 0 : 1, fb = b.f.mimeType === FOLDER ? 0 : 1;
+      if (fa !== fb) return fa - fb;
+      if (a.k && b.k) {
+        for (let i = 0; i < Math.max(a.k.length, b.k.length); i++) {
+          const d = (a.k[i] ?? -1) - (b.k[i] ?? -1);
+          if (d) return d;
+        }
+      } else if (a.k || b.k) return a.k ? -1 : 1;
+      return a.f.name.localeCompare(b.f.name, undefined, { numeric: true });
+    })
+    .map(({ f }) => ({ ...f, name: f.name.replace(NUM_RE, "").trim() || f.name }));
+}
 
 const GOOGLE_EXPORT: Record<string, string> = {
   "application/vnd.google-apps.document": "application/pdf",
@@ -196,8 +216,7 @@ Deno.serve(async (req) => {
           const m = await r.json();
           return m.trashed ? null : m;
         }));
-        const files = metas.filter(Boolean).sort((a, b) =>
-          (a.mimeType === FOLDER ? 0 : 1) - (b.mimeType === FOLDER ? 0 : 1) || a.name.localeCompare(b.name));
+        const files = orderFiles(metas.filter(Boolean));
         return json({ folder: rootFolder, files });
       }
       const res = await gateway("/drive/v3/files", {
@@ -214,7 +233,7 @@ Deno.serve(async (req) => {
         return json({ error: "Could not load documents", status: res.status, details: text }, res.status);
       }
       const parsed = JSON.parse(text);
-      return json({ folder, files: parsed.files ?? [] });
+      return json({ folder, files: orderFiles(parsed.files ?? []) });
     }
 
     if (action === "file") {
