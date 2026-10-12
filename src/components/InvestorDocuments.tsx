@@ -414,42 +414,12 @@ export function InvestorDocuments() {
                 padding: "14px 16px",
               }}
             >
-              {trail.length > 0 && (
-                <button
-                  type="button"
-                  onClick={goUp}
-                  style={{ background: "none", border: "none", color: amber, cursor: "pointer", fontSize: 13, padding: 0, marginBottom: 10 }}
-                >
-                  ← {trail.length > 1 ? trail[trail.length - 2].name : "All documents"}
-                </button>
-              )}
               {loading && <div style={{ fontSize: 13, opacity: 0.7 }}>Loading…</div>}
               {error && <div style={{ fontSize: 13, color: "#f4b5a3" }}>{error}</div>}
               {!loading && !error && files.length === 0 && (
                 <div style={{ fontSize: 13, opacity: 0.65 }}>No documents have been published here yet.</div>
               )}
-              {files.map((f) => (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => openEntry(f)}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    textAlign: "left",
-                    background: preview?.name === f.name ? "rgba(232,177,74,0.12)" : "transparent",
-                    border: "none",
-                    borderTop: "1px solid rgba(238,234,226,0.10)",
-                    color: pearl,
-                    padding: "10px 4px",
-                    cursor: "pointer",
-                    fontSize: 14,
-                  }}
-                >
-                  <span style={{ color: amber, marginRight: 8 }}>{f.mimeType === FOLDER_MIME ? "▸" : "•"}</span>
-                  {f.name}
-                </button>
-              ))}
+              {renderTree("root", 0)}
             </div>
 
             <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
@@ -459,7 +429,9 @@ export function InvestorDocuments() {
                     {preview.name}
                   </div>
                   <div style={{ flex: 1, minHeight: 0, background: "#04191b" }}>
-                    {preview.mime.startsWith("image/") ? (
+                    {preview.mime === "text/html" && htmlDoc !== null ? (
+                      <iframe title={preview.name} srcDoc={htmlDoc} sandbox="allow-scripts" style={{ width: "100%", height: "100%", border: "none", background: "#fff" }} />
+                    ) : preview.mime.startsWith("image/") ? (
                       <img
                         src={preview.url}
                         alt={preview.name}
