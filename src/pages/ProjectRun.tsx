@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { PortalNav } from "@/components/PortalNav";
 import { Link, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
