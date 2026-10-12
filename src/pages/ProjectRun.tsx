@@ -33,6 +33,7 @@ export default function ProjectRun() {
   const [html, setHtml] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const reqRef = useRef(0);
 
   useEffect(() => {
     if (!user) return;
