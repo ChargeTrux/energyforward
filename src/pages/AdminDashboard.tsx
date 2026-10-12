@@ -1588,7 +1588,7 @@ export default function AdminDashboard() {
             onSubmit={handleInvite}
             className="grid md:grid-cols-12 gap-3 items-end"
           >
-            <div className="md:col-span-3">
+            <div className="md:col-span-5">
               <Label htmlFor="iname">Full Name</Label>
               <Input
                 id="iname"
@@ -1597,7 +1597,7 @@ export default function AdminDashboard() {
                 placeholder="Jane Doe"
               />
             </div>
-            <div className="md:col-span-4">
+            <div className="md:col-span-7">
               <Label htmlFor="iemail">Email</Label>
               <Input
                 id="iemail"
@@ -1608,118 +1608,84 @@ export default function AdminDashboard() {
                 placeholder="user@example.com"
               />
             </div>
-            <div className="md:col-span-5">
-              <Label>Portal Access</Label>
-              <div className="ef-portal-grid mt-1">
-                <label className={`ef-portal-card ${inviteInvestor ? "active" : ""}`}>
-                  <input type="checkbox" checked={inviteInvestor} onChange={(e)=>setInviteInvestor(e.target.checked)} />
-                  <div>
-                    <div className="ttl">Investor Portal</div>
-                    <div className="sub">Portal pages only</div>
-                  </div>
+            <div className="md:col-span-12 ef-access-permissions text-sm">
+              <div className="flex flex-wrap gap-6 pb-3 mb-3 border-b">
+                <label className="flex items-center gap-2 font-semibold">
+                  <input type="checkbox" checked={inviteAdmin} onChange={(e) => setInviteAdmin(e.target.checked)} />
+                  Full admin access
                 </label>
-                <label className={`ef-portal-card ${inviteCustomer ? "active" : ""}`}>
-                  <input type="checkbox" checked={inviteCustomer} onChange={(e)=>setInviteCustomer(e.target.checked)} />
-                  <div>
-                    <div className="ttl">Customer Portal</div>
-                    <div className="sub">Customer-facing area</div>
-                  </div>
+                <label className="flex items-center gap-2 font-semibold">
+                  <input type="checkbox" checked={inviteInvestor} onChange={(e) => setInviteInvestor(e.target.checked)} />
+                  Investor portal <span className="font-normal text-xs text-muted-foreground">(portal pages only)</span>
                 </label>
-                <label className={`ef-portal-card ${inviteVideo ? "active" : ""}`}>
-                  <input type="checkbox" checked={inviteVideo} onChange={(e)=>setInviteVideo(e.target.checked)} />
-                  <div>
-                    <div className="ttl">Videos</div>
-                    <div className="sub">Selected videos below</div>
-                  </div>
+                <label className="flex items-center gap-2 font-semibold">
+                  <input type="checkbox" checked={inviteCustomer} onChange={(e) => setInviteCustomer(e.target.checked)} />
+                  Customer portal
                 </label>
-                <label className={`ef-portal-card ${inviteProject ? "active" : ""}`}>
-                  <input type="checkbox" checked={inviteProject} onChange={(e)=>setInviteProject(e.target.checked)} />
-                  <div>
-                    <div className="ttl">Project 3D Demo</div>
-                    <div className="sub">Selected pages below</div>
-                  </div>
-                </label>
-                <label className={`ef-portal-card ${inviteAdmin ? "active" : ""}`} style={{flexBasis:"160px"}}>
-                  <input type="checkbox" checked={inviteAdmin} onChange={(e)=>setInviteAdmin(e.target.checked)} />
-                  <div>
-                    <div className="ttl" style={{color:"var(--ef-amber)"}}>Admin</div>
-                    <div className="sub">Full dashboard access</div>
-                  </div>
-                </label>
+              </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
+                    <input type="checkbox" checked={inviteProject} onChange={(e) => { setInviteProject(e.target.checked); if (!e.target.checked) setSelectedProjectIds([]); }} />
+                    Project 3D Demo
+                  </label>
+                  {projectCatalog.length === 0 && <span className="text-muted-foreground">{projectCatalogMsg}</span>}
+                  {projectCatalog.map((pg) => (
+                    <label key={pg.id} className="flex items-center gap-2 ml-5">
+                      <input
+                        type="checkbox"
+                        checked={selectedProjectIds.includes(pg.id)}
+                        onChange={(e) => {
+                          const on = e.target.checked;
+                          setSelectedProjectIds((prev) => on ? [...prev, pg.id] : prev.filter((id) => id !== pg.id));
+                          if (on) setInviteProject(true);
+                        }}
+                      />
+                      <span className="min-w-0 break-words">{pg.name}</span>
+                    </label>
+                  ))}
+                </div>
+                <div>
+                  <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
+                    <input type="checkbox" checked={inviteVideo} onChange={(e) => { setInviteVideo(e.target.checked); if (!e.target.checked) setSelectedVideoIds([]); }} />
+                    Videos
+                  </label>
+                  {videoCatalog.length === 0 && <span className="text-muted-foreground">{videoCatalogMsg}</span>}
+                  {videoCatalog.map((v) => (
+                    <label key={v.id} className="flex items-center gap-2 ml-5">
+                      <input
+                        type="checkbox"
+                        checked={selectedVideoIds.includes(v.id)}
+                        onChange={(e) => {
+                          const on = e.target.checked;
+                          setSelectedVideoIds((prev) => on ? [...prev, v.id] : prev.filter((id) => id !== v.id));
+                          if (on) setInviteVideo(true);
+                        }}
+                      />
+                      <span className="min-w-0 break-words">{v.name.replace(/\.[^.]+$/, "")}</span>
+                    </label>
+                  ))}
+                </div>
+                <div>
+                  {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up</span>}
+                  {investorProfiles.map((p) => (
+                    <div key={p.id}>
+                      <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
+                        <input
+                          type="checkbox"
+                          checked={selectedProfileIds.includes(p.id)}
+                          onChange={(e) => setSelectedProfileIds((prev) => e.target.checked ? [...prev, p.id] : prev.filter((id) => id !== p.id))}
+                        />
+                        Documents (Data Room)
+                      </label>
+                      <p className="text-xs text-muted-foreground ml-5">
+                        Gives the whole folder. To share only certain subfolders or files, use "Choose contents" on this person in the Access manager after creating them.
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-            {investorProfiles.length > 0 && (
-              <div className="md:col-span-12">
-                <Label>Documents (Data Room)</Label>
-                <div className="ef-portal-grid mt-1">
-                  {investorProfiles.map((p) => {
-                    const on = selectedProfileIds.includes(p.id);
-                    return (
-                      <label key={p.id} className={`ef-portal-card ${on ? "active" : ""}`}>
-                        <input
-                          type="checkbox"
-                          checked={on}
-                          onChange={(e) =>
-                            setSelectedProfileIds((prev) =>
-                              e.target.checked
-                                ? [...prev, p.id]
-                                : prev.filter((id) => id !== p.id),
-                            )
-                          }
-                        />
-                        <div>
-                          <div className="ttl">{p.name}</div>
-                          <div className="sub">
-                            {p.description || "No description"}
-                            {p.drive_url ? "" : " · folder link missing"}
-                          </div>
-                        </div>
-                      </label>
-                    );
-                  })}
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  The selected profiles and their shared folder links are listed in the welcome email.
-                </p>
-              </div>
-            )}
-            {videoCatalog.length > 0 && (
-              <div className="md:col-span-12">
-                <Label>Videos</Label>
-                <div className="ef-portal-grid mt-1">
-                  {videoCatalog.map((video) => {
-                    const on = selectedVideoIds.includes(video.id);
-                    return (
-                      <label key={video.id} className={`ef-portal-card ${on ? "active" : ""}`}>
-                        <input
-                          type="checkbox"
-                          checked={on}
-                          onChange={(e) => setSelectedVideoIds((prev) => e.target.checked ? [...prev, video.id] : prev.filter((id) => id !== video.id))}
-                        />
-                        <div><div className="ttl">{video.name}</div><div className="sub">Secure in-page viewing</div></div>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-            {(
-              <div className="md:col-span-12">
-                <Label>Project 3D Demo</Label>
-                {projectCatalog.length === 0 && <p className="text-sm text-muted-foreground mt-1">{projectCatalogMsg}</p>}
-                <div className="ef-portal-grid mt-1">
-                  {projectCatalog.map((pg) => {
-                    const on = selectedProjectIds.includes(pg.id);
-                    return (
-                      <label key={pg.id} className={`ef-portal-card ${on ? "active" : ""}`}>
-                        <input type="checkbox" checked={on} onChange={(e) => setSelectedProjectIds((prev) => e.target.checked ? [...prev, pg.id] : prev.filter((id) => id !== pg.id))} />
-                        <div><div className="ttl">{pg.name}</div><div className="sub">Secure in-page viewing</div></div>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
             <div className="md:col-span-12 flex justify-end">
               <Button
                 type="button"
