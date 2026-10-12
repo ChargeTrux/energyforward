@@ -67,6 +67,7 @@ export function InvestorDocuments() {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [dlName, setDlName] = useState<string | null>(null);
   const [sheets, setSheets] = useState<SheetResult | null>(null);
   const [sheetIdx, setSheetIdx] = useState(0);
   const openSeq = useRef(0);
@@ -106,6 +107,8 @@ export function InvestorDocuments() {
         a.click();
         a.remove();
         setNotice(`${f.name} is downloading — check your browser's downloads.`);
+        setDlName(f.name);
+        window.setTimeout(() => setDlName((n) => (n === f.name ? null : n)), 7000);
         return;
       }
       const res = await callFn(`?${qs}`);
@@ -191,6 +194,20 @@ export function InvestorDocuments() {
         </Link>
         <PortalNav current="documents" />
       </header>
+
+      {dlName && (
+        <div role="status" aria-live="polite" onClick={() => setDlName(null)} style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(4,25,27,0.55)" }}>
+          <div style={{ background: teal, border: `1px solid ${amber}`, borderRadius: 16, padding: "28px 32px", maxWidth: 420, textAlign: "center", boxShadow: "0 12px 40px rgba(0,0,0,0.45)" }}>
+            <div style={{ width: 36, height: 36, margin: "0 auto 14px", border: `3px solid rgba(232,177,74,0.25)`, borderTopColor: amber, borderRadius: "50%", animation: "efspin 0.9s linear infinite" }} />
+            <style>{"@keyframes efspin{to{transform:rotate(360deg)}}"}</style>
+            <div style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Downloading Excel file</div>
+            <div style={{ fontSize: 14, opacity: 0.85, lineHeight: 1.5, wordBreak: "break-word" }}>
+              <strong style={{ color: amber }}>{dlName}</strong> is being downloaded to your computer. Check your browser's downloads to open it.
+            </div>
+            <button type="button" onClick={() => setDlName(null)} style={{ marginTop: 18, background: amber, color: teal, border: "none", borderRadius: 999, padding: "8px 20px", fontWeight: 700, cursor: "pointer" }}>OK</button>
+          </div>
+        </div>
+      )}
 
       <PortalDrawer current="documents" pinned onOpenDoc={openFile} activeDocId={activeFileId} />
 
