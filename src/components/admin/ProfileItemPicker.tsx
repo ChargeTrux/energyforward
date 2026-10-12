@@ -107,7 +107,7 @@ export function ProfileItemPicker({
                 {isOpen ? "▾" : "▸"}
               </button>
             ) : <span className="w-4" />}
-            <label className={`flex items-center gap-2 min-w-0 ${!hasProfile && !granted.has(it.id) ? "opacity-50 cursor-not-allowed" : ""}`} title={!hasProfile ? "Enable Documents (Data Room) first" : undefined}>
+            <label className={`flex items-center gap-2 min-w-0 ${!hasProfile && !granted.has(it.id) ? "opacity-50 cursor-not-allowed" : ""}`} title={!hasProfile && !granted.has(it.id) ? "Enable Documents (Data Room) first" : undefined}>
               <input type="checkbox" disabled={!hasProfile && !granted.has(it.id)} checked={granted.has(it.id)} onChange={(e) => toggle(it, e.target.checked)} />
               <span className={`break-words ${isFolder ? "font-medium" : ""}`}>{isFolder ? "📁 " : "📄 "}{niceName(it.name)}</span>
             </label>
