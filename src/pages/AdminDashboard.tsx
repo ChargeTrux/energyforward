@@ -1526,16 +1526,16 @@ export default function AdminDashboard() {
                       <div className="grid gap-4 md:grid-cols-3">
                       <div>
                         <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 ${!u.is_investor && !u.is_project ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_investor && !u.is_project ? "Enable Investor portal first" : undefined}>
-                          <input type="checkbox" disabled={!u.is_investor && !u.is_project} checked={Boolean(u.is_project)} onChange={(e) => callAdmin("set_project", { user_id: u.user_id, make_project: e.target.checked })} />
+                          <input type="checkbox" disabled={!u.is_investor && !u.is_project} checked={Boolean(u.is_project)} onChange={async (e) => { await callAdmin("set_project", { user_id: u.user_id, make_project: e.target.checked }); await loadProject(); }} />
                           Project 3D Demo
                         </label>
                         {projectCatalog.length === 0 && <span className="text-muted-foreground">{projectCatalogMsg}</span>}
                         {projectCatalog.map((pg) => (
-                          <label key={pg.id} className={`flex items-center gap-2 ml-5 ${!u.is_project && !projPages.some((x) => x.id === pg.id) ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_project && !projPages.some((x) => x.id === pg.id) ? (u.is_investor ? "Enable Project 3D Demo first" : "Enable Investor portal first") : undefined}>
+                          <label key={pg.id} className={`flex items-center gap-2 ml-5 ${!u.is_project ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_project ? (u.is_investor ? "Enable Project 3D Demo first" : "Enable Investor portal first") : undefined}>
                             <input
                               type="checkbox"
-                              disabled={!u.is_project && !projPages.some((x) => x.id === pg.id)}
-                              checked={projPages.some((x) => x.id === pg.id)}
+                              disabled={!u.is_project}
+                              checked={Boolean(u.is_project) && projPages.some((x) => x.id === pg.id)}
                               onChange={async (e) => {
                                 await toggleProjectAccess(u.user_id, pg.id, e.target.checked);
                               }}
@@ -1546,16 +1546,16 @@ export default function AdminDashboard() {
                       </div>
                       <div>
                         <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 ${!u.is_investor && !u.is_video ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_investor && !u.is_video ? "Enable Investor portal first" : undefined}>
-                          <input type="checkbox" disabled={!u.is_investor && !u.is_video} checked={Boolean(u.is_video)} onChange={(e) => callAdmin("set_video", { user_id: u.user_id, make_video: e.target.checked })} />
+                          <input type="checkbox" disabled={!u.is_investor && !u.is_video} checked={Boolean(u.is_video)} onChange={async (e) => { await callAdmin("set_video", { user_id: u.user_id, make_video: e.target.checked }); await loadVideos(); }} />
                           Videos
                         </label>
                         {videoCatalog.length === 0 && <span className="text-muted-foreground">{videoCatalogMsg}</span>}
                         {videoCatalog.map((v) => (
-                          <label key={v.id} className={`flex items-center gap-2 ml-5 ${!u.is_video && !vids.some((x) => x.id === v.id) ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_video && !vids.some((x) => x.id === v.id) ? (u.is_investor ? "Enable Videos first" : "Enable Investor portal first") : undefined}>
+                          <label key={v.id} className={`flex items-center gap-2 ml-5 ${!u.is_video ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_video ? (u.is_investor ? "Enable Videos first" : "Enable Investor portal first") : undefined}>
                             <input
                               type="checkbox"
-                              disabled={!u.is_video && !vids.some((x) => x.id === v.id)}
-                              checked={vids.some((x) => x.id === v.id)}
+                              disabled={!u.is_video}
+                              checked={Boolean(u.is_video) && vids.some((x) => x.id === v.id)}
                               onChange={async (e) => {
                                 await toggleVideoAccess(u.user_id, v.id, e.target.checked);
                               }}
