@@ -32,6 +32,10 @@ export default function ProjectRun() {
   const [error, setError] = useState<string | null>(null);
   const [sideOpen, setSideOpen] = useState(false);
   const reqRef = useRef(0);
+  const [tabTop, setTabTop] = useState<number>(() => {
+    try { const v = Number(localStorage.getItem("pr-tab-top")); return Number.isFinite(v) && v > 0 ? v : 24; } catch { return 24; }
+  });
+  const dragRef = useRef<{ startY: number; startTop: number; moved: boolean } | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -118,16 +122,40 @@ export default function ProjectRun() {
           </aside>
           <button
             type="button"
-            aria-label={sideOpen ? "Hide pages list" : "Show pages list"}
-            onClick={() => setSideOpen((v) => !v)}
+            aria-label={sideOpen ? "Hide pages list" : "Show pages list (drag to move up or down)"}
+            title="Drag up or down to move"
+            onPointerDown={(e) => {
+              dragRef.current = { startY: e.clientY, startTop: tabTop, moved: false };
+              (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+            }}
+            onPointerMove={(e) => {
+              const d = dragRef.current;
+              if (!d) return;
+              const dy = e.clientY - d.startY;
+              if (Math.abs(dy) > 4) d.moved = true;
+              if (d.moved) {
+                const max = Math.max(0, window.innerHeight - 220);
+                setTabTop(Math.min(max, Math.max(0, d.startTop + dy)));
+              }
+            }}
+            onPointerUp={() => {
+              const d = dragRef.current;
+              dragRef.current = null;
+              if (d?.moved) {
+                try { localStorage.setItem("pr-tab-top", String(tabTop)); } catch { /* ignore */ }
+              } else {
+                setSideOpen((v) => !v);
+              }
+            }}
             style={{
-              pointerEvents: "auto", alignSelf: "flex-start", marginTop: 24, marginLeft: sideOpen ? 0 : "calc(-1 * min(300px, 85vw))",
+              touchAction: "none",
+              pointerEvents: "auto", alignSelf: "flex-start", marginTop: tabTop, marginLeft: sideOpen ? 0 : "calc(-1 * min(300px, 85vw))",
               transition: "margin-left .25s ease", background: amber, color: teal, border: "none", borderRadius: "0 10px 10px 0",
               padding: "14px 8px", cursor: "pointer", writingMode: "vertical-rl", fontFamily: "'JetBrains Mono', monospace",
               fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", boxShadow: "4px 0 14px rgba(0,0,0,0.3)",
             }}
           >
-            {sideOpen ? "◀ Hide" : `Pages (${pages.length}) ▶`}
+            {sideOpen ? "◀ Hide" : `⋮⋮ Pages (${pages.length}) ▶`}
           </button>
         </div>
         <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", minHeight: "70vh" }}>
