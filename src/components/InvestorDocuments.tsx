@@ -129,9 +129,17 @@ export function InvestorDocuments() {
     })();
   }, [user]);
 
+  const [tree, setTree] = useState<Record<string, DriveFile[]>>({});
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
+  const [activeFileId, setActiveFileId] = useState<string | null>(null);
+  const [htmlDoc, setHtmlDoc] = useState<string | null>(null);
+
   const loadFolder = useCallback(
     async (profileId: string, folderId?: string) => {
-      setLoading(true);
+      const key = folderId ?? "root";
+      if (!folderId) setLoading(true);
+      setLoadingIds((s) => new Set(s).add(key));
       setError(null);
       try {
         const qs = new URLSearchParams({ action: "list", profile_id: profileId });
@@ -139,15 +147,17 @@ export function InvestorDocuments() {
         const res = await callFn(`?${qs.toString()}`);
         const body = await res.json();
         if (!res.ok) {
-          setFiles([]);
           setError(body.error ?? "Could not load documents.");
           return;
         }
-        setFiles(body.files ?? []);
+        const list: DriveFile[] = body.files ?? [];
+        setTree((t) => ({ ...t, [key]: list }));
+        if (!folderId) setFiles(list);
       } catch {
         setError("Could not load documents.");
       } finally {
-        setLoading(false);
+        if (!folderId) setLoading(false);
+        setLoadingIds((s) => { const n = new Set(s); n.delete(key); return n; });
       }
     },
     [],
@@ -156,17 +166,31 @@ export function InvestorDocuments() {
   useEffect(() => {
     if (!open || !activeProfile) return;
     setTrail([]);
+    setTree({});
+    setExpanded(new Set());
+    setActiveFileId(null);
+    setHtmlDoc(null);
     revokePreview();
     loadFolder(activeProfile);
   }, [open, activeProfile, loadFolder, revokePreview]);
 
+  const toggleFolder = (f: DriveFile) => {
+    setExpanded((s) => {
+      const n = new Set(s);
+      if (n.has(f.id)) n.delete(f.id);
+      else {
+        n.add(f.id);
+        if (!tree[f.id] && activeProfile) loadFolder(activeProfile, f.id);
+      }
+      return n;
+    });
+  };
+
   const openEntry = async (f: DriveFile) => {
-    if (f.mimeType === FOLDER_MIME) {
-      setTrail((t) => [...t, { id: f.id, name: f.name }]);
-      if (activeProfile) loadFolder(activeProfile, f.id);
-      return;
-    }
+    if (f.mimeType === FOLDER_MIME) { toggleFolder(f); return; }
     if (!activeProfile) return;
+    setActiveFileId(f.id);
+    setHtmlDoc(null);
     if (user) void supabase.from("content_views").insert({ user_id: user.id, content_type: "document", item_id: f.id, item_name: f.name });
     setLoading(true);
     setError(null);
@@ -180,9 +204,15 @@ export function InvestorDocuments() {
         return;
       }
       const blob = await res.blob();
+      const mime = blob.type || f.mimeType;
+      if (mime.startsWith("text/html") || /\.html?$/i.test(f.name)) {
+        setHtmlDoc(await blob.text());
+        setPreview({ name: f.name, url: "", mime: "text/html" });
+        return;
+      }
       const objUrl = URL.createObjectURL(blob);
       previewUrlRef.current = objUrl;
-      setPreview({ name: f.name, url: objUrl, mime: blob.type || f.mimeType });
+      setPreview({ name: f.name, url: objUrl, mime });
     } catch {
       setError("Could not open this document.");
     } finally {
@@ -190,12 +220,40 @@ export function InvestorDocuments() {
     }
   };
 
-  const goUp = () => {
-    const next = trail.slice(0, -1);
-    setTrail(next);
-    revokePreview();
-    if (activeProfile) loadFolder(activeProfile, next[next.length - 1]?.id);
-  };
+  const goUp = () => {};
+
+  const renderTree = (key: string, depth: number): React.ReactNode =>
+    (tree[key] ?? []).map((f) => {
+      const isFolder = f.mimeType === FOLDER_MIME;
+      const isOpen = expanded.has(f.id);
+      return (
+        <div key={f.id}>
+          <button
+            type="button"
+            onClick={() => openEntry(f)}
+            style={{
+              display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left",
+              background: activeFileId === f.id ? "rgba(232,177,74,0.14)" : "transparent",
+              border: "none", borderTop: "1px solid rgba(238,234,226,0.08)", color: pearl,
+              padding: `8px 4px 8px ${4 + depth * 16}px`, cursor: "pointer", fontSize: 14,
+              fontWeight: isFolder ? 600 : 400,
+            }}
+          >
+            <span style={{ color: amber, width: 12, display: "inline-block" }}>{isFolder ? (isOpen ? "▾" : "▸") : "•"}</span>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{f.name}</span>
+          </button>
+          {isFolder && isOpen && (
+            <div>
+              {loadingIds.has(f.id) && <div style={{ fontSize: 12, opacity: 0.6, paddingLeft: 20 + depth * 16 }}>Loading…</div>}
+              {!loadingIds.has(f.id) && (tree[f.id]?.length ?? 0) === 0 && (
+                <div style={{ fontSize: 12, opacity: 0.55, padding: `4px 0 4px ${20 + depth * 16}px` }}>Empty folder</div>
+              )}
+              {renderTree(f.id, depth + 1)}
+            </div>
+          )}
+        </div>
+      );
+    });
 
   useEffect(() => () => revokePreview(), [revokePreview]);
 
