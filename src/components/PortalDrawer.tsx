@@ -18,7 +18,7 @@ export function PortalDrawer({ defaultOpen = false, pinned = false, ...props }: 
     const body = document.body;
     const prev = body.style.paddingLeft;
     body.style.transition = "padding-left .35s cubic-bezier(.22,.8,.25,1)";
-    body.style.paddingLeft = open ? "min(400px, 92vw)" : "0px";
+    body.style.paddingLeft = open ? "min(300px, 85vw)" : "0px";
     return () => { body.style.paddingLeft = prev; };
   }, [pinned, open]);
   useEffect(() => {
@@ -55,7 +55,7 @@ export function PortalDrawer({ defaultOpen = false, pinned = false, ...props }: 
         aria-hidden={!open}
         onClick={(e) => { if (!pinned && (e.target as HTMLElement).closest("[data-drawer-close]")) setOpen(false); }}
         style={{
-          position: "fixed", top: 0, bottom: 0, left: 0, zIndex: 87, width: pinned ? "min(400px, 92vw)" : "min(460px, 92vw)",
+          position: "fixed", top: 0, bottom: 0, left: 0, zIndex: 87, width: pinned ? "min(300px, 85vw)" : "min(340px, 88vw)",
           background: teal, color: pearl, borderRight: `2px solid ${amber}`, boxShadow: pinned ? "none" : "12px 0 40px rgba(0,0,0,0.45)",
           transform: open ? "translateX(0)" : "translateX(-102%)", transition: "transform .35s cubic-bezier(.22,.8,.25,1)",
           display: "flex", flexDirection: "column", fontFamily: "'General Sans', Arial, sans-serif",

@@ -255,14 +255,13 @@ Deno.serve(async (req) => {
       let frontier = meta.parents ?? [];
       for (let depth = 0; depth < 6 && frontier.length && !inTree; depth++) {
         if (frontier.includes(rootFolder)) { inTree = true; break; }
-        const next: string[] = [];
-        for (const p of frontier) {
+        const lists = await Promise.all(frontier.map(async (p) => {
           const r = await gateway(`/drive/v3/files/${p}`, { fields: "id,parents", supportsAllDrives: "true" });
-          if (!r.ok) continue;
+          if (!r.ok) return [] as string[];
           const pm = await r.json();
-          next.push(...(pm.parents ?? []));
-        }
-        frontier = next;
+          return (pm.parents ?? []) as string[];
+        }));
+        frontier = lists.flat();
       }
       if (!inTree) return json({ error: "File is outside your authorized folder" }, 403);
 

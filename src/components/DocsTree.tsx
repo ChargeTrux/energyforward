@@ -51,8 +51,19 @@ export function DocsTree({ onOpenFile, activeFileId }: { onOpenFile?: (profileId
       const body = await res.json().catch(() => ({}));
       const profiles: { id: string }[] = body.profiles ?? [];
       const lists = await Promise.all(profiles.map((p) => listFolder(p.id)));
-      setTree({ root: lists.flat() });
+      const known: Record<string, Node[]> = { root: lists.flat() };
+      setTree(known);
       setReady(true);
+      // Expand every folder automatically, level by level.
+      const all = new Set<string>();
+      let queue = known.root.filter((n) => n.mimeType === FOLDER_MIME);
+      while (queue.length) {
+        queue.forEach((n) => all.add(n.key));
+        setExpanded(new Set(all));
+        const kids = await Promise.all(queue.map(async (n) => (known[n.key] = await listFolder(n.profileId, n.id))));
+        setTree({ ...known });
+        queue = kids.flat().filter((n) => n.mimeType === FOLDER_MIME);
+      }
     })();
   }, []);
 
