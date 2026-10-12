@@ -78,7 +78,10 @@ export default function ProjectRun() {
   };
 
   useEffect(() => {
-    if (pages.length && !active) void open(pages[0]);
+    if (!pages.length) return;
+    const want = new URLSearchParams(window.location.search).get("page");
+    const target = pages.find((p) => p.id === want) ?? (!active ? pages[0] : null);
+    if (target && target.id !== active?.id) void open(target);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pages]);
 
@@ -120,17 +123,18 @@ export default function ProjectRun() {
             transform: sideOpen ? "translateX(0)" : "translateX(-100%)", transition: "transform .25s ease",
             pointerEvents: sideOpen ? "auto" : "none",
           }}>
-          <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: amber, margin: "0 0 10px" }}>Project Run</p>
+          <PortalSidebar current="project">
           {loading && <div style={{ fontSize: 13, opacity: 0.7 }}>Loading…</div>}
           {!loading && pages.length === 0 && !error && <div style={{ fontSize: 13, opacity: 0.7 }}>No pages have been shared with you yet.</div>}
           {pages.map((p) => (
             <button key={p.id} type="button" onClick={() => { open(p); setSideOpen(false); }} style={{
               display: "block", width: "100%", textAlign: "left", border: "none", borderTop: "1px solid rgba(238,234,226,0.10)",
-              background: active?.id === p.id ? "rgba(232,177,74,0.14)" : "transparent", color: pearl, padding: "10px 6px", cursor: "pointer", fontSize: 14,
+              background: active?.id === p.id ? "rgba(232,177,74,0.14)" : "transparent", color: pearl, padding: "10px 6px 10px 18px", cursor: "pointer", fontSize: 14,
             }}>
               <span style={{ color: amber, marginRight: 8 }}>•</span>{p.name}
             </button>
           ))}
+          </PortalSidebar>
           </aside>
         </div>
         <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", minHeight: "70vh" }}>
