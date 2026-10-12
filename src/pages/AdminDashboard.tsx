@@ -5,6 +5,9 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import "./AdminDashboard.css";
+import { ProfileItemPicker } from "@/components/admin/ProfileItemPicker";
+
+let namesSynced = false;
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -321,6 +324,12 @@ export default function AdminDashboard() {
   }, []);
 
   const load = async () => {
+    if (!namesSynced) {
+      namesSynced = true;
+      // Pull current Drive folder names into the portal, then refresh.
+      void supabase.functions.invoke("investor-drive", { body: { action: "sync_names" } })
+        .then(({ data }) => { if (data?.ok) void load(); });
+    }
     const [
       { data: profs },
       { data: roles },
