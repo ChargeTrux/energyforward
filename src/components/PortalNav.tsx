@@ -51,7 +51,7 @@ export function PortalNav({ current }: { current: Current }) {
       ? <span key={key} style={{ color: amber }}>{label}</span>
       : <Link key={key} to={to} style={link}>{label}</Link>;
   return (
-    <nav style={{ display: "flex", gap: 20, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", alignItems: "center", flexWrap: "wrap" }}>
+    <nav style={{ display: "flex", gap: 28, fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end", marginLeft: "auto" }}>
       <a href="/?public=1" style={link}>Home</a>
       {a.investor && <Link to="/investor" style={link}>Investor portal</Link>}
       {a.investor && a.customer && <Link to="/customer" style={link}>Customer portal</Link>}

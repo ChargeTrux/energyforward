@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { InvestorDocuments } from "@/components/InvestorDocuments";
+import { PortalDrawer } from "@/components/PortalDrawer";
 import { Link, Navigate } from "react-router-dom";
 import { PlayCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -58,29 +58,7 @@ export const InvestorPortal = () => {
 
   return <>
     <EFFrame src="/ef-assets/site/investor/index.html" title="energyforward · investor portal" />
-    <InvestorDocuments />
-    <Link
-      to="/investor/videos"
-      style={{
-        position: "fixed", left: 22, bottom: 22, zIndex: 60, display: "flex", alignItems: "center", gap: 10,
-        padding: "14px 22px", borderRadius: 999, background: "#E8B14A", color: "#0A2A2E",
-        fontFamily: "'General Sans', Arial, sans-serif", fontWeight: 600, fontSize: 15, textDecoration: "none",
-        boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
-      }}
-    >
-      <PlayCircle size={20} /> Videos
-    </Link>
-    {hasProject && <Link
-      to="/investor/project"
-      style={{
-        position: "fixed", left: 160, bottom: 22, zIndex: 60, display: "flex", alignItems: "center", gap: 10,
-        padding: "14px 22px", borderRadius: 999, background: "#EEEAE2", color: "#0A2A2E",
-        fontFamily: "'General Sans', Arial, sans-serif", fontWeight: 600, fontSize: 15, textDecoration: "none",
-        boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
-      }}
-    >
-      Project Run
-    </Link>}
+    <PortalDrawer />
   </>;
 };
 export const ContactPage = () => <EFFrame src="/ef-assets/site/contact/index.html" title="energyforward · contact" />;

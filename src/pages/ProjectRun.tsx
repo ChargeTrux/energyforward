@@ -1,5 +1,5 @@
 import { ZoomFrame } from "@/components/ZoomFrame";
-import { PortalSidebar } from "@/components/PortalSidebar";
+import { PortalDrawer } from "@/components/PortalDrawer";
 import { useEffect, useRef, useState } from "react";
 import { PortalNav } from "@/components/PortalNav";
 import { Link, Navigate } from "react-router-dom";
@@ -33,16 +33,7 @@ export default function ProjectRun() {
   const [html, setHtml] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sideOpen, setSideOpen] = useState(false);
   const reqRef = useRef(0);
-  const peekedRef = useRef(false);
-  useEffect(() => {
-    if (loading || peekedRef.current) return;
-    peekedRef.current = true;
-    setSideOpen(true);
-    const t = setTimeout(() => setSideOpen(false), 2500);
-    return () => clearTimeout(t);
-  }, [loading]);
 
   useEffect(() => {
     if (!user) return;
@@ -94,19 +85,6 @@ export default function ProjectRun() {
     <div onContextMenu={(e) => e.preventDefault()} style={{ minHeight: "100vh", background: teal, color: pearl, fontFamily: "'General Sans', Arial, sans-serif", display: "flex", flexDirection: "column" }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px clamp(16px,4vw,56px)", borderBottom: "1px solid rgba(238,234,226,0.12)", flexWrap: "wrap", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <button
-            type="button"
-            aria-label={sideOpen ? "Hide pages list" : "Show pages list"}
-            title={sideOpen ? "Hide pages" : `Show pages (${pages.length})`}
-            onClick={() => setSideOpen((v) => !v)}
-            style={{
-              width: 22, height: 34, border: "none", cursor: "pointer", padding: 0, marginLeft: "calc(-1 * clamp(16px,4vw,56px))",
-              background: amber, borderRadius: "0 17px 17px 0", boxShadow: "0 0 0 3px rgba(232,177,74,0.25)",
-              color: teal, fontSize: 11, fontWeight: 700,
-            }}
-          >
-            {sideOpen ? "◀" : "▶"}
-          </button>
           <Link to="/" style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: 18, color: pearl, textDecoration: "none" }}>
             energyforward<span style={{ color: amber }}>.</span>
           </Link>
@@ -115,30 +93,20 @@ export default function ProjectRun() {
       </header>
 
       <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative" }}>
-        <div
-          onMouseLeave={() => setSideOpen(false)}
-          style={{ position: "absolute", top: 0, left: 0, bottom: 0, zIndex: 20, display: "flex", pointerEvents: "none" }}
-        >
-          <aside style={{
-            width: "min(420px, 90vw)", background: teal, borderRight: "1px solid rgba(238,234,226,0.18)", padding: "18px 16px",
-            boxShadow: sideOpen ? "8px 0 24px rgba(0,0,0,0.35)" : "none", overflowY: "auto",
-            transform: sideOpen ? "translateX(0)" : "translateX(-100%)", transition: "transform .25s ease",
-            pointerEvents: sideOpen ? "auto" : "none",
-          }}>
-          <PortalSidebar current="project">
+        <PortalDrawer current="project">
+          <div>
           {loading && <div style={{ fontSize: 13, opacity: 0.7 }}>Loading…</div>}
           {!loading && pages.length === 0 && !error && <div style={{ fontSize: 13, opacity: 0.7 }}>No pages have been shared with you yet.</div>}
           {pages.map((p) => (
-            <button key={p.id} type="button" onClick={() => { open(p); setSideOpen(false); }} style={{
+            <button key={p.id} type="button" data-drawer-close="" onClick={() => open(p)} style={{
               display: "block", width: "100%", textAlign: "left", border: "none", borderTop: "1px solid rgba(238,234,226,0.10)",
               background: active?.id === p.id ? "rgba(232,177,74,0.14)" : "transparent", color: pearl, padding: "10px 6px 10px 18px", cursor: "pointer", fontSize: 14,
             }}>
               <span style={{ color: amber, marginRight: 8 }}>•</span>{p.name}
             </button>
           ))}
-          </PortalSidebar>
-          </aside>
-        </div>
+          </div>
+        </PortalDrawer>
         <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", minHeight: "70vh" }}>
           {error && <div style={{ padding: 16, color: "#f4b5a3", fontSize: 14 }}>{error}</div>}
           {html !== null ? (
