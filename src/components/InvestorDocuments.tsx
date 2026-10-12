@@ -177,7 +177,15 @@ export function InvestorDocuments() {
         {preview ? (
           <>
             <div style={{ padding: "8px 16px", ...label, color: amber, borderBottom: "1px solid rgba(238,234,226,0.12)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-              <span>{preview.name}</span>
+              <span style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", minWidth: 0 }}>
+                <span>{preview.name}</span>
+                {sheets && sheets.sheets.length > 1 && sheets.sheets.map((s, i) => (
+                  <button key={s.name + i} type="button" onClick={() => setSheetIdx(i)}
+                    style={{ ...label, fontSize: 10, background: i === sheetIdx ? amber : "transparent", color: i === sheetIdx ? teal : pearl, border: `1px solid ${amber}`, borderRadius: 999, padding: "3px 10px", cursor: "pointer" }}>
+                    {s.name}
+                  </button>
+                ))}
+              </span>
               {preview.mime === "text/html" && (
                 <button type="button" onClick={() => setMax(true)} style={{ ...label, background: amber, color: teal, border: "none", borderRadius: 999, padding: "6px 14px", cursor: "pointer", fontWeight: 700 }}>Maximize</button>
               )}
@@ -206,7 +214,7 @@ export function InvestorDocuments() {
           </>
         ) : (
           <div style={{ margin: "auto", textAlign: "center", maxWidth: 440, padding: 24 }}>
-            <div style={{ ...label, color: amber, marginBottom: 8 }}>{loading ? "Opening…" : "View only"}</div>
+            <div style={{ ...label, color: amber, marginBottom: 8 }}>{loading ? (progress ?? "Opening…") : "View only"}</div>
             <div style={{ fontSize: 14, opacity: 0.75, lineHeight: 1.6 }}>
               Open the gold Investor Materials tab on the left and choose a document to view it here. Documents are streamed to your session only —
               they cannot be shared, forwarded or downloaded.
