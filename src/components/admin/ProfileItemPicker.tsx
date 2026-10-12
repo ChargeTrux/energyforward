@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { niceName } from "@/lib/nice-name";
 
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 const FN_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/investor-drive`;
@@ -36,7 +37,7 @@ export function ProfileItemPicker({
   hasProfile: boolean;
   onProfileGranted: () => Promise<void> | void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [tree, setTree] = useState<Record<string, Item[]>>({});
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
@@ -108,7 +109,7 @@ export function ProfileItemPicker({
             ) : <span className="w-4" />}
             <label className="flex items-center gap-2 min-w-0">
               <input type="checkbox" checked={granted.has(it.id)} onChange={(e) => toggle(it, e.target.checked)} />
-              <span className={`break-words ${isFolder ? "font-medium" : ""}`}>{isFolder ? "📁 " : ""}{it.name}</span>
+              <span className={`break-words ${isFolder ? "font-medium" : ""}`}>{isFolder ? "📁 " : "📄 "}{niceName(it.name)}</span>
             </label>
           </div>
           {isFolder && isOpen && (

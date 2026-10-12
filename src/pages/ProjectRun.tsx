@@ -93,7 +93,7 @@ export default function ProjectRun() {
       </header>
 
       <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative" }}>
-        <PortalDrawer current="project">
+        <PortalDrawer current="project" pinned>
           <div>
           {loading && <div style={{ fontSize: 13, opacity: 0.7 }}>Loading…</div>}
           {!loading && pages.length === 0 && !error && <div style={{ fontSize: 13, opacity: 0.7 }}>No pages have been shared with you yet.</div>}

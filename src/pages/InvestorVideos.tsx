@@ -158,7 +158,7 @@ export default function InvestorVideos() {
         </Link>
         <PortalNav current="videos" />
       </header>
-      {user && <PortalDrawer current="videos">
+      {user && <PortalDrawer current="videos" pinned>
         <div>
           {videos.length === 0 && <div style={{ fontSize: 12, opacity: 0.6, padding: "4px 0 4px 18px" }}>{loading ? "Loading…" : "Nothing shared yet."}</div>}
           {videos.map((v) => (

@@ -23,15 +23,17 @@ export function usePortalAccess() {
     Promise.all([
       supabase.from("user_roles").select("role").eq("user_id", user.id),
       supabase.from("investor_profile_access").select("profile_id").eq("user_id", user.id).limit(1),
-    ]).then(([{ data: r }, { data: d }]) => {
+      supabase.from("investor_video_access").select("file_id").eq("user_id", user.id).limit(1),
+      supabase.from("project_page_access").select("file_id").eq("user_id", user.id).limit(1),
+    ]).then(([{ data: r }, { data: d }, { data: v }, { data: pp }]) => {
       const roles = new Set((r ?? []).map((x) => x.role as string));
       const admin = roles.has("admin");
       setAccess({
         admin,
         investor: admin || roles.has("investor"),
         customer: admin || roles.has("customer"),
-        videos: admin || roles.has("video") || roles.has("investor"),
-        project: admin || roles.has("project"),
+        videos: admin || roles.has("video") || (v ?? []).length > 0,
+        project: admin || roles.has("project") || (pp ?? []).length > 0,
         documents: admin || (d ?? []).length > 0,
       });
     });

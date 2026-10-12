@@ -80,7 +80,6 @@ export function InvestorDocuments() {
   useEffect(() => () => revoke(), [revoke]);
 
   const label = { fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase" as const };
-  const hasInitialFile = Boolean(initial.current.get("file"));
 
   return (
     <div onContextMenu={(e) => e.preventDefault()} style={{ height: "100vh", background: teal, color: pearl, fontFamily: "'General Sans', Arial, sans-serif", display: "flex", flexDirection: "column" }}>
@@ -91,9 +90,9 @@ export function InvestorDocuments() {
         <PortalNav current="documents" />
       </header>
 
-      <PortalDrawer current="documents" defaultOpen={!hasInitialFile} onOpenDoc={openFile} activeDocId={activeFileId} />
+      <PortalDrawer current="documents" pinned onOpenDoc={openFile} activeDocId={activeFileId} />
 
-      <main style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", paddingLeft: 30 }}>
+      <main style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", paddingLeft: 0 }}>
         {error && <div style={{ padding: 16, fontSize: 13, color: "#f4b5a3" }}>{error}</div>}
         {preview ? (
           <>
@@ -118,7 +117,7 @@ export function InvestorDocuments() {
           <div style={{ margin: "auto", textAlign: "center", maxWidth: 440, padding: 24 }}>
             <div style={{ ...label, color: amber, marginBottom: 8 }}>{loading ? "Opening…" : "View only"}</div>
             <div style={{ fontSize: 14, opacity: 0.75, lineHeight: 1.6 }}>
-              Open the gold Menu tab on the left and choose a document to view it here. Documents are streamed to your session only —
+              Open the gold Investor Materials tab on the left and choose a document to view it here. Documents are streamed to your session only —
               they cannot be shared, forwarded or downloaded.
             </div>
           </div>
