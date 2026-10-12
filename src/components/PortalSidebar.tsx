@@ -34,7 +34,8 @@ const sectionLabel = { fontFamily: "'JetBrains Mono', monospace", fontSize: 11, 
 export function PortalSidebar({ current, children }: { current: Section; children?: React.ReactNode }) {
   const access = usePortalAccess();
   const [items, setItems] = useState<Record<Section, Item[]>>({ documents: [], videos: [], project: [] });
-  const [open, setOpen] = useState<Set<Section>>(new Set([current]));
+  // All sections start expanded so granted content is visible right after sign-in.
+  const [open, setOpen] = useState<Set<Section>>(new Set<Section>(["project", "videos", "documents"]));
 
   useEffect(() => {
     if (access.documents && current !== "documents")
@@ -45,10 +46,11 @@ export function PortalSidebar({ current, children }: { current: Section; childre
       call("project-pages", "?action=mine").then((b) => setItems((s) => ({ ...s, project: b.pages ?? [] })));
   }, [access.documents, access.videos, access.project, current]);
 
+  // Fixed order — never changes: Project 3D Demo, Videos, Documents (Data Room).
   const sections: { key: Section; label: string; show: boolean; href: (id: string) => string }[] = [
-    { key: "documents", label: "Documents", show: access.documents, href: (id) => `/investor/documents?profile=${encodeURIComponent(id)}` },
+    { key: "project", label: "Project 3D Demo", show: access.project, href: (id) => `/investor/project?page=${encodeURIComponent(id)}` },
     { key: "videos", label: "Videos", show: access.videos, href: (id) => `/investor/videos?video=${encodeURIComponent(id)}` },
-    { key: "project", label: "Project Run", show: access.project, href: (id) => `/investor/project?page=${encodeURIComponent(id)}` },
+    { key: "documents", label: "Documents (Data Room)", show: access.documents, href: (id) => `/investor/documents?profile=${encodeURIComponent(id)}` },
   ];
 
   return (

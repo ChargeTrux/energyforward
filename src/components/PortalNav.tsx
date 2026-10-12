@@ -55,9 +55,9 @@ export function PortalNav({ current }: { current: Current }) {
       <a href="/?public=1" style={link}>Home</a>
       {a.investor && <Link to="/investor" style={link}>Investor portal</Link>}
       {a.investor && a.customer && <Link to="/customer" style={link}>Customer portal</Link>}
-      {item("documents", "/investor/documents", "Documents", a.documents)}
+      {item("project", "/investor/project", "Project 3D Demo", a.project)}
       {item("videos", "/investor/videos", "Videos", a.videos)}
-      {item("project", "/investor/project", "Project Run", a.project)}
+      {item("documents", "/investor/documents", "Documents (Data Room)", a.documents)}
       {a.admin && <Link to="/admin" style={link}>Admin</Link>}
       <Link to="/signout" style={link}>Sign out</Link>
     </nav>
