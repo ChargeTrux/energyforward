@@ -752,8 +752,9 @@ export default function AdminDashboard() {
       full_name: fullName,
       roles: rolesArr,
       app_origin: window.location.origin,
+      replace_access: true,
       investor_profile_ids: selectedProfileIds,
-      investor_video_ids: rolesArr.includes("video") || rolesArr.includes("investor") ? selectedVideoIds : [],
+      investor_video_ids: rolesArr.includes("video") ? selectedVideoIds : [],
       project_page_ids: rolesArr.includes("project") ? selectedProjectIds : [],
     })) as { temp_password?: string } | null;
     if (data) {

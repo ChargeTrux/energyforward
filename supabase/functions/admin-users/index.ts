@@ -186,6 +186,18 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Invite form selections are the exact access: on re-invite, drop anything not selected.
+      if (body.replace_access === true) {
+        const keep = (v: unknown) => (Array.isArray(v) ? (v as unknown[]).filter((x): x is string => typeof x === "string") : []);
+        const replace = async (table: string, col: string, ids: string[]) => {
+          const q = admin.from(table).delete().eq("user_id", newUserId!);
+          await (ids.length ? q.not(col, "in", `(${ids.map((i) => `"${i.replace(/"/g, "")}"`).join(",")})`) : q);
+        };
+        await replace("project_page_access", "file_id", keep(body.project_page_ids));
+        await replace("investor_video_access", "file_id", keep(investor_video_ids));
+        await replace("investor_profile_access", "profile_id", keep(investor_profile_ids));
+        await replace("investor_document_access", "profile_id", keep(investor_profile_ids));
+      }
       if (Array.isArray(body.project_page_ids)) {
         for (const fileId of (body.project_page_ids as unknown[]).filter((v): v is string => typeof v === "string")) {
           await admin.from("project_page_access").upsert({ user_id: newUserId, file_id: fileId }, { onConflict: "user_id,file_id" });
@@ -495,6 +507,7 @@ Deno.serve(async (req) => {
         : admin.from("user_roles").delete().eq("user_id", user_id).eq("role", "video");
       const { error } = await query;
       if (error) return json({ error: error.message }, 400);
+      if (!make_video) await admin.from("investor_video_access").delete().eq("user_id", user_id);
       return json({ ok: true });
     }
 
@@ -506,6 +519,7 @@ Deno.serve(async (req) => {
         : admin.from("user_roles").delete().eq("user_id", user_id).eq("role", "project");
       const { error } = await query;
       if (error) return json({ error: error.message }, 400);
+      if (!make_project) await admin.from("project_page_access").delete().eq("user_id", user_id);
       return json({ ok: true });
     }
 
