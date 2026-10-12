@@ -6,5 +6,5 @@ export default function DocumentsPage() {
   const { user, loading } = useAuth();
   if (loading) return <div className="min-h-screen grid place-items-center">Loading…</div>;
   if (!user) return <Navigate to="/?login=1" replace />;
-  return <InvestorDocuments standalone />;
+  return <InvestorDocuments />;
 }

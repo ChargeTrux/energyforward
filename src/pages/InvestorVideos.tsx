@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PortalNav } from "@/components/PortalNav";
+import { PortalDrawer } from "@/components/PortalDrawer";
 import { Link, useSearchParams } from "react-router-dom";
 import { LockKeyhole, Play } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -157,6 +158,19 @@ export default function InvestorVideos() {
         </Link>
         <PortalNav current="videos" />
       </header>
+      {user && <PortalDrawer current="videos">
+        <div>
+          {videos.length === 0 && <div style={{ fontSize: 12, opacity: 0.6, padding: "4px 0 4px 18px" }}>{loading ? "Loading…" : "Nothing shared yet."}</div>}
+          {videos.map((v) => (
+            <button key={v.id} type="button" data-drawer-close="" onClick={() => selectVideo(v, true, true)} style={{
+              display: "block", width: "100%", textAlign: "left", border: "none", borderTop: "1px solid rgba(238,234,226,0.08)", fontFamily: "inherit",
+              background: active?.id === v.id ? "rgba(232,177,74,0.14)" : "transparent", color: pearl, padding: "8px 4px 8px 18px", cursor: "pointer", fontSize: 14,
+            }}>
+              <span style={{ color: amber, marginRight: 8 }}>•</span>{v.name}
+            </button>
+          ))}
+        </div>
+      </PortalDrawer>}
 
       <main style={{ maxWidth: 1040, margin: "0 auto", padding: "clamp(24px,4vw,44px) clamp(18px,5vw,64px) 80px" }}>
         <section style={{ maxWidth: 680, margin: "0 auto", marginBottom: "clamp(24px,4vw,36px)", textAlign: "center" }}>
