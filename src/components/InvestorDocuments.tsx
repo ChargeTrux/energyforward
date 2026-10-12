@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import * as XLSX from "xlsx";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,6 +22,35 @@ async function callFn(path: string) {
   });
 }
 
+type SheetResult = {
+  sheets: { name: string; html: string; truncated: boolean; totalRows: number; totalCols: number }[];
+  maxRows: number;
+  maxCols: number;
+};
+
+/** Parse spreadsheets off the main thread with a hard timeout so the page never freezes. */
+function parseSpreadsheet(buf: ArrayBuffer): Promise<SheetResult> {
+  return new Promise((resolve, reject) => {
+    const w = new Worker(new URL("../workers/xlsxPreview.worker.ts", import.meta.url), { type: "module" });
+    const t = window.setTimeout(() => {
+      w.terminate();
+      reject(new Error("This spreadsheet is too large to preview. Please ask us for a PDF version or a smaller extract."));
+    }, 90_000);
+    w.onmessage = (e) => {
+      window.clearTimeout(t);
+      w.terminate();
+      if (e.data?.ok) resolve(e.data as SheetResult);
+      else reject(new Error("This spreadsheet could not be read. Try saving it again as .xlsx."));
+    };
+    w.onerror = () => {
+      window.clearTimeout(t);
+      w.terminate();
+      reject(new Error("This spreadsheet could not be read. Try saving it again as .xlsx."));
+    };
+    w.postMessage(buf, [buf]);
+  });
+}
+
 /** Documents (Data Room) page: viewer full width, folders in the shared slide-out menu. */
 export function InvestorDocuments() {
   const { user } = useAuth();
@@ -37,6 +65,10 @@ export function InvestorDocuments() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<string | null>(null);
+  const [sheets, setSheets] = useState<SheetResult | null>(null);
+  const [sheetIdx, setSheetIdx] = useState(0);
+  const openSeq = useRef(0);
   const urlRef = useRef<string | null>(null);
   const initial = useRef(new URLSearchParams(window.location.search));
 
@@ -46,10 +78,13 @@ export function InvestorDocuments() {
   }, []);
 
   const openFile = useCallback(async (profileId: string, f: DocFile) => {
+    const run = ++openSeq.current;
     setActiveFileId(f.id);
     setHtmlDoc(null);
     setPreview(null);
+    setSheets(null);
     setError(null);
+    setProgress(null);
     revoke();
     if (user) void supabase.from("content_views").insert({ user_id: user.id, content_type: "document", item_id: f.id, item_name: f.name });
     setLoading(true);
@@ -58,10 +93,26 @@ export function InvestorDocuments() {
       const res = await callFn(`?${qs}`);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setError(body.error ?? "Could not open this document.");
+        if (run === openSeq.current) setError(body.error ?? "Could not open this document.");
         return;
       }
-      const blob = await res.blob();
+      // Read with a live MB counter so large files show progress instead of a silent wait.
+      const type = res.headers.get("Content-Type") ?? "";
+      const chunks: Uint8Array[] = [];
+      let got = 0;
+      const reader = res.body?.getReader();
+      if (reader) {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (run !== openSeq.current) { void reader.cancel(); return; }
+          chunks.push(value);
+          got += value.length;
+          setProgress(`Downloading… ${(got / 1048576).toFixed(1)} MB`);
+        }
+      }
+      const blob = reader ? new Blob(chunks as BlobPart[], { type }) : await res.blob();
+      if (run !== openSeq.current) return;
       const mime = blob.type || f.mimeType;
       if (mime.startsWith("text/html") || /\.html?$/i.test(f.name)) {
         setHtmlDoc(await blob.text());
@@ -69,26 +120,36 @@ export function InvestorDocuments() {
         return;
       }
       if (/spreadsheet|ms-excel|text\/csv/i.test(mime + " " + f.mimeType) || /\.(xlsx|xlsm|xls|csv)$/i.test(f.name)) {
-
-        const wb = XLSX.read(await blob.arrayBuffer(), { type: "array" });
-        const sheets = wb.SheetNames.map((n) =>
-          `<h2>${n.replace(/</g, "&lt;")}</h2>${XLSX.utils.sheet_to_html(wb.Sheets[n], { header: "", footer: "" })}`).join("");
-        setHtmlDoc(`<!doctype html><html><head><meta charset="utf-8"><style>
-          body{font-family:Arial,sans-serif;margin:16px;color:#111}h2{font-size:15px;margin:20px 0 8px}
-          table{border-collapse:collapse;font-size:12px}td,th{border:1px solid #ccc;padding:4px 8px;white-space:nowrap}
-          tr:first-child td{background:#f3f3f3;font-weight:bold}</style></head><body>${sheets}</body></html>`);
+        setProgress("Preparing spreadsheet…");
+        const result = await parseSpreadsheet(await blob.arrayBuffer());
+        if (run !== openSeq.current) return;
+        setSheets(result);
+        setSheetIdx(0);
         setPreview({ name: f.name, url: "", mime: "text/html" });
         return;
       }
       const u = URL.createObjectURL(blob);
       urlRef.current = u;
       setPreview({ name: f.name, url: u, mime });
-    } catch {
-      setError("Could not open this document.");
+    } catch (e) {
+      if (run === openSeq.current) setError(e instanceof Error && e.message ? e.message : "Could not open this document.");
     } finally {
-      setLoading(false);
+      if (run === openSeq.current) { setLoading(false); setProgress(null); }
     }
   }, [user, revoke]);
+
+  useEffect(() => {
+    if (!sheets) return;
+    const s = sheets.sheets[sheetIdx];
+    if (!s) return;
+    const note = s.truncated
+      ? `<p class="note">Showing the first ${Math.min(s.totalRows, sheets.maxRows).toLocaleString()} of ${s.totalRows.toLocaleString()} rows${s.totalCols > sheets.maxCols ? ` and ${sheets.maxCols} of ${s.totalCols} columns` : ""}. Contact us for the complete file.</p>`
+      : "";
+    setHtmlDoc(`<!doctype html><html><head><meta charset="utf-8"><style>
+      body{font-family:Arial,sans-serif;margin:16px;color:#111}.note{font-size:12px;color:#7a5a12;background:#fff6dd;padding:6px 10px;border-radius:6px;display:inline-block}
+      table{border-collapse:collapse;font-size:12px}td,th{border:1px solid #ccc;padding:4px 8px;white-space:nowrap}
+      tr:first-child td{background:#f3f3f3;font-weight:bold}</style></head><body>${note}${s.html}</body></html>`);
+  }, [sheets, sheetIdx]);
 
   useEffect(() => {
     const p = initial.current;
@@ -116,7 +177,15 @@ export function InvestorDocuments() {
         {preview ? (
           <>
             <div style={{ padding: "8px 16px", ...label, color: amber, borderBottom: "1px solid rgba(238,234,226,0.12)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-              <span>{preview.name}</span>
+              <span style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", minWidth: 0 }}>
+                <span>{preview.name}</span>
+                {sheets && sheets.sheets.length > 1 && sheets.sheets.map((s, i) => (
+                  <button key={s.name + i} type="button" onClick={() => setSheetIdx(i)}
+                    style={{ ...label, fontSize: 10, background: i === sheetIdx ? amber : "transparent", color: i === sheetIdx ? teal : pearl, border: `1px solid ${amber}`, borderRadius: 999, padding: "3px 10px", cursor: "pointer" }}>
+                    {s.name}
+                  </button>
+                ))}
+              </span>
               {preview.mime === "text/html" && (
                 <button type="button" onClick={() => setMax(true)} style={{ ...label, background: amber, color: teal, border: "none", borderRadius: 999, padding: "6px 14px", cursor: "pointer", fontWeight: 700 }}>Maximize</button>
               )}
@@ -145,7 +214,7 @@ export function InvestorDocuments() {
           </>
         ) : (
           <div style={{ margin: "auto", textAlign: "center", maxWidth: 440, padding: 24 }}>
-            <div style={{ ...label, color: amber, marginBottom: 8 }}>{loading ? "Opening…" : "View only"}</div>
+            <div style={{ ...label, color: amber, marginBottom: 8 }}>{loading ? (progress ?? "Opening…") : "View only"}</div>
             <div style={{ fontSize: 14, opacity: 0.75, lineHeight: 1.6 }}>
               Open the gold Investor Materials tab on the left and choose a document to view it here. Documents are streamed to your session only —
               they cannot be shared, forwarded or downloaded.
