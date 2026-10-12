@@ -111,7 +111,7 @@ export function InvestorDocuments() {
           setProgress(`Downloading… ${(got / 1048576).toFixed(1)} MB`);
         }
       }
-      const blob = reader ? new Blob(chunks, { type }) : await res.blob();
+      const blob = reader ? new Blob(chunks as BlobPart[], { type }) : await res.blob();
       if (run !== openSeq.current) return;
       const mime = blob.type || f.mimeType;
       if (mime.startsWith("text/html") || /\.html?$/i.test(f.name)) {
