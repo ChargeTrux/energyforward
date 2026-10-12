@@ -66,6 +66,29 @@ Deno.serve(async (req) => {
       fileId = body.file_id ?? fileId;
     }
 
+    // Keep portal names in step with Drive folder names (Drive is the source of truth).
+    const syncNames = async (rows: Array<Record<string, unknown>>) => {
+      await Promise.all(rows.map(async (p) => {
+        const fid = folderIdFromUrl(p.drive_url as string | null);
+        if (!fid) return;
+        const r = await gateway(`/drive/v3/files/${fid}`, { fields: "name", supportsAllDrives: "true" });
+        if (!r.ok) { await r.body?.cancel(); return; }
+        const { name } = await r.json();
+        if (name && name !== p.name) {
+          await admin.from("investor_profiles").update({ name }).eq("id", p.id as string);
+          p.name = name;
+        }
+      }));
+    };
+
+    if (action === "sync_names") {
+      const { data: isAdm } = await admin.rpc("has_role", { _user_id: user.id, _role: "admin" });
+      if (!isAdm) return json({ error: "Admins only" }, 403);
+      const { data: all } = await admin.from("investor_profiles").select("id, name, drive_url");
+      await syncNames((all ?? []) as Array<Record<string, unknown>>);
+      return json({ ok: true });
+    }
+
     if (action === "profiles") {
       const { data: access } = await admin
         .from("investor_profile_access")
@@ -78,6 +101,7 @@ Deno.serve(async (req) => {
         .select("id, name, description, sort_order, drive_url")
         .in("id", ids)
         .order("sort_order");
+      await syncNames((profiles ?? []) as Array<Record<string, unknown>>);
       return json({
         profiles: (profiles ?? []).map((p: Record<string, unknown>) => ({
           id: p.id,
