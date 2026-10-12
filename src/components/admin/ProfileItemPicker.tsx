@@ -53,7 +53,7 @@ export function ProfileItemPicker({
     setGranted(new Set((data ?? []).map((r) => r.item_id)));
   }, [userId, profileId]);
 
-  useEffect(() => { void loadGrants(); }, [loadGrants]);
+  useEffect(() => { void loadGrants(); }, [loadGrants, hasProfile]);
 
   const load = useCallback(async (folderId?: string) => {
     const key = folderId ?? "root";
@@ -73,9 +73,6 @@ export function ProfileItemPicker({
 
   const toggle = async (item: Item, on: boolean) => {
     if (on) {
-      if (!hasProfile) {
-        await supabase.from("investor_profile_access").upsert({ user_id: userId, profile_id: profileId }, { onConflict: "user_id,profile_id" });
-      }
       await supabase.from("investor_document_access").upsert(
         { user_id: userId, profile_id: profileId, item_id: item.id, item_name: item.name, is_folder: item.mimeType === FOLDER_MIME },
         { onConflict: "user_id,profile_id,item_id" },
@@ -107,8 +104,8 @@ export function ProfileItemPicker({
                 {isOpen ? "▾" : "▸"}
               </button>
             ) : <span className="w-4" />}
-            <label className={`flex items-center gap-2 min-w-0 ${!hasProfile && !granted.has(it.id) ? "opacity-50 cursor-not-allowed" : ""}`} title={!hasProfile && !granted.has(it.id) ? "Enable Documents (Data Room) first" : undefined}>
-              <input type="checkbox" disabled={!hasProfile && !granted.has(it.id)} checked={granted.has(it.id)} onChange={(e) => toggle(it, e.target.checked)} />
+            <label className={`flex items-center gap-2 min-w-0 ${!hasProfile ? "opacity-50 cursor-not-allowed" : ""}`} title={!hasProfile ? "Enable Documents (Data Room) first" : undefined}>
+              <input type="checkbox" disabled={!hasProfile} checked={hasProfile && granted.has(it.id)} onChange={(e) => toggle(it, e.target.checked)} />
               <span className={`break-words ${isFolder ? "font-medium" : ""}`}>{isFolder ? "📁 " : "📄 "}{niceName(it.name)}</span>
             </label>
           </div>
