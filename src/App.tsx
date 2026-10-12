@@ -11,6 +11,7 @@ import { LandingStealth, CustomerPortal, InvestorPortal, ContactPage } from "@/p
 import AdminDashboard from "@/pages/AdminDashboard";
 import ResetPassword from "@/pages/ResetPassword";
 import ProjectRun from "./pages/ProjectRun";
+import DocumentsPage from "./pages/DocumentsPage";
 import InvestorVideos from "@/pages/InvestorVideos";
 import NotFound from "./pages/NotFound";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
@@ -166,6 +167,7 @@ function AppContent() {
     path === "/investor" ||
     path === "/investor/videos" ||
     path === "/investor/project" ||
+    path === "/investor/documents" ||
     path === "/contact" ||
     path === "/admin" ||
     path === "/reset-password";
@@ -185,6 +187,7 @@ function AppContent() {
         <Route path="/investor" element={<InvestorPortal />} />
         <Route path="/investor/videos" element={<InvestorVideos />} />
         <Route path="/investor/project" element={<ProjectRun />} />
+        <Route path="/investor/documents" element={<DocumentsPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/home-v1" element={<Home />} />
         <Route path="/signout" element={<SignOutRoute onLogout={handleLogout} />} />

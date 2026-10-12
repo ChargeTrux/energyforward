@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { FolderLock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { PortalNav } from "@/components/PortalNav";
 
 const navLink = {
   background: "none",
@@ -52,7 +53,7 @@ async function callFn(path: string, init?: RequestInit) {
   });
 }
 
-export function InvestorDocuments() {
+export function InvestorDocuments({ standalone = false }: { standalone?: boolean } = {}) {
   const { user, isAdmin } = useAuth();
   const [roles, setRoles] = useState<Set<string>>(new Set());
   useEffect(() => {
@@ -60,7 +61,7 @@ export function InvestorDocuments() {
     supabase.from("user_roles").select("role").eq("user_id", user.id)
       .then(({ data }) => setRoles(new Set((data ?? []).map((r) => r.role as string))));
   }, [user]);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(standalone);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [activeProfile, setActiveProfile] = useState<string | null>(null);
   const [trail, setTrail] = useState<{ id: string; name: string }[]>([]);
@@ -257,13 +258,14 @@ export function InvestorDocuments() {
 
   useEffect(() => () => revokePreview(), [revokePreview]);
 
-  if (!user || profiles.length === 0) return null;
+  if (!user) return null;
+  if (profiles.length === 0 && !standalone) return null;
 
   const label = { fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase" as const };
 
   return (
     <>
-      <button
+      {!standalone && <button
         type="button"
         aria-label="Open secure documents. Drag to move this button."
         title="Drag to move · Click to open"
@@ -308,7 +310,7 @@ export function InvestorDocuments() {
           <span>Documents</span>
           <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>Secure access</span>
         </span>
-      </button>
+      </button>}
 
       {open && (
         <div
@@ -355,7 +357,7 @@ export function InvestorDocuments() {
                 </button>
               ))}
             </div>
-            <button
+            {!standalone && <button
               type="button"
               onClick={() => {
                 revokePreview();
@@ -373,7 +375,7 @@ export function InvestorDocuments() {
               }}
             >
               Close
-            </button>
+            </button>}
           </div>
 
           <div
@@ -386,6 +388,7 @@ export function InvestorDocuments() {
               borderBottom: "1px solid rgba(238,234,226,0.14)",
             }}
           >
+            {standalone ? <PortalNav current="documents" /> : <>
             <a href="/?public=1" style={navLink}>Home</a>
             <button
               type="button"
@@ -403,6 +406,7 @@ export function InvestorDocuments() {
             {isAdmin && <a href="/admin" style={navLink}>Admin</a>}
             <span style={{ ...navLink, color: amber, cursor: "default" }}>Documents</span>
             {user && <a href="/signout" style={{ ...navLink, marginLeft: "auto" }}>Sign out</a>}
+            </>}
           </div>
 
           <div style={{ display: "flex", flex: 1, minHeight: 0, flexDirection: "row" }}>
@@ -417,7 +421,7 @@ export function InvestorDocuments() {
               {loading && <div style={{ fontSize: 13, opacity: 0.7 }}>Loading…</div>}
               {error && <div style={{ fontSize: 13, color: "#f4b5a3" }}>{error}</div>}
               {!loading && !error && files.length === 0 && (
-                <div style={{ fontSize: 13, opacity: 0.65 }}>No documents have been published here yet.</div>
+                <div style={{ fontSize: 13, opacity: 0.65 }}>{profiles.length === 0 ? "No document folders have been shared with you yet." : "No documents have been published here yet."}</div>
               )}
               {renderTree("root", 0)}
             </div>
