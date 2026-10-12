@@ -92,6 +92,22 @@ export function InvestorDocuments() {
     setLoading(true);
     try {
       const qs = new URLSearchParams({ action: "file", profile_id: profileId, file_id: f.id });
+      // Excel: hand off to the browser's own downloader immediately (shows its native progress).
+      if (/spreadsheet|ms-excel|text\/csv/i.test(f.mimeType) || /\.(xlsx|xlsm|xls|csv)$/i.test(f.name)) {
+        qs.set("mode", "ticket");
+        const tr = await callFn(`?${qs}`);
+        const tb = await tr.json().catch(() => ({}));
+        if (run !== openSeq.current) return;
+        if (!tr.ok || !tb.ticket) { setError(tb.error ?? "Could not download this file."); return; }
+        const a = document.createElement("a");
+        a.href = `${FN_URL}?${new URLSearchParams({ action: "download", t: tb.ticket })}`;
+        a.rel = "noopener";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setNotice(`${f.name} is downloading — check your browser's downloads.`);
+        return;
+      }
       const res = await callFn(`?${qs}`);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
