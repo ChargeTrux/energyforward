@@ -3,6 +3,7 @@ import { FolderLock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { PortalNav } from "@/components/PortalNav";
+import { PortalSidebar } from "@/components/PortalSidebar";
 
 const navLink = {
   background: "none",
