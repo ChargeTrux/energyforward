@@ -22,7 +22,7 @@ async function call(fn: string, qs: string) {
   return res.ok ? res.json() : {};
 }
 
-const sectionLabel = { fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase" as const, color: amber };
+const sectionLabel = { fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase" as const, color: amber };
 
 export type SidebarProps = {
   current?: Section;
@@ -74,7 +74,7 @@ export function PortalSidebar({ current, children, onOpenDoc, activeDocId }: Sid
                 {list === null && <div style={{ fontSize: 12, opacity: 0.6, padding: "4px 0 4px 18px" }}>Loading…</div>}
                 {list?.length === 0 && <div style={{ fontSize: 12, opacity: 0.6, padding: "4px 0 4px 18px" }}>Nothing shared yet.</div>}
                 {list?.map((it) => (
-                  <Link key={it.id} data-drawer-close="" to={s.href!(it.id)} style={{ display: "block", color: pearl, textDecoration: "none", fontSize: 14, padding: "8px 4px 8px 18px", borderTop: "1px solid rgba(238,234,226,0.08)" }}>
+                  <Link key={it.id} data-drawer-close="" to={s.href!(it.id)} style={{ display: "block", color: pearl, textDecoration: "none", fontSize: 12, padding: "6px 4px 6px 14px", borderTop: "1px solid rgba(238,234,226,0.08)" }}>
                     <span style={{ color: amber, marginRight: 8 }}>•</span>{it.name}
                   </Link>
                 ))}

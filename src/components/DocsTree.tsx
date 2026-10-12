@@ -116,16 +116,16 @@ export function DocsTree({ onOpenFile, activeFileId }: { onOpenFile?: (profileId
             onClick={() => (isFolder ? toggle(n) : open(n))}
             style={{
               display: "flex", alignItems: "flex-start", gap: 8, width: "100%", textAlign: "left", border: "none",
-              borderTop: "1px solid rgba(238,234,226,0.08)", color: pearl, cursor: "pointer", fontSize: 13,
+              borderTop: "1px solid rgba(238,234,226,0.08)", color: pearl, cursor: "pointer", fontSize: 12,
               background: activeFileId === n.id ? "rgba(232,177,74,0.14)" : "transparent",
-              padding: `8px 4px 8px ${6 + depth * 18}px`, fontWeight: isFolder ? 600 : 400, fontFamily: "inherit",
+              padding: `6px 4px 6px ${4 + depth * 14}px`, fontWeight: isFolder ? 600 : 400, fontFamily: "inherit",
             }}
           >
             <span style={{ width: 14, color: amber, flexShrink: 0, paddingTop: 2 }}>
               {isFolder ? (isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />) : null}
             </span>
             <span style={{ color: isFolder ? amber : "rgba(238,234,226,0.7)", flexShrink: 0, paddingTop: 1 }}>
-              {isFolder ? (isOpen ? <FolderOpen size={16} /> : <Folder size={16} />) : <FileText size={16} />}
+              {isFolder ? (isOpen ? <FolderOpen size={14} /> : <Folder size={14} />) : <FileText size={14} />}
             </span>
             <span style={{ overflowWrap: "anywhere", lineHeight: 1.35 }}>{niceName(n.name)}</span>
           </button>
