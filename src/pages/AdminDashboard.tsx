@@ -742,13 +742,17 @@ export default function AdminDashboard() {
     sendEmail = true,
   ) => {
     if (!email) return;
+    // Picking videos / 3D pages grants that section; investor portal stays independent.
+    rolesArr = [...rolesArr];
+    if (selectedVideoIds.length && !rolesArr.includes("video")) rolesArr.push("video");
+    if (selectedProjectIds.length && !rolesArr.includes("project")) rolesArr.push("project");
     const data = (await callAdmin("invite", {
       send_email: sendEmail,
       email,
       full_name: fullName,
       roles: rolesArr,
       app_origin: window.location.origin,
-      investor_profile_ids: rolesArr.includes("investor") ? selectedProfileIds : [],
+      investor_profile_ids: selectedProfileIds,
       investor_video_ids: rolesArr.includes("video") || rolesArr.includes("investor") ? selectedVideoIds : [],
       project_page_ids: rolesArr.includes("project") ? selectedProjectIds : [],
     })) as { temp_password?: string } | null;
@@ -1467,9 +1471,8 @@ export default function AdminDashboard() {
                         Remove user
                       </Button>
                     </div>
-                    <div className="ef-access-permissions mt-3 grid gap-3 md:grid-cols-4 text-sm">
-                      <div>
-                        <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">Portals</div>
+                    <div className="ef-access-permissions mt-3 text-sm">
+                      <div className="flex flex-wrap gap-6 pb-3 mb-3 border-b">
                         <label className="flex items-center gap-2 font-semibold">
                           <input
                             type="checkbox"
@@ -1487,49 +1490,67 @@ export default function AdminDashboard() {
                           />
                           Full admin access
                         </label>
-                        <label className="flex items-center gap-2">
+                        <label className="flex items-center gap-2 font-semibold">
                           <input
                             type="checkbox"
                             checked={Boolean(u.is_investor)}
-                            onChange={(e) =>
-                              callAdmin("set_investor", { user_id: u.user_id, make_investor: e.target.checked })
-                            }
+                            onChange={(e) => callAdmin("set_investor", { user_id: u.user_id, make_investor: e.target.checked })}
                           />
-                          Investor portal
-                        </label>
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(u.is_video)}
-                            onChange={(e) =>
-                              callAdmin("set_video", { user_id: u.user_id, make_video: e.target.checked })
-                            }
-                          />
-                          Video portal
-                        </label>
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(u.is_project)}
-                            onChange={(e) =>
-                              callAdmin("set_project", { user_id: u.user_id, make_project: e.target.checked })
-                            }
-                          />
-                          Project Run
+                          Investor portal <span className="font-normal text-xs text-muted-foreground">(portal pages only)</span>
                         </label>
                       </div>
+                      <div className="grid gap-4 md:grid-cols-3">
                       <div>
-                        <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">Folders</div>
-                        {investorProfiles.length === 0 && <span className="text-muted-foreground">None set up</span>}
+                        <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
+                          <input type="checkbox" checked={Boolean(u.is_project)} onChange={(e) => callAdmin("set_project", { user_id: u.user_id, make_project: e.target.checked })} />
+                          Project 3D Demo
+                        </label>
+                        {projectCatalog.length === 0 && <span className="text-muted-foreground">{projectCatalogMsg}</span>}
+                        {projectCatalog.map((pg) => (
+                          <label key={pg.id} className="flex items-center gap-2 ml-5">
+                            <input
+                              type="checkbox"
+                              checked={projPages.some((x) => x.id === pg.id)}
+                              onChange={async (e) => {
+                                await toggleProjectAccess(u.user_id, pg.id, e.target.checked);
+                                if (e.target.checked && !u.is_project) await callAdmin("set_project", { user_id: u.user_id, make_project: true });
+                              }}
+                            />
+                            <span className="min-w-0 break-words">{pg.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <div>
+                        <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
+                          <input type="checkbox" checked={Boolean(u.is_video)} onChange={(e) => callAdmin("set_video", { user_id: u.user_id, make_video: e.target.checked })} />
+                          Videos
+                        </label>
+                        {videoCatalog.length === 0 && <span className="text-muted-foreground">{videoCatalogMsg}</span>}
+                        {videoCatalog.map((v) => (
+                          <label key={v.id} className="flex items-center gap-2 ml-5">
+                            <input
+                              type="checkbox"
+                              checked={vids.some((x) => x.id === v.id)}
+                              onChange={async (e) => {
+                                await toggleVideoAccess(u.user_id, v.id, e.target.checked);
+                                if (e.target.checked && !u.is_video) await callAdmin("set_video", { user_id: u.user_id, make_video: true });
+                              }}
+                            />
+                            <span className="min-w-0 break-words">{v.name.replace(/\.[^.]+$/, "")}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <div>
+                        {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up</span>}
                         {investorProfiles.map((p) => (
                           <div key={p.id}>
-                            <label className="flex items-center gap-2">
+                            <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
                               <input
                                 type="checkbox"
                                 checked={folders.some((f) => f.id === p.id)}
                                 onChange={(e) => toggleUserProfileAccess(u.user_id, p.id, e.target.checked)}
                               />
-                              {p.name}
+                              Documents (Data Room)
                             </label>
                             {p.drive_url && (
                               <ProfileItemPicker
@@ -1542,34 +1563,6 @@ export default function AdminDashboard() {
                           </div>
                         ))}
                       </div>
-                      <div>
-                        <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">Videos</div>
-                        {videoCatalog.length === 0 && <span className="text-muted-foreground">{videoCatalogMsg}</span>}
-                        {videoCatalog.map((v) => (
-                          <label key={v.id} className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={vids.some((x) => x.id === v.id)}
-                              onChange={(e) => toggleVideoAccess(u.user_id, v.id, e.target.checked)}
-                            />
-                             <span className="min-w-0 break-words">{v.name.replace(/\.[^.]+$/, "")}</span>
-                          </label>
-                        ))}
-                      </div>
-                      <div>
-                        <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">Project Run pages</div>
-                        {projectCatalog.length === 0 && <span className="text-muted-foreground">{projectCatalogMsg}</span>}
-                        {projectCatalog.map((pg) => (
-                          <label key={pg.id} className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={projPages.some((x) => x.id === pg.id)}
-                              onChange={(e) => toggleProjectAccess(u.user_id, pg.id, e.target.checked)}
-                            />
-                            <span className="min-w-0 break-words">{pg.name}</span>
-                          </label>
-                        ))}
-                        {projectCatalog.length > 0 && !u.is_project && <span className="block text-xs text-muted-foreground mt-1">Tick "Project Run" under Portals so they see the tab.</span>}
                       </div>
                     </div>
                     </div>
@@ -1622,7 +1615,7 @@ export default function AdminDashboard() {
                   <input type="checkbox" checked={inviteInvestor} onChange={(e)=>setInviteInvestor(e.target.checked)} />
                   <div>
                     <div className="ttl">Investor Portal</div>
-                    <div className="sub">Full portal, documents &amp; video link</div>
+                    <div className="sub">Portal pages only</div>
                   </div>
                 </label>
                 <label className={`ef-portal-card ${inviteCustomer ? "active" : ""}`}>
@@ -1635,15 +1628,15 @@ export default function AdminDashboard() {
                 <label className={`ef-portal-card ${inviteVideo ? "active" : ""}`}>
                   <input type="checkbox" checked={inviteVideo} onChange={(e)=>setInviteVideo(e.target.checked)} />
                   <div>
-                    <div className="ttl">Video Portal</div>
-                    <div className="sub">Dedicated video page only</div>
+                    <div className="ttl">Videos</div>
+                    <div className="sub">Selected videos below</div>
                   </div>
                 </label>
                 <label className={`ef-portal-card ${inviteProject ? "active" : ""}`}>
                   <input type="checkbox" checked={inviteProject} onChange={(e)=>setInviteProject(e.target.checked)} />
                   <div>
-                    <div className="ttl">Project Run</div>
-                    <div className="sub">Selected Project Run pages</div>
+                    <div className="ttl">Project 3D Demo</div>
+                    <div className="sub">Selected pages below</div>
                   </div>
                 </label>
                 <label className={`ef-portal-card ${inviteAdmin ? "active" : ""}`} style={{flexBasis:"160px"}}>
@@ -1655,9 +1648,9 @@ export default function AdminDashboard() {
                 </label>
               </div>
             </div>
-            {inviteInvestor && investorProfiles.length > 0 && (
+            {investorProfiles.length > 0 && (
               <div className="md:col-span-12">
-                <Label>Documents — profile folders</Label>
+                <Label>Documents (Data Room)</Label>
                 <div className="ef-portal-grid mt-1">
                   {investorProfiles.map((p) => {
                     const on = selectedProfileIds.includes(p.id);
@@ -1690,9 +1683,9 @@ export default function AdminDashboard() {
                 </p>
               </div>
             )}
-            {(inviteInvestor || inviteVideo) && videoCatalog.length > 0 && (
+            {videoCatalog.length > 0 && (
               <div className="md:col-span-12">
-                <Label>Authorized Videos</Label>
+                <Label>Videos</Label>
                 <div className="ef-portal-grid mt-1">
                   {videoCatalog.map((video) => {
                     const on = selectedVideoIds.includes(video.id);
@@ -1710,9 +1703,9 @@ export default function AdminDashboard() {
                 </div>
               </div>
             )}
-            {inviteProject && (
+            {(
               <div className="md:col-span-12">
-                <Label>Project Run pages</Label>
+                <Label>Project 3D Demo</Label>
                 {projectCatalog.length === 0 && <p className="text-sm text-muted-foreground mt-1">{projectCatalogMsg}</p>}
                 <div className="ef-portal-grid mt-1">
                   {projectCatalog.map((pg) => {

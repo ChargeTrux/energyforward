@@ -80,7 +80,6 @@ export function InvestorDocuments() {
   useEffect(() => () => revoke(), [revoke]);
 
   const label = { fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase" as const };
-  const hasInitialFile = Boolean(initial.current.get("file"));
 
   return (
     <div onContextMenu={(e) => e.preventDefault()} style={{ height: "100vh", background: teal, color: pearl, fontFamily: "'General Sans', Arial, sans-serif", display: "flex", flexDirection: "column" }}>
