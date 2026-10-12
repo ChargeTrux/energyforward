@@ -29,6 +29,12 @@ export function InvestorDocuments() {
   const [htmlDoc, setHtmlDoc] = useState<string | null>(null);
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [max, setMax] = useState(false);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMax(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const [error, setError] = useState<string | null>(null);
   const urlRef = useRef<string | null>(null);
   const initial = useRef(new URLSearchParams(window.location.search));
@@ -58,6 +64,18 @@ export function InvestorDocuments() {
       const mime = blob.type || f.mimeType;
       if (mime.startsWith("text/html") || /\.html?$/i.test(f.name)) {
         setHtmlDoc(await blob.text());
+        setPreview({ name: f.name, url: "", mime: "text/html" });
+        return;
+      }
+      if (/spreadsheetml|ms-excel|text\/csv/i.test(mime) || /\.(xlsx|xlsm|xls|csv)$/i.test(f.name)) {
+        const XLSX = await import("xlsx");
+        const wb = XLSX.read(await blob.arrayBuffer(), { type: "array" });
+        const sheets = wb.SheetNames.map((n) =>
+          `<h2>${n.replace(/</g, "&lt;")}</h2>${XLSX.utils.sheet_to_html(wb.Sheets[n], { header: "", footer: "" })}`).join("");
+        setHtmlDoc(`<!doctype html><html><head><meta charset="utf-8"><style>
+          body{font-family:Arial,sans-serif;margin:16px;color:#111}h2{font-size:15px;margin:20px 0 8px}
+          table{border-collapse:collapse;font-size:12px}td,th{border:1px solid #ccc;padding:4px 8px;white-space:nowrap}
+          tr:first-child td{background:#f3f3f3;font-weight:bold}</style></head><body>${sheets}</body></html>`);
         setPreview({ name: f.name, url: "", mime: "text/html" });
         return;
       }
@@ -96,7 +114,18 @@ export function InvestorDocuments() {
         {error && <div style={{ padding: 16, fontSize: 13, color: "#f4b5a3" }}>{error}</div>}
         {preview ? (
           <>
-            <div style={{ padding: "10px 16px", ...label, color: amber, borderBottom: "1px solid rgba(238,234,226,0.12)" }}>{preview.name}</div>
+            <div style={{ padding: "8px 16px", ...label, color: amber, borderBottom: "1px solid rgba(238,234,226,0.12)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+              <span>{preview.name}</span>
+              {preview.mime === "text/html" && (
+                <button type="button" onClick={() => setMax(true)} style={{ ...label, background: amber, color: teal, border: "none", borderRadius: 999, padding: "6px 14px", cursor: "pointer", fontWeight: 700 }}>Maximize</button>
+              )}
+            </div>
+            {max && preview.mime === "text/html" && htmlDoc !== null && (
+              <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "#fff" }}>
+                <iframe title={preview.name} srcDoc={htmlDoc} sandbox="allow-scripts" style={{ width: "100%", height: "100%", border: "none" }} />
+                <button type="button" onClick={() => setMax(false)} style={{ ...label, position: "fixed", top: 16, right: 16, zIndex: 201, background: amber, color: teal, border: "none", borderRadius: 999, padding: "10px 18px", cursor: "pointer", fontWeight: 700, boxShadow: "0 4px 18px rgba(0,0,0,0.35)" }}>Exit ✕</button>
+              </div>
+            )}
             <div style={{ flex: 1, minHeight: 0, background: "#04191b", display: "flex", flexDirection: "column" }}>
               <ZoomFrame resetKey={preview.name}>
                 {preview.mime === "text/html" && htmlDoc !== null ? (
