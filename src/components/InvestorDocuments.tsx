@@ -66,6 +66,7 @@ export function InvestorDocuments() {
   }, []);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [sheets, setSheets] = useState<SheetResult | null>(null);
   const [sheetIdx, setSheetIdx] = useState(0);
   const openSeq = useRef(0);
@@ -85,6 +86,7 @@ export function InvestorDocuments() {
     setSheets(null);
     setError(null);
     setProgress(null);
+    setNotice(null);
     revoke();
     if (user) void supabase.from("content_views").insert({ user_id: user.id, content_type: "document", item_id: f.id, item_name: f.name });
     setLoading(true);
@@ -120,12 +122,16 @@ export function InvestorDocuments() {
         return;
       }
       if (/spreadsheet|ms-excel|text\/csv/i.test(mime + " " + f.mimeType) || /\.(xlsx|xlsm|xls|csv)$/i.test(f.name)) {
-        setProgress("Preparing spreadsheet…");
-        const result = await parseSpreadsheet(await blob.arrayBuffer());
-        if (run !== openSeq.current) return;
-        setSheets(result);
-        setSheetIdx(0);
-        setPreview({ name: f.name, url: "", mime: "text/html" });
+        // Excel files download instead of opening in the viewer.
+        const u = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = u;
+        a.download = /\.(xlsx|xlsm|xls|csv)$/i.test(f.name) ? f.name : `${f.name}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.setTimeout(() => URL.revokeObjectURL(u), 60_000);
+        setNotice(`${f.name} downloaded.`);
         return;
       }
       const u = URL.createObjectURL(blob);
@@ -214,7 +220,7 @@ export function InvestorDocuments() {
           </>
         ) : (
           <div style={{ margin: "auto", textAlign: "center", maxWidth: 440, padding: 24 }}>
-            <div style={{ ...label, color: amber, marginBottom: 8 }}>{loading ? (progress ?? "Opening…") : "View only"}</div>
+            <div style={{ ...label, color: amber, marginBottom: 8 }}>{loading ? (progress ?? "Opening…") : notice ?? "View only"}</div>
             <div style={{ fontSize: 14, opacity: 0.75, lineHeight: 1.6 }}>
               Open the gold Investor Materials tab on the left and choose a document to view it here. Documents are streamed to your session only —
               they cannot be shared, forwarded or downloaded.
