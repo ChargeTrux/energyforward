@@ -1479,7 +1479,7 @@ export default function AdminDashboard() {
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
                   <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
-                    <input type="checkbox" checked={bulk.project} onChange={(e) => setBulk((b) => ({ ...b, project: e.target.checked, projectPages: e.target.checked ? b.projectPages : [] }))} /> Project 3D Demo
+                    <input type="checkbox" checked={bulk.project} onChange={(e) => setBulk((b) => ({ ...b, project: e.target.checked, projectPages: e.target.checked ? projectCatalog.map((p) => p.id) : [] }))} /> Project 3D Demo
                   </label>
                   {projectCatalog.map((pg) => (
                     <label key={pg.id} className={`flex items-center gap-2 ml-5 ${!bulk.project ? "opacity-50" : ""}`}>
@@ -1490,7 +1490,7 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
-                    <input type="checkbox" checked={bulk.video} onChange={(e) => setBulk((b) => ({ ...b, video: e.target.checked, videos: e.target.checked ? b.videos : [] }))} /> Videos
+                    <input type="checkbox" checked={bulk.video} onChange={(e) => setBulk((b) => ({ ...b, video: e.target.checked, videos: e.target.checked ? videoCatalog.map((v) => v.id) : [] }))} /> Videos
                   </label>
                   {videoCatalog.map((v) => (
                     <label key={v.id} className={`flex items-center gap-2 ml-5 ${!bulk.video ? "opacity-50" : ""}`}>
@@ -1649,7 +1649,7 @@ export default function AdminDashboard() {
                       <div className="grid gap-4 md:grid-cols-3">
                       <div>
                         <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
-                          <input type="checkbox" checked={Boolean(u.is_project)} onChange={async (e) => { await callAdmin("set_project", { user_id: u.user_id, make_project: e.target.checked }); await loadProject(); }} />
+                          <input type="checkbox" checked={Boolean(u.is_project)} onChange={async (e) => { await callAdmin("set_project", { user_id: u.user_id, make_project: e.target.checked }); if (e.target.checked && projectCatalog.length) await supabase.from("project_page_access").upsert(projectCatalog.map((pg) => ({ user_id: u.user_id, file_id: pg.id })), { onConflict: "user_id,file_id" }); await loadProject(); }} />
                           Project 3D Demo
                         </label>
                         {projectCatalog.length === 0 && <span className="text-muted-foreground">{projectCatalogMsg}</span>}
@@ -1669,7 +1669,7 @@ export default function AdminDashboard() {
                       </div>
                       <div>
                         <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
-                          <input type="checkbox" checked={Boolean(u.is_video)} onChange={async (e) => { await callAdmin("set_video", { user_id: u.user_id, make_video: e.target.checked }); await loadVideos(); }} />
+                          <input type="checkbox" checked={Boolean(u.is_video)} onChange={async (e) => { await callAdmin("set_video", { user_id: u.user_id, make_video: e.target.checked }); if (e.target.checked && videoCatalog.length) await supabase.from("investor_video_access").upsert(videoCatalog.map((v) => ({ user_id: u.user_id, file_id: v.id })), { onConflict: "user_id,file_id" }); await loadVideos(); }} />
                           Videos
                         </label>
                         {videoCatalog.length === 0 && <span className="text-muted-foreground">{videoCatalogMsg}</span>}
@@ -1776,7 +1776,7 @@ export default function AdminDashboard() {
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
                   <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
-                    <input type="checkbox" checked={inviteProject} onChange={(e) => { setInviteProject(e.target.checked); if (!e.target.checked) setSelectedProjectIds([]); }} />
+                    <input type="checkbox" checked={inviteProject} onChange={(e) => { setInviteProject(e.target.checked); setSelectedProjectIds(e.target.checked ? projectCatalog.map((pg) => pg.id) : []); }} />
                     Project 3D Demo
                   </label>
                   {projectCatalog.length === 0 && <span className="text-muted-foreground">{projectCatalogMsg}</span>}
@@ -1797,7 +1797,7 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
-                    <input type="checkbox" checked={inviteVideo} onChange={(e) => { setInviteVideo(e.target.checked); if (!e.target.checked) setSelectedVideoIds([]); }} />
+                    <input type="checkbox" checked={inviteVideo} onChange={(e) => { setInviteVideo(e.target.checked); setSelectedVideoIds(e.target.checked ? videoCatalog.map((v) => v.id) : []); }} />
                     Videos
                   </label>
                   {videoCatalog.length === 0 && <span className="text-muted-foreground">{videoCatalogMsg}</span>}
