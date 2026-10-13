@@ -105,7 +105,7 @@ export default function ProjectRun() {
           {(loading ? (cachedItems("project") ?? []) as Page[] : pages).map((p) => (
             <button key={p.id} type="button" data-drawer-close="" onClick={() => !loading && open(p)} style={{
               display: "block", width: "100%", textAlign: "left", border: "none", borderTop: "1px solid rgba(238,234,226,0.10)",
-              background: active?.id === p.id ? "rgba(232,177,74,0.14)" : "transparent", color: pearl, padding: "10px 6px 10px 18px", cursor: "pointer", fontSize: 14,
+              background: active?.id === p.id ? "rgba(232,177,74,0.14)" : "transparent", color: pearl, padding: "6px 4px 6px 14px", cursor: "pointer", fontSize: 12, fontFamily: "inherit",
             }}>
               <span style={{ color: amber, marginRight: 8 }}>•</span>{p.name}
             </button>
