@@ -754,9 +754,10 @@ export default function AdminDashboard() {
       roles: rolesArr,
       app_origin: window.location.origin,
       replace_access: true,
-      investor_profile_ids: rolesArr.includes("investor") ? selectedProfileIds : [],
-      investor_video_ids: rolesArr.includes("video") ? selectedVideoIds : [],
-      project_page_ids: rolesArr.includes("project") ? selectedProjectIds : [],
+      investor_profile_ids: selectedProfileIds,
+      // A ticked heading means everything under it, even if the list loaded late.
+      investor_video_ids: rolesArr.includes("video") ? (selectedVideoIds.length ? selectedVideoIds : videoCatalog.map((v) => v.id)) : [],
+      project_page_ids: rolesArr.includes("project") ? (selectedProjectIds.length ? selectedProjectIds : projectCatalog.map((pg) => pg.id)) : [],
     })) as { temp_password?: string } | null;
     if (data) {
       const list = rolesArr.length ? rolesArr.join(", ") : "no portal";
@@ -1171,7 +1172,7 @@ export default function AdminDashboard() {
       email: row.email,
       full_name: row.full_name,
       roles: rolesArr,
-      investor_profile_ids: rolesArr.includes("investor") ? profileIds : [],
+      investor_profile_ids: profileIds,
     })) as { temp_password?: string } | null;
     if (data) {
       await supabase
