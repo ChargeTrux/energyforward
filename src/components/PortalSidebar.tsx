@@ -25,6 +25,9 @@ async function call(fn: string, qs: string) {
 const sectionLabel = { fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase" as const, color: amber };
 
 let itemsCache: Record<"videos" | "project", Item[] | null> = { videos: null, project: null };
+/** Last known lists, so a page can show its menu instantly while it reloads. */
+export const cachedItems = (k: "videos" | "project") => itemsCache[k];
+export const rememberItems = (k: "videos" | "project", list: Item[]) => { itemsCache = { ...itemsCache, [k]: list.map(({ id, name }) => ({ id, name })) }; };
 let openCache = new Set<Section>(["project", "videos", "documents"]);
 
 export type SidebarProps = {
