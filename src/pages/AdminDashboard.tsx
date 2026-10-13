@@ -1101,6 +1101,7 @@ export default function AdminDashboard() {
     }
     await Promise.all([load(), loadVideos(), loadProject()]);
     setBulk(emptyBulk);
+    setBulkDocItems({});
     toast({ title: `Access updated for ${ids.length} people` });
   };
 
@@ -1499,12 +1500,31 @@ export default function AdminDashboard() {
                   ))}
                 </div>
                 <div>
-                  {investorProfiles.map((p) => (
-                    <label key={p.id} className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
-                      <input type="checkbox" checked={bulk.docs.includes(p.id)} onChange={(e) => setBulk((b) => ({ ...b, docs: e.target.checked ? [...b.docs, p.id] : b.docs.filter((x) => x !== p.id) }))} />
-                      Documents (Data Room) — whole folder
-                    </label>
-                  ))}
+                  {investorProfiles.map((p) => {
+                    const on = bulk.docs.includes(p.id);
+                    const sel = bulkDocItems[p.id] ?? new Map();
+                    return (
+                      <div key={p.id}>
+                        <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
+                          <input type="checkbox" checked={on} onChange={(e) => {
+                            setBulk((b) => ({ ...b, docs: e.target.checked ? [...b.docs, p.id] : b.docs.filter((x) => x !== p.id) }));
+                            if (!e.target.checked) setBulkDocItems((s) => ({ ...s, [p.id]: new Map() }));
+                          }} />
+                          Documents (Data Room){on && !sel.size ? " — whole folder" : ""}
+                        </label>
+                        <div className="ml-5 rounded border p-2 max-h-72 overflow-y-auto">
+                          <p className="text-xs text-muted-foreground mb-1">Ticking a folder ticks everything inside it; untick single files to leave them out. Nothing ticked = the whole folder.</p>
+                          <DriveSelectTree
+                            profileId={p.id}
+                            selection={on ? sel : new Map()}
+                            onChange={(next) => setBulkDocItems((s) => ({ ...s, [p.id]: next }))}
+                            disabled={!on}
+                            disabledHint="Tick Documents (Data Room) first"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
               <Button size="sm" className="mt-3" disabled={busy} onClick={applyBulkAccess}>Apply to {selectedInvitees.length} selected</Button>
