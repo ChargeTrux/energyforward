@@ -180,7 +180,7 @@ function InvestorVideosInner() {
           {(loading ? (cachedItems("videos") ?? []) as Video[] : videos).map((v) => (
             <button key={v.id} type="button" data-drawer-close="" onClick={() => !loading && selectVideo(v, true, true)} style={{
               display: "block", width: "100%", textAlign: "left", border: "none", borderTop: "1px solid rgba(238,234,226,0.08)", fontFamily: "inherit",
-              background: active?.id === v.id ? "rgba(232,177,74,0.14)" : "transparent", color: pearl, padding: "8px 4px 8px 18px", cursor: "pointer", fontSize: 14,
+              background: active?.id === v.id ? "rgba(232,177,74,0.14)" : "transparent", color: pearl, padding: "6px 4px 6px 14px", cursor: "pointer", fontSize: 12,
             }}>
               <span style={{ color: amber, marginRight: 8 }}>•</span>{v.name}
             </button>
