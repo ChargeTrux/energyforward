@@ -1479,7 +1479,7 @@ export default function AdminDashboard() {
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
                   <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
-                    <input type="checkbox" checked={bulk.project} onChange={(e) => setBulk((b) => ({ ...b, project: e.target.checked, projectPages: e.target.checked ? b.projectPages : [] }))} /> Project 3D Demo
+                    <input type="checkbox" checked={bulk.project} onChange={(e) => setBulk((b) => ({ ...b, project: e.target.checked, projectPages: e.target.checked ? projectCatalog.map((p) => p.id) : [] }))} /> Project 3D Demo
                   </label>
                   {projectCatalog.map((pg) => (
                     <label key={pg.id} className={`flex items-center gap-2 ml-5 ${!bulk.project ? "opacity-50" : ""}`}>
@@ -1490,7 +1490,7 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
-                    <input type="checkbox" checked={bulk.video} onChange={(e) => setBulk((b) => ({ ...b, video: e.target.checked, videos: e.target.checked ? b.videos : [] }))} /> Videos
+                    <input type="checkbox" checked={bulk.video} onChange={(e) => setBulk((b) => ({ ...b, video: e.target.checked, videos: e.target.checked ? videoCatalog.map((v) => v.id) : [] }))} /> Videos
                   </label>
                   {videoCatalog.map((v) => (
                     <label key={v.id} className={`flex items-center gap-2 ml-5 ${!bulk.video ? "opacity-50" : ""}`}>
