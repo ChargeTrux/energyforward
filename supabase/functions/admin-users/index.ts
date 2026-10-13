@@ -59,6 +59,13 @@ const directResetUrl = (hashed: string | undefined, fallback: string): string =>
   return u.toString();
 };
 
+const SMALL_WORDS = new Set(["and","or","of","the","a","an","to","in","for","on","at","by"]);
+function niceName(name: string): string {
+  const n = name.replace(/^\s*\d+(?:[-.]\d+)*\s*[-–.)]?\s*/, "").replace(/\.[a-z0-9]{2,5}$/i, "") || name;
+  if (!/[A-Z]/.test(n) || n !== n.toUpperCase()) return n;
+  return n.toLowerCase().split(/(\s+)/).map((w, i) => /^\s+$/.test(w) || (i > 0 && SMALL_WORDS.has(w)) ? w : w.charAt(0).toUpperCase() + w.slice(1)).join("");
+}
+
 // Folder names for the welcome email, read from what the person actually has now.
 // Picked folders/files are listed by name; whole-folder access lists the profile name.
 // deno-lint-ignore no-explicit-any
