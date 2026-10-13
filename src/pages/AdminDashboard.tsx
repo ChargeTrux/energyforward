@@ -1407,6 +1407,52 @@ export default function AdminDashboard() {
               Send reset link to selected
             </Button>
           </div>
+          {selectedInvitees.length > 0 && (
+            <div className="mb-4 rounded border p-3 text-sm">
+              <div className="flex flex-wrap items-center gap-3 mb-2">
+                <strong>Change access for {selectedInvitees.length} selected</strong>
+                <label className="flex items-center gap-1"><input type="radio" checked={bulkMode === "add"} onChange={() => setBulkMode("add")} /> Give access</label>
+                <label className="flex items-center gap-1"><input type="radio" checked={bulkMode === "remove"} onChange={() => setBulkMode("remove")} /> Remove access</label>
+                <span className="text-xs text-muted-foreground">Only what you tick here changes; everything else each person has stays the same. No emails are sent.</span>
+              </div>
+              <label className="flex items-center gap-2 font-semibold mb-2">
+                <input type="checkbox" checked={bulk.investor} onChange={(e) => setBulk((b) => ({ ...b, investor: e.target.checked }))} /> Investor portal
+              </label>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
+                    <input type="checkbox" checked={bulk.project} onChange={(e) => setBulk((b) => ({ ...b, project: e.target.checked, projectPages: e.target.checked ? b.projectPages : [] }))} /> Project 3D Demo
+                  </label>
+                  {projectCatalog.map((pg) => (
+                    <label key={pg.id} className={`flex items-center gap-2 ml-5 ${!bulk.project ? "opacity-50" : ""}`}>
+                      <input type="checkbox" disabled={!bulk.project} checked={bulk.projectPages.includes(pg.id)} onChange={(e) => setBulk((b) => ({ ...b, projectPages: e.target.checked ? [...b.projectPages, pg.id] : b.projectPages.filter((x) => x !== pg.id) }))} />
+                      <span className="min-w-0 break-words">{pg.name}</span>
+                    </label>
+                  ))}
+                </div>
+                <div>
+                  <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
+                    <input type="checkbox" checked={bulk.video} onChange={(e) => setBulk((b) => ({ ...b, video: e.target.checked, videos: e.target.checked ? b.videos : [] }))} /> Videos
+                  </label>
+                  {videoCatalog.map((v) => (
+                    <label key={v.id} className={`flex items-center gap-2 ml-5 ${!bulk.video ? "opacity-50" : ""}`}>
+                      <input type="checkbox" disabled={!bulk.video} checked={bulk.videos.includes(v.id)} onChange={(e) => setBulk((b) => ({ ...b, videos: e.target.checked ? [...b.videos, v.id] : b.videos.filter((x) => x !== v.id) }))} />
+                      <span className="min-w-0 break-words">{v.name.replace(/\.[^.]+$/, "")}</span>
+                    </label>
+                  ))}
+                </div>
+                <div>
+                  {investorProfiles.map((p) => (
+                    <label key={p.id} className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
+                      <input type="checkbox" checked={bulk.docs.includes(p.id)} onChange={(e) => setBulk((b) => ({ ...b, docs: e.target.checked ? [...b.docs, p.id] : b.docs.filter((x) => x !== p.id) }))} />
+                      Documents (Data Room) — whole folder
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <Button size="sm" className="mt-3" disabled={busy} onClick={applyBulkAccess}>Apply to {selectedInvitees.length} selected</Button>
+            </div>
+          )}
           <div ref={accessListRef} className="ef-access-list space-y-1.5" tabIndex={0} role="region" aria-label="User access list">
             {visibleAccessProfiles.map((u) => {
                  const status = accessStatuses.get(u.user_id) ?? userAccessStatus(u, lastLogins.get(u.user_id), recentActivity.get(u.user_id), activityNow);
