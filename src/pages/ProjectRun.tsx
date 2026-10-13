@@ -1,5 +1,6 @@
 import { ZoomFrame } from "@/components/ZoomFrame";
 import { PortalDrawer } from "@/components/PortalDrawer";
+import { cachedItems, rememberItems } from "@/components/PortalSidebar";
 import { useEffect, useRef, useState } from "react";
 import { PortalNav, NoAccessScreen, usePortalAccess } from "@/components/PortalNav";
 import { Link, Navigate } from "react-router-dom";
@@ -47,6 +48,7 @@ export default function ProjectRun() {
         const body = await res.json();
         if (!res.ok) throw new Error(body.error ?? "Could not load pages.");
         setPages(body.pages ?? []);
+        rememberItems("project", body.pages ?? []);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not load pages.");
       } finally {
@@ -98,10 +100,10 @@ export default function ProjectRun() {
       <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative" }}>
         <PortalDrawer current="project" pinned>
           <div>
-          {loading && <div style={{ fontSize: 13, opacity: 0.7 }}>Loading…</div>}
+          {loading && !cachedItems("project")?.length && <div style={{ fontSize: 13, opacity: 0.7 }}>Loading…</div>}
           {!loading && pages.length === 0 && !error && <div style={{ fontSize: 13, opacity: 0.7 }}>No pages have been shared with you yet.</div>}
-          {pages.map((p) => (
-            <button key={p.id} type="button" data-drawer-close="" onClick={() => open(p)} style={{
+          {(loading ? (cachedItems("project") ?? []) as Page[] : pages).map((p) => (
+            <button key={p.id} type="button" data-drawer-close="" onClick={() => !loading && open(p)} style={{
               display: "block", width: "100%", textAlign: "left", border: "none", borderTop: "1px solid rgba(238,234,226,0.10)",
               background: active?.id === p.id ? "rgba(232,177,74,0.14)" : "transparent", color: pearl, padding: "10px 6px 10px 18px", cursor: "pointer", fontSize: 14,
             }}>

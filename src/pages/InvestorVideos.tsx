@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PortalNav, NoAccessScreen, usePortalAccess } from "@/components/PortalNav";
 import { PortalDrawer } from "@/components/PortalDrawer";
+import { cachedItems, rememberItems } from "@/components/PortalSidebar";
 import { Link, useSearchParams } from "react-router-dom";
 import { LockKeyhole, Play } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -105,6 +106,7 @@ function InvestorVideosInner() {
       else {
         const available = (body.videos ?? []) as Video[];
         setVideos(available);
+        rememberItems("videos", available);
         setFullPortalAccess(Boolean(body.fullPortalAccess));
         await streamReady;
         const requested = searchParamsRef.current.get("video");
@@ -174,9 +176,9 @@ function InvestorVideosInner() {
       </header>
       {user && <PortalDrawer current="videos" pinned>
         <div>
-          {videos.length === 0 && <div style={{ fontSize: 12, opacity: 0.6, padding: "4px 0 4px 18px" }}>{loading ? "Loading…" : "Nothing shared yet."}</div>}
-          {videos.map((v) => (
-            <button key={v.id} type="button" data-drawer-close="" onClick={() => selectVideo(v, true, true)} style={{
+          {(loading ? !cachedItems("videos")?.length : videos.length === 0) && <div style={{ fontSize: 12, opacity: 0.6, padding: "4px 0 4px 18px" }}>{loading ? "Loading…" : "Nothing shared yet."}</div>}
+          {(loading ? (cachedItems("videos") ?? []) as Video[] : videos).map((v) => (
+            <button key={v.id} type="button" data-drawer-close="" onClick={() => !loading && selectVideo(v, true, true)} style={{
               display: "block", width: "100%", textAlign: "left", border: "none", borderTop: "1px solid rgba(238,234,226,0.08)", fontFamily: "inherit",
               background: active?.id === v.id ? "rgba(232,177,74,0.14)" : "transparent", color: pearl, padding: "8px 4px 8px 18px", cursor: "pointer", fontSize: 14,
             }}>
