@@ -1525,13 +1525,13 @@ export default function AdminDashboard() {
                       </div>
                       <div className="grid gap-4 md:grid-cols-3">
                       <div>
-                        <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 ${!u.is_investor && !u.is_project ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_investor && !u.is_project ? "Enable Investor portal first" : undefined}>
-                          <input type="checkbox" disabled={!u.is_investor && !u.is_project} checked={Boolean(u.is_project)} onChange={async (e) => { await callAdmin("set_project", { user_id: u.user_id, make_project: e.target.checked }); await loadProject(); }} />
+                        <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
+                          <input type="checkbox" checked={Boolean(u.is_project)} onChange={async (e) => { await callAdmin("set_project", { user_id: u.user_id, make_project: e.target.checked }); await loadProject(); }} />
                           Project 3D Demo
                         </label>
                         {projectCatalog.length === 0 && <span className="text-muted-foreground">{projectCatalogMsg}</span>}
                         {projectCatalog.map((pg) => (
-                          <label key={pg.id} className={`flex items-center gap-2 ml-5 ${!u.is_project ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_project ? (u.is_investor ? "Enable Project 3D Demo first" : "Enable Investor portal first") : undefined}>
+                          <label key={pg.id} className={`flex items-center gap-2 ml-5 ${!u.is_project ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_project ? "Enable Project 3D Demo first" : undefined}>
                             <input
                               type="checkbox"
                               disabled={!u.is_project}
@@ -1545,13 +1545,13 @@ export default function AdminDashboard() {
                         ))}
                       </div>
                       <div>
-                        <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 ${!u.is_investor && !u.is_video ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_investor && !u.is_video ? "Enable Investor portal first" : undefined}>
-                          <input type="checkbox" disabled={!u.is_investor && !u.is_video} checked={Boolean(u.is_video)} onChange={async (e) => { await callAdmin("set_video", { user_id: u.user_id, make_video: e.target.checked }); await loadVideos(); }} />
+                        <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
+                          <input type="checkbox" checked={Boolean(u.is_video)} onChange={async (e) => { await callAdmin("set_video", { user_id: u.user_id, make_video: e.target.checked }); await loadVideos(); }} />
                           Videos
                         </label>
                         {videoCatalog.length === 0 && <span className="text-muted-foreground">{videoCatalogMsg}</span>}
                         {videoCatalog.map((v) => (
-                          <label key={v.id} className={`flex items-center gap-2 ml-5 ${!u.is_video ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_video ? (u.is_investor ? "Enable Videos first" : "Enable Investor portal first") : undefined}>
+                          <label key={v.id} className={`flex items-center gap-2 ml-5 ${!u.is_video ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_video ? "Enable Videos first" : undefined}>
                             <input
                               type="checkbox"
                               disabled={!u.is_video}
@@ -1568,10 +1568,9 @@ export default function AdminDashboard() {
                         {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up</span>}
                         {investorProfiles.map((p) => (
                           <div key={p.id}>
-                            <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 ${!u.is_investor && !folders.some((f) => f.id === p.id) ? "opacity-50 cursor-not-allowed" : ""}`} title={!u.is_investor && !folders.some((f) => f.id === p.id) ? "Enable Investor portal first" : undefined}>
+                            <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
                               <input
                                 type="checkbox"
-                                disabled={!u.is_investor && !folders.some((f) => f.id === p.id)}
                                 checked={folders.some((f) => f.id === p.id)}
                                 onChange={(e) => toggleUserProfileAccess(u.user_id, p.id, e.target.checked)}
                               />
@@ -1653,13 +1652,13 @@ export default function AdminDashboard() {
               </div>
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
-                  <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 ${!inviteInvestor ? "opacity-50 cursor-not-allowed" : ""}`} title={!inviteInvestor ? "Enable Investor portal first" : undefined}>
-                    <input type="checkbox" disabled={!inviteInvestor} checked={inviteProject} onChange={(e) => { setInviteProject(e.target.checked); if (!e.target.checked) setSelectedProjectIds([]); }} />
+                  <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
+                    <input type="checkbox" checked={inviteProject} onChange={(e) => { setInviteProject(e.target.checked); if (!e.target.checked) setSelectedProjectIds([]); }} />
                     Project 3D Demo
                   </label>
                   {projectCatalog.length === 0 && <span className="text-muted-foreground">{projectCatalogMsg}</span>}
                   {projectCatalog.map((pg) => (
-                    <label key={pg.id} className={`flex items-center gap-2 ml-5 ${!inviteProject ? "opacity-50 cursor-not-allowed" : ""}`} title={!inviteProject ? (inviteInvestor ? "Enable Project 3D Demo first" : "Enable Investor portal first") : undefined}>
+                    <label key={pg.id} className={`flex items-center gap-2 ml-5 ${!inviteProject ? "opacity-50 cursor-not-allowed" : ""}`} title={!inviteProject ? "Enable Project 3D Demo first" : undefined}>
                       <input
                         type="checkbox"
                         disabled={!inviteProject}
@@ -1674,13 +1673,13 @@ export default function AdminDashboard() {
                   ))}
                 </div>
                 <div>
-                  <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 ${!inviteInvestor ? "opacity-50 cursor-not-allowed" : ""}`} title={!inviteInvestor ? "Enable Investor portal first" : undefined}>
-                    <input type="checkbox" disabled={!inviteInvestor} checked={inviteVideo} onChange={(e) => { setInviteVideo(e.target.checked); if (!e.target.checked) setSelectedVideoIds([]); }} />
+                  <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
+                    <input type="checkbox" checked={inviteVideo} onChange={(e) => { setInviteVideo(e.target.checked); if (!e.target.checked) setSelectedVideoIds([]); }} />
                     Videos
                   </label>
                   {videoCatalog.length === 0 && <span className="text-muted-foreground">{videoCatalogMsg}</span>}
                   {videoCatalog.map((v) => (
-                    <label key={v.id} className={`flex items-center gap-2 ml-5 ${!inviteVideo ? "opacity-50 cursor-not-allowed" : ""}`} title={!inviteVideo ? (inviteInvestor ? "Enable Videos first" : "Enable Investor portal first") : undefined}>
+                    <label key={v.id} className={`flex items-center gap-2 ml-5 ${!inviteVideo ? "opacity-50 cursor-not-allowed" : ""}`} title={!inviteVideo ? "Enable Videos first" : undefined}>
                       <input
                         type="checkbox"
                         disabled={!inviteVideo}
@@ -1698,10 +1697,9 @@ export default function AdminDashboard() {
                   {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up</span>}
                   {investorProfiles.map((p) => (
                     <div key={p.id}>
-                      <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 ${!inviteInvestor ? "opacity-50 cursor-not-allowed" : ""}`} title={!inviteInvestor ? "Enable Investor portal first" : undefined}>
+                      <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
                         <input
                           type="checkbox"
-                          disabled={!inviteInvestor}
                           checked={selectedProfileIds.includes(p.id)}
                           onChange={(e) => setSelectedProfileIds((prev) => e.target.checked ? [...prev, p.id] : prev.filter((id) => id !== p.id))}
                         />
