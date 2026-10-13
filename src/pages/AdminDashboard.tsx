@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import "./AdminDashboard.css";
 import { ProfileItemPicker } from "@/components/admin/ProfileItemPicker";
+import { DriveSelectTree, type Selection } from "@/components/admin/DriveSelectTree";
 
 let namesSynced = false;
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1050,6 +1051,7 @@ export default function AdminDashboard() {
   const [bulkMode, setBulkMode] = useState<"add" | "remove">("add");
   const emptyBulk = { investor: false, project: false, projectPages: [] as string[], video: false, videos: [] as string[], docs: [] as string[] };
   const [bulk, setBulk] = useState(emptyBulk);
+  const [bulkDocItems, setBulkDocItems] = useState<Record<string, Selection>>({});
   const applyBulkAccess = async () => {
     const ids = selectedInvitees;
     const add = bulkMode === "add";
@@ -1081,8 +1083,17 @@ export default function AdminDashboard() {
         }
       }
       for (const pid of bulk.docs) {
-        if (add) await supabase.from("investor_profile_access").upsert({ user_id: uid, profile_id: pid }, { onConflict: "user_id,profile_id" });
-        else {
+        const items = [...(bulkDocItems[pid] ?? new Map())];
+        if (add) {
+          await supabase.from("investor_profile_access").upsert({ user_id: uid, profile_id: pid }, { onConflict: "user_id,profile_id" });
+          if (items.length)
+            await supabase.from("investor_document_access").upsert(
+              items.map(([id, p]) => ({ user_id: uid, profile_id: pid, item_id: id, item_name: p.name, is_folder: p.isFolder })),
+              { onConflict: "user_id,profile_id,item_id" },
+            );
+        } else if (items.length) {
+          await supabase.from("investor_document_access").delete().eq("user_id", uid).eq("profile_id", pid).in("item_id", items.map(([id]) => id));
+        } else {
           await supabase.from("investor_document_access").delete().eq("user_id", uid).eq("profile_id", pid);
           await supabase.from("investor_profile_access").delete().eq("user_id", uid).eq("profile_id", pid);
         }
@@ -1090,6 +1101,7 @@ export default function AdminDashboard() {
     }
     await Promise.all([load(), loadVideos(), loadProject()]);
     setBulk(emptyBulk);
+    setBulkDocItems({});
     toast({ title: `Access updated for ${ids.length} people` });
   };
 
@@ -1488,12 +1500,31 @@ export default function AdminDashboard() {
                   ))}
                 </div>
                 <div>
-                  {investorProfiles.map((p) => (
-                    <label key={p.id} className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
-                      <input type="checkbox" checked={bulk.docs.includes(p.id)} onChange={(e) => setBulk((b) => ({ ...b, docs: e.target.checked ? [...b.docs, p.id] : b.docs.filter((x) => x !== p.id) }))} />
-                      Documents (Data Room) — whole folder
-                    </label>
-                  ))}
+                  {investorProfiles.map((p) => {
+                    const on = bulk.docs.includes(p.id);
+                    const sel = bulkDocItems[p.id] ?? new Map();
+                    return (
+                      <div key={p.id}>
+                        <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
+                          <input type="checkbox" checked={on} onChange={(e) => {
+                            setBulk((b) => ({ ...b, docs: e.target.checked ? [...b.docs, p.id] : b.docs.filter((x) => x !== p.id) }));
+                            if (!e.target.checked) setBulkDocItems((s) => ({ ...s, [p.id]: new Map() }));
+                          }} />
+                          Documents (Data Room){on && !sel.size ? " — whole folder" : ""}
+                        </label>
+                        <div className="ml-5 rounded border p-2 max-h-72 overflow-y-auto">
+                          <p className="text-xs text-muted-foreground mb-1">Ticking a folder ticks everything inside it; untick single files to leave them out. Nothing ticked = the whole folder.</p>
+                          <DriveSelectTree
+                            profileId={p.id}
+                            selection={on ? sel : new Map()}
+                            onChange={(next) => setBulkDocItems((s) => ({ ...s, [p.id]: next }))}
+                            disabled={!on}
+                            disabledHint="Tick Documents (Data Room) first"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
               <Button size="sm" className="mt-3" disabled={busy} onClick={applyBulkAccess}>Apply to {selectedInvitees.length} selected</Button>

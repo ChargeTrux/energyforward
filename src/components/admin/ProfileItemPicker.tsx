@@ -1,30 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { niceName } from "@/lib/nice-name";
-
-const FOLDER_MIME = "application/vnd.google-apps.folder";
-const FN_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/investor-drive`;
-
-type Item = { id: string; name: string; mimeType: string };
-
-async function listFolder(profileId: string, folderId?: string): Promise<Item[]> {
-  const { data } = await supabase.auth.getSession();
-  const qs = new URLSearchParams({ action: "list", profile_id: profileId });
-  if (folderId) qs.set("folder_id", folderId);
-  const res = await fetch(`${FN_URL}?${qs}`, {
-    headers: {
-      Authorization: `Bearer ${data.session?.access_token ?? ""}`,
-      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
-    },
-  });
-  const body = await res.json();
-  if (!res.ok) throw new Error(body.error ?? "Could not load folder");
-  return body.files ?? [];
-}
+import { DriveSelectTree, type Selection } from "@/components/admin/DriveSelectTree";
 
 /**
  * Pick specific subfolders/files inside a profile for one person.
  * Nothing ticked = the whole profile folder is shared.
+ * Ticking a folder ticks everything inside it.
  */
 export function ProfileItemPicker({
   userId,
@@ -38,86 +19,34 @@ export function ProfileItemPicker({
   onProfileGranted: () => Promise<void> | void;
 }) {
   const [open, setOpen] = useState(true);
-  const [tree, setTree] = useState<Record<string, Item[]>>({});
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
-  const [granted, setGranted] = useState<Set<string>>(new Set());
-  const [error, setError] = useState<string | null>(null);
+  const [granted, setGranted] = useState<Selection>(new Map());
 
   const loadGrants = useCallback(async () => {
     const { data } = await supabase
       .from("investor_document_access")
-      .select("item_id")
+      .select("item_id,item_name,is_folder")
       .eq("user_id", userId)
       .eq("profile_id", profileId);
-    setGranted(new Set((data ?? []).map((r) => r.item_id)));
+    setGranted(new Map((data ?? []).map((r) => [r.item_id, { name: r.item_name, isFolder: r.is_folder }])));
   }, [userId, profileId]);
 
   useEffect(() => { void loadGrants(); }, [loadGrants, hasProfile]);
 
-  const load = useCallback(async (folderId?: string) => {
-    const key = folderId ?? "root";
-    setLoadingIds((s) => new Set(s).add(key));
-    try {
-      const items = await listFolder(profileId, folderId);
-      setTree((t) => ({ ...t, [key]: items }));
-      setError(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load folder");
-    } finally {
-      setLoadingIds((s) => { const n = new Set(s); n.delete(key); return n; });
-    }
-  }, [profileId]);
-
-  useEffect(() => { if (open && !tree.root) void load(); }, [open, tree.root, load]);
-
-  const toggle = async (item: Item, on: boolean) => {
-    if (on) {
+  const apply = async (next: Selection) => {
+    const prev = granted;
+    setGranted(next);
+    const added = [...next].filter(([id]) => !prev.has(id));
+    const removed = [...prev.keys()].filter((id) => !next.has(id));
+    if (added.length)
       await supabase.from("investor_document_access").upsert(
-        { user_id: userId, profile_id: profileId, item_id: item.id, item_name: item.name, is_folder: item.mimeType === FOLDER_MIME },
+        added.map(([id, p]) => ({ user_id: userId, profile_id: profileId, item_id: id, item_name: p.name, is_folder: p.isFolder })),
         { onConflict: "user_id,profile_id,item_id" },
       );
-    } else {
-      await supabase.from("investor_document_access").delete().eq("user_id", userId).eq("profile_id", profileId).eq("item_id", item.id);
-    }
+    if (removed.length)
+      await supabase.from("investor_document_access").delete().eq("user_id", userId).eq("profile_id", profileId).in("item_id", removed);
     await loadGrants();
-    if (on && !hasProfile) await onProfileGranted();
+    if (added.length && !hasProfile) await onProfileGranted();
   };
-
-  const render = (key: string, depth: number): React.ReactNode =>
-    (tree[key] ?? []).map((it) => {
-      const isFolder = it.mimeType === FOLDER_MIME;
-      const isOpen = expanded.has(it.id);
-      return (
-        <div key={it.id}>
-          <div className="flex items-center gap-1" style={{ paddingLeft: depth * 14 }}>
-            {isFolder ? (
-              <button
-                type="button"
-                className="w-4 text-xs text-muted-foreground"
-                onClick={() => {
-                  setExpanded((s) => { const n = new Set(s); if (n.has(it.id)) n.delete(it.id); else n.add(it.id); return n; });
-                  if (!tree[it.id]) void load(it.id);
-                }}
-                aria-label={isOpen ? "Collapse folder" : "Expand folder"}
-              >
-                {isOpen ? "▾" : "▸"}
-              </button>
-            ) : <span className="w-4" />}
-            <label className={`flex items-center gap-2 min-w-0 ${!hasProfile ? "opacity-50 cursor-not-allowed" : ""}`} title={!hasProfile ? "Enable Documents (Data Room) first" : undefined}>
-              <input type="checkbox" disabled={!hasProfile} checked={hasProfile && granted.has(it.id)} onChange={(e) => toggle(it, e.target.checked)} />
-              <span className={`break-words ${isFolder ? "font-medium" : ""}`}>{isFolder ? "📁 " : "📄 "}{niceName(it.name)}</span>
-            </label>
-          </div>
-          {isFolder && isOpen && (
-            <div>
-              {loadingIds.has(it.id) && <div className="text-xs text-muted-foreground" style={{ paddingLeft: depth * 14 + 20 }}>Loading…</div>}
-              {render(it.id, depth + 1)}
-            </div>
-          )}
-        </div>
-      );
-    });
 
   return (
     <div className="ml-5 mb-1 text-sm">
@@ -127,11 +56,15 @@ export function ProfileItemPicker({
       {open && (
         <div className="mt-1 rounded border p-2 max-h-72 overflow-y-auto">
           <p className="text-xs text-muted-foreground mb-1">
-            Tick folders or files to share only those. Nothing ticked = the whole folder.
+            Ticking a folder ticks everything inside it; untick single files to leave them out. Nothing ticked = the whole folder.
           </p>
-          {error && <div className="text-xs text-destructive">{error}</div>}
-          {loadingIds.has("root") && <div className="text-xs text-muted-foreground">Loading…</div>}
-          {render("root", 0)}
+          <DriveSelectTree
+            profileId={profileId}
+            selection={hasProfile ? granted : new Map()}
+            onChange={apply}
+            disabled={!hasProfile}
+            disabledHint="Enable Documents (Data Room) first"
+          />
         </div>
       )}
     </div>
