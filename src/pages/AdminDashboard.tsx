@@ -1776,7 +1776,7 @@ export default function AdminDashboard() {
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
                   <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
-                    <input type="checkbox" checked={inviteProject} onChange={(e) => { setInviteProject(e.target.checked); if (!e.target.checked) setSelectedProjectIds([]); }} />
+                    <input type="checkbox" checked={inviteProject} onChange={(e) => { setInviteProject(e.target.checked); setSelectedProjectIds(e.target.checked ? projectCatalog.map((pg) => pg.id) : []); }} />
                     Project 3D Demo
                   </label>
                   {projectCatalog.length === 0 && <span className="text-muted-foreground">{projectCatalogMsg}</span>}
@@ -1797,7 +1797,7 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
-                    <input type="checkbox" checked={inviteVideo} onChange={(e) => { setInviteVideo(e.target.checked); if (!e.target.checked) setSelectedVideoIds([]); }} />
+                    <input type="checkbox" checked={inviteVideo} onChange={(e) => { setInviteVideo(e.target.checked); setSelectedVideoIds(e.target.checked ? videoCatalog.map((v) => v.id) : []); }} />
                     Videos
                   </label>
                   {videoCatalog.length === 0 && <span className="text-muted-foreground">{videoCatalogMsg}</span>}
