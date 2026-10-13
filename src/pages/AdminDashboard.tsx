@@ -1047,6 +1047,52 @@ export default function AdminDashboard() {
     await loadVideos();
   };
 
+  const [bulkMode, setBulkMode] = useState<"add" | "remove">("add");
+  const emptyBulk = { investor: false, project: false, projectPages: [] as string[], video: false, videos: [] as string[], docs: [] as string[] };
+  const [bulk, setBulk] = useState(emptyBulk);
+  const applyBulkAccess = async () => {
+    const ids = selectedInvitees;
+    const add = bulkMode === "add";
+    const nothing = !bulk.investor && !bulk.project && !bulk.video && !bulk.docs.length;
+    if (nothing) { toast({ title: "Tick at least one thing to change" }); return; }
+    if (!window.confirm(`${add ? "Give" : "Remove"} the ticked access ${add ? "to" : "from"} ${ids.length} people? No emails will be sent.`)) return;
+    for (const uid of ids) {
+      if (bulk.investor) await callAdmin("set_investor", { user_id: uid, make_investor: add });
+      if (bulk.project) {
+        if (add) {
+          await callAdmin("set_project", { user_id: uid, make_project: true });
+          if (bulk.projectPages.length) await supabase.from("project_page_access").upsert(bulk.projectPages.map((f) => ({ user_id: uid, file_id: f })), { onConflict: "user_id,file_id" });
+        } else if (bulk.projectPages.length) {
+          await supabase.from("project_page_access").delete().eq("user_id", uid).in("file_id", bulk.projectPages);
+        } else {
+          await callAdmin("set_project", { user_id: uid, make_project: false });
+          await supabase.from("project_page_access").delete().eq("user_id", uid);
+        }
+      }
+      if (bulk.video) {
+        if (add) {
+          await callAdmin("set_video", { user_id: uid, make_video: true });
+          if (bulk.videos.length) await supabase.from("investor_video_access").upsert(bulk.videos.map((f) => ({ user_id: uid, file_id: f })), { onConflict: "user_id,file_id" });
+        } else if (bulk.videos.length) {
+          await supabase.from("investor_video_access").delete().eq("user_id", uid).in("file_id", bulk.videos);
+        } else {
+          await callAdmin("set_video", { user_id: uid, make_video: false });
+          await supabase.from("investor_video_access").delete().eq("user_id", uid);
+        }
+      }
+      for (const pid of bulk.docs) {
+        if (add) await supabase.from("investor_profile_access").upsert({ user_id: uid, profile_id: pid }, { onConflict: "user_id,profile_id" });
+        else {
+          await supabase.from("investor_document_access").delete().eq("user_id", uid).eq("profile_id", pid);
+          await supabase.from("investor_profile_access").delete().eq("user_id", uid).eq("profile_id", pid);
+        }
+      }
+    }
+    await Promise.all([load(), loadVideos(), loadProject()]);
+    setBulk(emptyBulk);
+    toast({ title: `Access updated for ${ids.length} people` });
+  };
+
   const copyVideoLink = async (fileId: string) => {
     const url = `${window.location.origin}/investor/videos?video=${encodeURIComponent(fileId)}&login=1`;
     await navigator.clipboard.writeText(url);
