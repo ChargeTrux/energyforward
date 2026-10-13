@@ -1649,7 +1649,7 @@ export default function AdminDashboard() {
                       <div className="grid gap-4 md:grid-cols-3">
                       <div>
                         <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
-                          <input type="checkbox" checked={Boolean(u.is_project)} onChange={async (e) => { await callAdmin("set_project", { user_id: u.user_id, make_project: e.target.checked }); await loadProject(); }} />
+                          <input type="checkbox" checked={Boolean(u.is_project)} onChange={async (e) => { await callAdmin("set_project", { user_id: u.user_id, make_project: e.target.checked }); if (e.target.checked && projectCatalog.length) await supabase.from("project_page_access").upsert(projectCatalog.map((pg) => ({ user_id: u.user_id, file_id: pg.id })), { onConflict: "user_id,file_id" }); await loadProject(); }} />
                           Project 3D Demo
                         </label>
                         {projectCatalog.length === 0 && <span className="text-muted-foreground">{projectCatalogMsg}</span>}
@@ -1669,7 +1669,7 @@ export default function AdminDashboard() {
                       </div>
                       <div>
                         <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
-                          <input type="checkbox" checked={Boolean(u.is_video)} onChange={async (e) => { await callAdmin("set_video", { user_id: u.user_id, make_video: e.target.checked }); await loadVideos(); }} />
+                          <input type="checkbox" checked={Boolean(u.is_video)} onChange={async (e) => { await callAdmin("set_video", { user_id: u.user_id, make_video: e.target.checked }); if (e.target.checked && videoCatalog.length) await supabase.from("investor_video_access").upsert(videoCatalog.map((v) => ({ user_id: u.user_id, file_id: v.id })), { onConflict: "user_id,file_id" }); await loadVideos(); }} />
                           Videos
                         </label>
                         {videoCatalog.length === 0 && <span className="text-muted-foreground">{videoCatalogMsg}</span>}
