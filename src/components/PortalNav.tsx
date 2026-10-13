@@ -16,11 +16,14 @@ export type PortalAccess = {
 const NONE: PortalAccess = { admin: false, investor: false, customer: false, videos: false, project: false, documents: false };
 
 /** What sections this person may see. Only sections they were granted are shown. */
+let accessCache: { uid: string; a: PortalAccess } | null = null;
+
 export function usePortalAccess() {
   const { user } = useAuth();
-  const [access, setAccess] = useState<PortalAccess>(NONE);
+  const [access, setAccessRaw] = useState<PortalAccess>(user && accessCache?.uid === user.id ? accessCache.a : NONE);
   useEffect(() => {
-    if (!user) { setAccess(NONE); return; }
+    if (!user) { setAccessRaw(NONE); return; }
+    const setAccess = (a: PortalAccess) => { accessCache = { uid: user.id, a }; setAccessRaw(a); };
     Promise.all([
       supabase.from("user_roles").select("role").eq("user_id", user.id),
       supabase.from("investor_profile_access").select("profile_id").eq("user_id", user.id).limit(1),

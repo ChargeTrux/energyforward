@@ -24,6 +24,9 @@ async function call(fn: string, qs: string) {
 
 const sectionLabel = { fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase" as const, color: amber };
 
+let itemsCache: Record<"videos" | "project", Item[] | null> = { videos: null, project: null };
+let openCache = new Set<Section>(["project", "videos", "documents"]);
+
 export type SidebarProps = {
   current?: Section;
   /** Replaces the current section's list (e.g. in-page selection). */
@@ -35,15 +38,16 @@ export type SidebarProps = {
 /** Fixed order: Project 3D Demo, Videos, Documents (Data Room). Sections without access are hidden. */
 export function PortalSidebar({ current, children, onOpenDoc, activeDocId }: SidebarProps) {
   const access = usePortalAccess();
-  const [items, setItems] = useState<Record<"videos" | "project", Item[] | null>>({ videos: null, project: null });
-  const [open, setOpen] = useState<Set<Section>>(new Set<Section>(["project", "videos", "documents"]));
+  const [items, setItems] = useState<Record<"videos" | "project", Item[] | null>>(itemsCache);
+  const [open, setOpen] = useState<Set<Section>>(openCache);
+  useEffect(() => { openCache = open; }, [open]);
   const custom = (k: Section) => k === current && children !== undefined;
 
   useEffect(() => {
     if (access.videos && !custom("videos"))
-      call("investor-videos", "?action=mine").then((b) => setItems((s) => ({ ...s, videos: b.videos ?? [] })));
+      call("investor-videos", "?action=mine").then((b) => setItems((s) => (itemsCache = { ...itemsCache, videos: b.videos ?? [] }, { ...s, videos: b.videos ?? [] })));
     if (access.project && !custom("project"))
-      call("project-pages", "?action=mine").then((b) => setItems((s) => ({ ...s, project: b.pages ?? [] })));
+      call("project-pages", "?action=mine").then((b) => setItems((s) => (itemsCache = { ...itemsCache, project: b.pages ?? [] }, { ...s, project: b.pages ?? [] })));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [access.videos, access.project, current]);
 
