@@ -257,9 +257,7 @@ Deno.serve(async (req) => {
           }
         })();
         const loginParams = `?login=1&email=${encodeURIComponent(email)}`;
-        const loginDestination = portals.includes("Video") && !portals.includes("Investor")
-          ? `${requestOrigin}/investor/videos${loginParams}`
-          : `${requestOrigin}/${loginParams}`;
+        const loginDestination = `${requestOrigin}${landingPath(portals, !!grantedProfiles?.length)}${loginParams}`;
         if (false) {
           // (disabled) Existing user — send a password reset link instead of a temp password.
           try {
@@ -430,9 +428,7 @@ Deno.serve(async (req) => {
         if (pwErr) { results.push({ user_id: uid, email, ok: false, message: pwErr.message }); continue; }
         await admin.from("profiles").update({ must_change_password: true }).eq("user_id", uid);
         const loginParams = `?login=1&email=${encodeURIComponent(email)}`;
-        const loginUrl = portals.includes("Video") && !portals.includes("Investor")
-          ? `${origin}/investor/videos${loginParams}`
-          : `${origin}/${loginParams}`;
+        const loginUrl = `${origin}${landingPath(portals, !!grantedProfiles?.length)}${loginParams}`;
         const tpl = welcomeEmail({ name: fullName, email, tempPassword, loginUrl, portals, investorProfiles: grantedProfiles });
         const r = await sendBrandedEmail(RESEND_API_KEY, { to: email, subject: tpl.subject, html: tpl.html, from: tpl.from, replyTo: tpl.replyTo });
         if (r.ok) await admin.from("profiles").update({ invite_sent_at: new Date().toISOString(), is_active: true }).eq("user_id", uid);
@@ -705,3 +701,11 @@ Deno.serve(async (req) => {
     return json({ error: (e as Error).message }, 500);
   }
 });
+/** Invite link destination: investor portal home only when granted; otherwise the first section in menu order. */
+function landingPath(portals: string[], hasDocs: boolean): string {
+  if (portals.includes("Investor")) return "/investor";
+  if (portals.includes("Project 3D Demo")) return "/investor/project";
+  if (portals.includes("Video")) return "/investor/videos";
+  if (hasDocs) return "/investor/documents";
+  return "/";
+}
