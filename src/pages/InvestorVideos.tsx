@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { PortalNav } from "@/components/PortalNav";
+import { PortalNav, NoAccessScreen, usePortalAccess } from "@/components/PortalNav";
 import { PortalDrawer } from "@/components/PortalDrawer";
 import { Link, useSearchParams } from "react-router-dom";
 import { LockKeyhole, Play } from "lucide-react";
@@ -59,6 +59,13 @@ async function prepareVideoStream() {
 }
 
 export default function InvestorVideos() {
+  const { user } = useAuth();
+  const access = usePortalAccess();
+  if (user && access.ready && !access.videos) return <NoAccessScreen />;
+  return <InvestorVideosInner />;
+}
+
+function InvestorVideosInner() {
   const { user, loading: authLoading } = useAuth();
   const [videos, setVideos] = useState<Video[]>([]);
   const [active, setActive] = useState<Video | null>(null);
