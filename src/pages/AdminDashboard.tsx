@@ -1425,16 +1425,18 @@ export default function AdminDashboard() {
             <span className="ef-user-status ef-user-status--issue"><i aria-hidden="true" />Access blocked / needed</span>
           </div>
           <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                const visible = visibleAccessProfiles.map((u) => u.user_id);
-                setSelectedInvitees((s) => (s.length === visible.length ? [] : visible));
-              }}
-            >
-              {selectedInvitees.length ? "Clear selection" : "Select all shown"}
-            </Button>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={visibleAccessProfiles.length > 0 && visibleAccessProfiles.every((u) => selectedInvitees.includes(u.user_id))}
+                ref={(el) => { if (el) el.indeterminate = selectedInvitees.length > 0 && !visibleAccessProfiles.every((u) => selectedInvitees.includes(u.user_id)); }}
+                onChange={(e) => setSelectedInvitees(e.target.checked ? visibleAccessProfiles.map((u) => u.user_id) : [])}
+              />
+              Select all users
+            </label>
+            {selectedInvitees.length > 0 && (
+              <Button size="sm" variant="outline" onClick={() => setSelectedInvitees([])}>Clear selection</Button>
+            )}
             <span className="text-muted-foreground">{selectedInvitees.length} selected</span>
             <Button
               size="sm"
