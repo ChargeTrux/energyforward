@@ -59,8 +59,10 @@ export function toggleItem(
 }
 
 export function DriveSelectTree({
-  profileId, selection, onChange, disabled, disabledHint,
+  profileId, selection, onChange, disabled, disabledHint, allCovered,
 }: {
+  /** Whole folder shared (no item picks): show everything ticked. */
+  allCovered?: boolean;
   profileId: string;
   selection: Selection;
   onChange: (next: Selection) => void;
@@ -129,7 +131,13 @@ export function DriveSelectTree({
                 type="checkbox"
                 disabled={disabled}
                 checked={!disabled && checked}
-                onChange={(e) => onChange(toggleItem(selection, tree, path, it, e.target.checked))}
+                onChange={(e) => {
+                  // Whole-folder access: start from "every top-level item ticked" so unticking one leaves the rest.
+                  const base = allCovered && selection.size === 0
+                    ? new Map((tree.root ?? []).map((r) => [r.id, { name: r.name, isFolder: r.mimeType === FOLDER_MIME }] as const))
+                    : selection;
+                  onChange(toggleItem(base, tree, path, it, e.target.checked));
+                }}
               />
               <span className={`break-words ${isFolder ? "font-medium" : ""}`}>{isFolder ? "📁 " : "📄 "}{niceName(it.name)}</span>
             </label>
@@ -148,7 +156,7 @@ export function DriveSelectTree({
     <div>
       {error && <div className="text-xs text-destructive">{error}</div>}
       {loadingIds.has("root") && <div className="text-xs text-muted-foreground">Loading…</div>}
-      {render("root", 0, [], false)}
+      {render("root", 0, [], Boolean(allCovered) && selection.size === 0)}
     </div>
   );
 }
