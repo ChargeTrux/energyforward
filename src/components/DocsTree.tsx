@@ -37,15 +37,19 @@ async function listFolder(profileId: string, folderId?: string): Promise<Node[]>
  * Data-room tree without the profile level: the contents of every granted
  * profile folder are shown directly, folders expandable, files openable.
  */
+const treeCache: { tree: Record<string, Node[]>; expanded: Set<string>; ready: boolean } = { tree: {}, expanded: new Set(), ready: false };
+
 export function DocsTree({ onOpenFile, activeFileId }: { onOpenFile?: (profileId: string, f: DocFile) => void; activeFileId?: string | null }) {
   const navigate = useNavigate();
-  const [tree, setTree] = useState<Record<string, Node[]>>({});
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [tree, setTree] = useState<Record<string, Node[]>>(treeCache.tree);
+  const [expanded, setExpanded] = useState<Set<string>>(treeCache.expanded);
   const [loadingKeys, setLoadingKeys] = useState<Set<string>>(new Set());
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(treeCache.ready);
+  useEffect(() => { treeCache.tree = tree; treeCache.expanded = expanded; treeCache.ready = ready; }, [tree, expanded, ready]);
   const [busyAll, setBusyAll] = useState(false);
 
   useEffect(() => {
+    if (treeCache.ready) return; // already loaded on a previous portal page
     (async () => {
       const res = await callFn("", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "profiles" }) });
       const body = await res.json().catch(() => ({}));

@@ -5,21 +5,28 @@ import { PortalSidebar, type SidebarProps } from "@/components/PortalSidebar";
 const teal = "#0A2A2E";
 const amber = "#E8B14A";
 const pearl = "#EEEAE2";
+let pinnedCount = 0;
+let lastOpen: boolean | null = null;
 
 /**
  * Slide-out side menu shared by every portal page. A small gold tab peeks
  * from the left edge; clicking it opens the menu smoothly.
  */
 export function PortalDrawer({ defaultOpen = false, pinned = false, ...props }: SidebarProps & { defaultOpen?: boolean; pinned?: boolean }) {
-  const [open, setOpen] = useState(defaultOpen || pinned);
+  const [open, setOpenRaw] = useState(pinned && lastOpen !== null ? lastOpen : defaultOpen || pinned);
+  const setOpen = (v: boolean) => { if (pinned) lastOpen = v; setOpenRaw(v); };
   // Pinned: the menu stays beside the page (content shifts right) until closed with X.
   useEffect(() => {
     if (!pinned) return;
     const body = document.body;
-    const prev = body.style.paddingLeft;
+    pinnedCount++;
     body.style.transition = "padding-left .35s cubic-bezier(.22,.8,.25,1)";
     body.style.paddingLeft = open ? "min(300px, 85vw)" : "0px";
-    return () => { body.style.paddingLeft = prev; };
+    return () => {
+      pinnedCount--;
+      // Moving between portal pages: wait so the next page's menu keeps the space (no flash).
+      setTimeout(() => { if (pinnedCount === 0) body.style.paddingLeft = ""; }, 0);
+    };
   }, [pinned, open]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
