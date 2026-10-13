@@ -1,7 +1,7 @@
 import { ZoomFrame } from "@/components/ZoomFrame";
 import { PortalDrawer } from "@/components/PortalDrawer";
 import { useEffect, useRef, useState } from "react";
-import { PortalNav } from "@/components/PortalNav";
+import { PortalNav, NoAccessScreen, usePortalAccess } from "@/components/PortalNav";
 import { Link, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,6 +27,7 @@ const navLink = { color: pearl, opacity: 0.75, textDecoration: "none" };
 
 export default function ProjectRun() {
   const { user, loading: authLoading } = useAuth();
+  const access = usePortalAccess();
   const [roles, setRoles] = useState<Set<string>>(new Set());
   const [pages, setPages] = useState<Page[]>([]);
   const [active, setActive] = useState<Page | null>(null);
@@ -80,6 +81,8 @@ export default function ProjectRun() {
 
   if (authLoading) return <div className="min-h-screen grid place-items-center">Loading…</div>;
   if (!user) return <Navigate to="/?login=1" replace />;
+  if (!access.ready) return <div className="min-h-screen grid place-items-center">Loading…</div>;
+  if (!access.project) return <NoAccessScreen />;
 
   return (
     <div onContextMenu={(e) => e.preventDefault()} style={{ minHeight: "100vh", background: teal, color: pearl, fontFamily: "'General Sans', Arial, sans-serif", display: "flex", flexDirection: "column" }}>

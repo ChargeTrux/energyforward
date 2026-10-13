@@ -1047,6 +1047,52 @@ export default function AdminDashboard() {
     await loadVideos();
   };
 
+  const [bulkMode, setBulkMode] = useState<"add" | "remove">("add");
+  const emptyBulk = { investor: false, project: false, projectPages: [] as string[], video: false, videos: [] as string[], docs: [] as string[] };
+  const [bulk, setBulk] = useState(emptyBulk);
+  const applyBulkAccess = async () => {
+    const ids = selectedInvitees;
+    const add = bulkMode === "add";
+    const nothing = !bulk.investor && !bulk.project && !bulk.video && !bulk.docs.length;
+    if (nothing) { toast({ title: "Tick at least one thing to change" }); return; }
+    if (!window.confirm(`${add ? "Give" : "Remove"} the ticked access ${add ? "to" : "from"} ${ids.length} people? No emails will be sent.`)) return;
+    for (const uid of ids) {
+      if (bulk.investor) await callAdmin("set_investor", { user_id: uid, make_investor: add });
+      if (bulk.project) {
+        if (add) {
+          await callAdmin("set_project", { user_id: uid, make_project: true });
+          if (bulk.projectPages.length) await supabase.from("project_page_access").upsert(bulk.projectPages.map((f) => ({ user_id: uid, file_id: f })), { onConflict: "user_id,file_id" });
+        } else if (bulk.projectPages.length) {
+          await supabase.from("project_page_access").delete().eq("user_id", uid).in("file_id", bulk.projectPages);
+        } else {
+          await callAdmin("set_project", { user_id: uid, make_project: false });
+          await supabase.from("project_page_access").delete().eq("user_id", uid);
+        }
+      }
+      if (bulk.video) {
+        if (add) {
+          await callAdmin("set_video", { user_id: uid, make_video: true });
+          if (bulk.videos.length) await supabase.from("investor_video_access").upsert(bulk.videos.map((f) => ({ user_id: uid, file_id: f })), { onConflict: "user_id,file_id" });
+        } else if (bulk.videos.length) {
+          await supabase.from("investor_video_access").delete().eq("user_id", uid).in("file_id", bulk.videos);
+        } else {
+          await callAdmin("set_video", { user_id: uid, make_video: false });
+          await supabase.from("investor_video_access").delete().eq("user_id", uid);
+        }
+      }
+      for (const pid of bulk.docs) {
+        if (add) await supabase.from("investor_profile_access").upsert({ user_id: uid, profile_id: pid }, { onConflict: "user_id,profile_id" });
+        else {
+          await supabase.from("investor_document_access").delete().eq("user_id", uid).eq("profile_id", pid);
+          await supabase.from("investor_profile_access").delete().eq("user_id", uid).eq("profile_id", pid);
+        }
+      }
+    }
+    await Promise.all([load(), loadVideos(), loadProject()]);
+    setBulk(emptyBulk);
+    toast({ title: `Access updated for ${ids.length} people` });
+  };
+
   const copyVideoLink = async (fileId: string) => {
     const url = `${window.location.origin}/investor/videos?video=${encodeURIComponent(fileId)}&login=1`;
     await navigator.clipboard.writeText(url);
@@ -1407,6 +1453,52 @@ export default function AdminDashboard() {
               Send reset link to selected
             </Button>
           </div>
+          {selectedInvitees.length > 0 && (
+            <div className="mb-4 rounded border p-3 text-sm">
+              <div className="flex flex-wrap items-center gap-3 mb-2">
+                <strong>Change access for {selectedInvitees.length} selected</strong>
+                <label className="flex items-center gap-1"><input type="radio" checked={bulkMode === "add"} onChange={() => setBulkMode("add")} /> Give access</label>
+                <label className="flex items-center gap-1"><input type="radio" checked={bulkMode === "remove"} onChange={() => setBulkMode("remove")} /> Remove access</label>
+                <span className="text-xs text-muted-foreground">Only what you tick here changes; everything else each person has stays the same. No emails are sent.</span>
+              </div>
+              <label className="flex items-center gap-2 font-semibold mb-2">
+                <input type="checkbox" checked={bulk.investor} onChange={(e) => setBulk((b) => ({ ...b, investor: e.target.checked }))} /> Investor portal
+              </label>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
+                    <input type="checkbox" checked={bulk.project} onChange={(e) => setBulk((b) => ({ ...b, project: e.target.checked, projectPages: e.target.checked ? b.projectPages : [] }))} /> Project 3D Demo
+                  </label>
+                  {projectCatalog.map((pg) => (
+                    <label key={pg.id} className={`flex items-center gap-2 ml-5 ${!bulk.project ? "opacity-50" : ""}`}>
+                      <input type="checkbox" disabled={!bulk.project} checked={bulk.projectPages.includes(pg.id)} onChange={(e) => setBulk((b) => ({ ...b, projectPages: e.target.checked ? [...b.projectPages, pg.id] : b.projectPages.filter((x) => x !== pg.id) }))} />
+                      <span className="min-w-0 break-words">{pg.name}</span>
+                    </label>
+                  ))}
+                </div>
+                <div>
+                  <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
+                    <input type="checkbox" checked={bulk.video} onChange={(e) => setBulk((b) => ({ ...b, video: e.target.checked, videos: e.target.checked ? b.videos : [] }))} /> Videos
+                  </label>
+                  {videoCatalog.map((v) => (
+                    <label key={v.id} className={`flex items-center gap-2 ml-5 ${!bulk.video ? "opacity-50" : ""}`}>
+                      <input type="checkbox" disabled={!bulk.video} checked={bulk.videos.includes(v.id)} onChange={(e) => setBulk((b) => ({ ...b, videos: e.target.checked ? [...b.videos, v.id] : b.videos.filter((x) => x !== v.id) }))} />
+                      <span className="min-w-0 break-words">{v.name.replace(/\.[^.]+$/, "")}</span>
+                    </label>
+                  ))}
+                </div>
+                <div>
+                  {investorProfiles.map((p) => (
+                    <label key={p.id} className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
+                      <input type="checkbox" checked={bulk.docs.includes(p.id)} onChange={(e) => setBulk((b) => ({ ...b, docs: e.target.checked ? [...b.docs, p.id] : b.docs.filter((x) => x !== p.id) }))} />
+                      Documents (Data Room) — whole folder
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <Button size="sm" className="mt-3" disabled={busy} onClick={applyBulkAccess}>Apply to {selectedInvitees.length} selected</Button>
+            </div>
+          )}
           <div ref={accessListRef} className="ef-access-list space-y-1.5" tabIndex={0} role="region" aria-label="User access list">
             {visibleAccessProfiles.map((u) => {
                  const status = accessStatuses.get(u.user_id) ?? userAccessStatus(u, lastLogins.get(u.user_id), recentActivity.get(u.user_id), activityNow);

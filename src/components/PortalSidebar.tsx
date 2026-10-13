@@ -55,7 +55,7 @@ export function PortalSidebar({ current, children, onOpenDoc, activeDocId }: Sid
 
   return (
     <div>
-      {sections.filter((s) => s.show || s.key === current).map((s) => {
+      {sections.filter((s) => s.show).map((s) => {
         const isOpen = open.has(s.key);
         const list = s.key !== "documents" ? items[s.key] : null;
         return (
