@@ -732,7 +732,8 @@ export default function AdminDashboard() {
       return null;
     }
     toast({ title: "Done" });
-    await load();
+    // Refresh every access list so ticks under each heading match what was just saved.
+    await Promise.all([load(), loadVideos(), loadProject()]);
     return data;
   };
 

@@ -56,13 +56,14 @@ export function ProfileItemPicker({
       {open && (
         <div className="mt-1 rounded border p-2 max-h-72 overflow-y-auto">
           <p className="text-xs text-muted-foreground mb-1">
-            Ticking a folder ticks everything inside it; untick single files to leave them out. Nothing ticked = the whole folder.
+            Ticking a folder ticks everything inside it; untick single files to leave them out. Ticking Documents shares everything, so all items start ticked.
           </p>
           <DriveSelectTree
             profileId={profileId}
             selection={hasProfile ? granted : new Map()}
             onChange={apply}
             disabled={!hasProfile}
+            allCovered={hasProfile}
             disabledHint="Enable Documents (Data Room) first"
           />
         </div>
