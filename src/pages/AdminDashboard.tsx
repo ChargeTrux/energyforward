@@ -218,7 +218,7 @@ export default function AdminDashboard() {
   const [recentLoginCount, setRecentLoginCount] = useState(0);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
-  const [inviteInvestor, setInviteInvestor] = useState(true);
+  const [inviteInvestor, setInviteInvestor] = useState(false);
   const [inviteCustomer, setInviteCustomer] = useState(false);
   const [inviteVideo, setInviteVideo] = useState(false);
   const [inviteProject, setInviteProject] = useState(false);
@@ -765,7 +765,7 @@ export default function AdminDashboard() {
         : { title: "User created — no email sent", description: `${email} (${list}). Use "Send invite" in the Access manager when ready.` });
       setInviteEmail("");
       setInviteName("");
-      setInviteInvestor(true);
+      setInviteInvestor(false);
       setInviteCustomer(false);
       setInviteVideo(false);
       setInviteProject(false);
