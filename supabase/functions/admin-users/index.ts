@@ -58,6 +58,27 @@ const directResetUrl = (hashed: string | undefined, fallback: string): string =>
   u.searchParams.set("type", "recovery");
   return u.toString();
 };
+
+// Folder names for the welcome email, read from what the person actually has now.
+// Picked folders/files are listed by name; whole-folder access lists the profile name.
+// deno-lint-ignore no-explicit-any
+async function grantedDocFolders(admin: any, uid: string) {
+  const { data: acc } = await admin.from("investor_profile_access").select("profile_id").eq("user_id", uid);
+  const pids = ((acc ?? []) as Array<{ profile_id: string }>).map((a) => a.profile_id);
+  if (!pids.length) return null;
+  const { data: items } = await admin.from("investor_document_access").select("profile_id,item_name,is_folder").eq("user_id", uid).in("profile_id", pids);
+  const { data: profs } = await admin.from("investor_profiles").select("id, name, description, drive_url, sort_order").in("id", pids).order("sort_order");
+  const out: { name: string; description: string | null; drive_url: string | null }[] = [];
+  for (const p of (profs ?? []) as Array<{ id: string; name: string }>) {
+    const rows = ((items ?? []) as Array<{ profile_id: string; item_name: string; is_folder: boolean }>).filter((r) => r.profile_id === p.id && r.item_name);
+    const folders = rows.filter((r) => r.is_folder);
+    const pick = folders.length ? folders : rows;
+    if (pick.length) for (const r of pick) out.push({ name: niceName(r.item_name), description: null, drive_url: null });
+    else out.push({ name: niceName(p.name), description: null, drive_url: null });
+  }
+  return out.length ? out : null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -238,6 +259,7 @@ Deno.serve(async (req) => {
           grantedProfiles = (profRows ?? []) as typeof grantedProfiles;
         }
       }
+      grantedProfiles = await grantedDocFolders(admin, newUserId!);
 
       // Send branded welcome email with credentials.
       const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
@@ -419,10 +441,7 @@ Deno.serve(async (req) => {
         const { data: accessRows } = await admin.from("investor_profile_access").select("profile_id").eq("user_id", uid);
         const pids = ((accessRows ?? []) as Array<{ profile_id: string }>).map((a) => a.profile_id);
         let grantedProfiles: { name: string; description: string | null; drive_url: string | null }[] | null = null;
-        if (pids.length) {
-          const { data: pr } = await admin.from("investor_profiles").select("name, description, drive_url").in("id", pids).order("sort_order");
-          grantedProfiles = (pr ?? []) as typeof grantedProfiles;
-        }
+        if (pids.length) grantedProfiles = await grantedDocFolders(admin, uid);
         const tempPassword = makeTempPassword();
         const { error: pwErr } = await admin.auth.admin.updateUserById(uid, { password: tempPassword, ban_duration: "none" });
         if (pwErr) { results.push({ user_id: uid, email, ok: false, message: pwErr.message }); continue; }
