@@ -46,6 +46,9 @@ export default function PortalWelcome() {
             <h1 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(28px,4vw,44px)", lineHeight: 1.15, margin: "0 0 16px", color: pearl, textAlign: "center" }}>
               Welcome to EnergyForward<span style={{ color: amber }}>.</span>
             </h1>
+            <p style={{ fontSize: 19, lineHeight: 1.6, color: pearl, margin: "0 auto 20px", textAlign: "center", maxWidth: 640 }}>
+              Energy Forward is building the delivery infrastructure for the next era of energy—connecting technology, operations and execution to move critical projects from ambition to reality.
+            </p>
             <p style={{ fontSize: 17, lineHeight: 1.6, color: pearl, opacity: 0.9, margin: "0 auto 36px", textAlign: "center", maxWidth: 680 }}>
               Your access request has been reviewed and approved. You are now authorized to access the following through the EnergyForward investor portal.
             </p>
