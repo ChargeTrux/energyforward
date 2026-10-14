@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight, FileText, Folder, FolderOpen } from "lucide-
 import { supabase } from "@/integrations/supabase/client";
 import { niceName } from "@/lib/nice-name";
 
-export type DocFile = { id: string; name: string; mimeType: string };
+export type DocFile = { id: string; name: string; mimeType: string; size?: string };
 type Node = DocFile & { profileId: string; key: string };
 
 const pearl = "#EEEAE2";
@@ -39,13 +39,14 @@ async function listFolder(profileId: string, folderId?: string): Promise<Node[]>
  */
 const treeCache: { tree: Record<string, Node[]>; expanded: Set<string>; ready: boolean } = { tree: {}, expanded: new Set(), ready: false };
 
-export function DocsTree({ onOpenFile, activeFileId }: { onOpenFile?: (profileId: string, f: DocFile) => void; activeFileId?: string | null }) {
+export function DocsTree({ onOpenFile, activeFileId, onFiles }: { onOpenFile?: (profileId: string, f: DocFile) => void; activeFileId?: string | null; onFiles?: (files: Node[]) => void }) {
   const navigate = useNavigate();
   const [tree, setTree] = useState<Record<string, Node[]>>(treeCache.tree);
   const [expanded, setExpanded] = useState<Set<string>>(treeCache.expanded);
   const [loadingKeys, setLoadingKeys] = useState<Set<string>>(new Set());
   const [ready, setReady] = useState(treeCache.ready);
   useEffect(() => { treeCache.tree = tree; treeCache.expanded = expanded; treeCache.ready = ready; }, [tree, expanded, ready]);
+  useEffect(() => { if (onFiles) onFiles(Object.values(tree).flat()); }, [tree, onFiles]);
   const [busyAll, setBusyAll] = useState(false);
 
   useEffect(() => {
