@@ -10,6 +10,8 @@ const teal = "#0A2A2E";
 const amber = "#E8B14A";
 const pearl = "#EEEAE2";
 const FN_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/investor-drive`;
+// Files already opened this visit reopen instantly (kept in memory only, cleared on sign-out/reload).
+const blobCache = new Map<string, Blob>();
 
 async function callFn(path: string) {
   const { data } = await supabase.auth.getSession();
@@ -110,6 +112,19 @@ export function InvestorDocuments() {
         window.setTimeout(() => setDlName((n) => (n === f.name ? null : n)), 7000);
         return;
       }
+      const cached = blobCache.get(f.id);
+      if (cached) {
+        const mime = cached.type || f.mimeType;
+        if (mime.startsWith("text/html") || /\.html?$/i.test(f.name)) {
+          setHtmlDoc(await cached.text());
+          setPreview({ name: f.name, url: "", mime: "text/html" });
+        } else {
+          const u = URL.createObjectURL(cached);
+          urlRef.current = u;
+          setPreview({ name: f.name, url: u, mime });
+        }
+        return;
+      }
       const res = await callFn(`?${qs}`);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -132,6 +147,10 @@ export function InvestorDocuments() {
         }
       }
       const blob = reader ? new Blob(chunks as BlobPart[], { type }) : await res.blob();
+      if (blob.size < 15 * 1048576) {
+        blobCache.set(f.id, blob);
+        if (blobCache.size > 12) blobCache.delete(blobCache.keys().next().value as string);
+      }
       if (run !== openSeq.current) return;
       const mime = blob.type || f.mimeType;
       if (mime.startsWith("text/html") || /\.html?$/i.test(f.name)) {

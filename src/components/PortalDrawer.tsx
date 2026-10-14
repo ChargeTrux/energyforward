@@ -12,7 +12,15 @@ let lastOpen: boolean | null = null;
  * Slide-out side menu shared by every portal page. A small gold tab peeks
  * from the left edge; clicking it opens the menu smoothly.
  */
-export function PortalDrawer({ defaultOpen = false, pinned = false, ...props }: SidebarProps & { defaultOpen?: boolean; pinned?: boolean }) {
+/** Set to true to bring the side menu back on every portal page. */
+export const SIDE_MENU_ENABLED = false;
+
+export function PortalDrawer(p: SidebarProps & { defaultOpen?: boolean; pinned?: boolean }) {
+  if (!SIDE_MENU_ENABLED) return null;
+  return <PortalDrawerInner {...p} />;
+}
+
+function PortalDrawerInner({ defaultOpen = false, pinned = false, ...props }: SidebarProps & { defaultOpen?: boolean; pinned?: boolean }) {
   const [open, setOpenRaw] = useState(pinned && lastOpen !== null ? lastOpen : defaultOpen || pinned);
   const setOpen = (v: boolean) => { if (pinned) lastOpen = v; setOpenRaw(v); };
   // Pinned: the menu stays beside the page (content shifts right) until closed with X.

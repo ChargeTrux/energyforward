@@ -13,6 +13,7 @@ const teal = "#0A2A2E";
 const amber = "#E8B14A";
 const pearl = "#EEEAE2";
 const FN_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/project-pages`;
+const htmlCache = new Map<string, string>();
 
 async function callFn(qs: string) {
   const { data } = await supabase.auth.getSession();
@@ -59,10 +60,12 @@ export default function ProjectRun() {
 
   const open = async (p: Page) => {
     setActive(p);
-    setHtml(null);
     setError(null);
     const id = ++reqRef.current;
     if (user) void supabase.from("content_views").insert({ user_id: user.id, content_type: "project", item_id: p.id, item_name: p.name });
+    const hit = htmlCache.get(p.id);
+    if (hit) { setHtml(hit); return; }
+    setHtml(null);
     const res = await callFn(`action=view&file_id=${encodeURIComponent(p.id)}`);
     if (id !== reqRef.current) return;
     if (!res.ok) {
@@ -70,8 +73,20 @@ export default function ProjectRun() {
       setError(b.error ?? "Could not open this page.");
       return;
     }
-    setHtml(await res.text());
+    const text = await res.text();
+    htmlCache.set(p.id, text);
+    if (id === reqRef.current) setHtml(text);
   };
+
+  // Start opening the last-known first page right away instead of waiting for the list.
+  useEffect(() => {
+    if (!user || active) return;
+    const want = new URLSearchParams(window.location.search).get("page");
+    const known = (cachedItems("project") ?? []) as Page[];
+    const target = known.find((p) => p.id === want) ?? (want ? { id: want, name: "Project 3D Demo" } : known[0]);
+    if (target) void open(target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   useEffect(() => {
     if (!pages.length) return;
