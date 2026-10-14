@@ -70,9 +70,8 @@ function InvestorVideosInner() {
   const { user, loading: authLoading } = useAuth();
   const [videos, setVideos] = useState<Video[]>([]);
   const [active, setActive] = useState<Video | null>(null);
-  const [src, setSrc] = useState<string | null>(null);
+  const [streamOk, setStreamOk] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [loadingVideo, setLoadingVideo] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fullPortalAccess, setFullPortalAccess] = useState(false);
   const [roles, setRoles] = useState<Set<string>>(new Set());
@@ -82,13 +81,8 @@ function InvestorVideosInner() {
       .then(({ data }) => setRoles(new Set((data ?? []).map((r) => r.role as string))));
   }, [user]);
   const [searchParams, setSearchParams] = useSearchParams();
-  const playerRef = useRef<HTMLDivElement>(null);
-  const watchRef = useRef<{ src: string; id: string | null; max: number } | null>(null);
-  const videoElRef = useRef<HTMLVideoElement>(null);
-  const pendingPlayRef = useRef(false);
   const searchParamsRef = useRef(searchParams);
   searchParamsRef.current = searchParams;
-  const activeIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     document.title = "energyforward · investor videos";
@@ -108,63 +102,33 @@ function InvestorVideosInner() {
         setVideos(available);
         rememberItems("videos", available);
         setFullPortalAccess(Boolean(body.fullPortalAccess));
-        await streamReady;
-        const requested = searchParamsRef.current.get("video");
-        setActive(available.find((video) => video.id === requested) ?? available[0] ?? null);
+        const ok = await streamReady;
+        if (ok) setStreamOk(true); else setError("The secure player could not start. Please reload the page.");
       }
       setLoading(false);
     })();
   }, [user, authLoading]);
 
-  useEffect(() => {
-    if (!active) return;
-    if (activeIdRef.current === active.id) { pendingPlayRef.current = false; return; }
-    activeIdRef.current = active.id;
-    let cancelled = false;
-    setLoadingVideo(true);
-    setSrc(null);
-    (async () => {
-      try {
-        const ready = await prepareVideoStream();
-        if (!ready || cancelled) throw new Error("The secure player could not start.");
-        setSrc(`${FN_URL}?action=stream&file_id=${encodeURIComponent(active.id)}`);
-      } catch (streamError) {
-        if (!cancelled) setError(streamError instanceof Error ? streamError.message : "This video could not be loaded.");
-      } finally {
-        if (!cancelled) setLoadingVideo(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [active]);
-
-  const selectVideo = useCallback((video: Video, scroll = true, autoplay = false) => {
-    setError(null);
-    pendingPlayRef.current = autoplay;
+  const videoEls = useRef(new Map<string, HTMLVideoElement>());
+  const watches = useRef(new Map<string, { id: string | null; max: number }>());
+  const [maxedId, setMaxedId] = useState<string | null>(null);
+  const playVideo = useCallback((video: Video) => {
     setActive(video);
-    setSearchParams({ video: video.id });
-    if (scroll) playerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setSearchParams({ video: video.id }, { replace: true });
+    document.getElementById(`video-${video.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    videoEls.current.get(video.id)?.play().catch(() => {});
   }, [setSearchParams]);
-
-  const handleVideoReady = () => {
-    if (!pendingPlayRef.current) return;
-    pendingPlayRef.current = false;
-    videoElRef.current?.play().catch(() => {
-      // Browser blocked playback — the viewer can press play manually.
-    });
-  };
-
-  const selectNextVideo = () => {
-    const currentIndex = videos.findIndex((video) => video.id === active?.id);
-    const next = videos[currentIndex + 1];
-    if (next) selectVideo(next, false, true);
-  };
-
-  const [maxed, setMaxed] = useState(false);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMaxed(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMaxedId(null);
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+  // Jump to a requested video once everything is on screen.
+  useEffect(() => {
+    if (!streamOk || !videos.length) return;
+    const want = searchParamsRef.current.get("video");
+    if (want && want !== videos[0].id) setTimeout(() => document.getElementById(`video-${want}`)?.scrollIntoView({ block: "start" }), 50);
+  }, [streamOk, videos]);
 
   return (
     <div style={{ minHeight: "100vh", background: teal, color: pearl, fontFamily: "'General Sans', Arial, sans-serif" }}>
@@ -178,7 +142,7 @@ function InvestorVideosInner() {
         <div>
           {(loading ? !cachedItems("videos")?.length : videos.length === 0) && <div style={{ fontSize: 12, opacity: 0.6, padding: "4px 0 4px 18px" }}>{loading ? "Loading…" : "Nothing shared yet."}</div>}
           {(loading ? (cachedItems("videos") ?? []) as Video[] : videos).map((v) => (
-            <button key={v.id} type="button" data-drawer-close="" onClick={() => !loading && selectVideo(v, true, true)} style={{
+            <button key={v.id} type="button" data-drawer-close="" onClick={() => !loading && playVideo(v)} style={{
               display: "block", width: "100%", textAlign: "left", border: "none", borderTop: "1px solid rgba(238,234,226,0.08)", fontFamily: "inherit",
               background: active?.id === v.id ? "rgba(232,177,74,0.14)" : "transparent", color: pearl, padding: "6px 4px 6px 14px", cursor: "pointer", fontSize: 12,
             }}>
@@ -200,38 +164,38 @@ function InvestorVideosInner() {
         {error && <p style={{ color: amber }}>{error}</p>}
         {!loading && user && !error && videos.length === 0 && <p style={{ opacity: 0.8 }}>No videos have been shared with you yet. Please reach out through the Contact page to request access.</p>}
 
-        {active && (
-          <section ref={playerRef} style={{ scrollMarginTop: 24, maxWidth: 860, margin: "0 auto", textAlign: "center" }}>
-            <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: amber, margin: "0 0 9px" }}>Now viewing</p>
-            <h2 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(18px,2vw,26px)", margin: "0 0 10px", lineHeight: 1.22, color: "rgba(238,234,226,0.94)" }}>{active.name}</h2>
-            {active.description && <p style={{ maxWidth: 720, margin: "0 auto 20px", fontSize: "clamp(14px,1.5vw,17px)", lineHeight: 1.65, color: "rgba(238,234,226,0.68)", whiteSpace: "pre-line", textAlign: "center" }}>{active.description}</p>}
+        {streamOk && videos.map((v, idx) => {
+          const vsrc = `${FN_URL}?action=stream&file_id=${encodeURIComponent(v.id)}`;
+          const isMax = maxedId === v.id;
+          return (
+          <section key={v.id} id={`video-${v.id}`} style={{ scrollMarginTop: 24, maxWidth: 860, margin: "0 auto 56px", textAlign: "center" }}>
+            <h2 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(18px,2vw,26px)", margin: "0 0 10px", lineHeight: 1.22, color: "rgba(238,234,226,0.94)" }}><span style={{ color: amber, marginRight: 10 }}>{idx + 1}.</span>{v.name}</h2>
+            {v.description && <p style={{ maxWidth: 720, margin: "0 auto 20px", fontSize: "clamp(14px,1.5vw,17px)", lineHeight: 1.65, color: "rgba(238,234,226,0.68)", whiteSpace: "pre-line", textAlign: "center" }}>{v.description}</p>}
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
-              <button type="button" onClick={() => setMaxed(true)} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", background: amber, color: teal, border: "none", borderRadius: 999, padding: "6px 14px", cursor: "pointer", fontWeight: 700 }}>Maximize</button>
+              <button type="button" onClick={() => setMaxedId(v.id)} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", background: amber, color: teal, border: "none", borderRadius: 999, padding: "6px 14px", cursor: "pointer", fontWeight: 700 }}>Maximize</button>
             </div>
-            <div style={maxed
+            <div style={isMax
               ? { position: "fixed", inset: 0, zIndex: 300, background: "#000" }
               : { position: "relative", width: "100%", aspectRatio: "16 / 9", background: "#061719", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(238,234,226,0.14)", boxShadow: "0 18px 48px rgba(0,0,0,0.24)" }}>
-              {maxed && <button type="button" onClick={() => setMaxed(false)} style={{ position: "absolute", top: 16, right: 16, zIndex: 301, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", background: amber, color: teal, border: "none", borderRadius: 999, padding: "10px 18px", cursor: "pointer", fontWeight: 700, boxShadow: "0 4px 18px rgba(0,0,0,0.35)" }}>Exit ✕</button>}
-              {src ? (
-                <video ref={videoElRef} key={src} src={src} controls preload="auto" playsInline controlsList="nodownload noremoteplayback" disablePictureInPicture onLoadedData={handleVideoReady}
-                  onPlay={() => {
-                    if (!user || !active || watchRef.current?.src === src) return;
-                    const entry = { src, id: null as string | null, max: 0 };
-                    watchRef.current = entry;
-                    void supabase.from("content_views").insert({ user_id: user.id, content_type: "video", item_id: active.id, item_name: active.name }).select("id").single()
-                      .then(({ data }) => { entry.id = data?.id ?? null; });
-                  }}
-                  onTimeUpdate={(e) => { if (watchRef.current) watchRef.current.max = Math.max(watchRef.current.max, e.currentTarget.currentTime); }}
-                  onPause={() => { const w = watchRef.current; if (w?.id) void supabase.from("content_views").update({ duration_seconds: Math.round(w.max) }).eq("id", w.id); }}
-                  onEnded={() => { const w = watchRef.current; if (w?.id) void supabase.from("content_views").update({ duration_seconds: Math.round(w.max) }).eq("id", w.id); selectNextVideo(); }}
-                  onContextMenu={(event) => event.preventDefault()} style={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "center center", display: "block", margin: "0 auto" }} />
-              ) : (
-                <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", opacity: 0.7 }}>{loadingVideo ? "Preparing video…" : ""}</div>
-              )}
+              {isMax && <button type="button" onClick={() => setMaxedId(null)} style={{ position: "absolute", top: 16, right: 16, zIndex: 301, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", background: amber, color: teal, border: "none", borderRadius: 999, padding: "10px 18px", cursor: "pointer", fontWeight: 700, boxShadow: "0 4px 18px rgba(0,0,0,0.35)" }}>Exit ✕</button>}
+              <video ref={(el) => { if (el) videoEls.current.set(v.id, el); else videoEls.current.delete(v.id); }} src={vsrc} controls preload={idx === 0 ? "auto" : "metadata"} playsInline controlsList="nodownload noremoteplayback" disablePictureInPicture
+                onPlay={() => {
+                  setActive(v);
+                  videoEls.current.forEach((el, id) => { if (id !== v.id && !el.paused) el.pause(); });
+                  if (!user) return;
+                  const entry = { id: null as string | null, max: 0 };
+                  watches.current.set(v.id, entry);
+                  void supabase.from("content_views").insert({ user_id: user.id, content_type: "video", item_id: v.id, item_name: v.name }).select("id").single()
+                    .then(({ data }) => { entry.id = data?.id ?? null; });
+                }}
+                onTimeUpdate={(e) => { const w = watches.current.get(v.id); if (w) w.max = Math.max(w.max, e.currentTarget.currentTime); }}
+                onPause={() => { const w = watches.current.get(v.id); if (w?.id) void supabase.from("content_views").update({ duration_seconds: Math.round(w.max) }).eq("id", w.id); }}
+                onEnded={() => { const next = videos[idx + 1]; if (next) playVideo(next); }}
+                onContextMenu={(event) => event.preventDefault()} style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", margin: "0 auto" }} />
             </div>
           </section>
-        )}
-
+          );
+        })}
       </main>
     </div>
   );
