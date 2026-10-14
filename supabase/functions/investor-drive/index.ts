@@ -70,6 +70,24 @@ async function getParents(id: string): Promise<string[]> {
   return p;
 }
 
+// Short-lived server copy of small opened files (authorization is still checked on every request).
+const CACHE_MAX_FILE = 12 * 1048576;
+const CACHE_MAX_TOTAL = 120 * 1048576;
+const CACHE_TTL_MS = 10 * 60_000;
+type Cached = { buf: Uint8Array<ArrayBuffer>; type: string; name: string; srcMime: string; exp: number };
+const contentCache = new Map<string, Cached>();
+function rememberContent(id: string, c: Omit<Cached, "exp">) {
+  contentCache.delete(id);
+  contentCache.set(id, { ...c, exp: Date.now() + CACHE_TTL_MS });
+  let total = 0;
+  for (const v of contentCache.values()) total += v.buf.byteLength;
+  for (const [k, v] of contentCache) {
+    if (total <= CACHE_MAX_TOTAL) break;
+    contentCache.delete(k);
+    total -= v.buf.byteLength;
+  }
+}
+
 let ticketKey: Promise<CryptoKey> | null = null;
 function getTicketKey() {
   ticketKey ??= crypto.subtle
@@ -132,14 +150,33 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
-    const { data: userData, error: userErr } = await admin.auth.getUser(token);
-    const user = userData?.user;
-    if (userErr || !user) return json({ error: "Not signed in" }, 401);
-
     const url = new URL(req.url);
     let action = url.searchParams.get("action") ?? "";
     let profileId = url.searchParams.get("profile_id") ?? "";
     let fileId = url.searchParams.get("file_id") ?? "";
+    // Speed: for file opens, start the Drive metadata + content requests while we verify the
+    // user. Nothing is returned to the browser until every authorization check has passed.
+    const isTicketReq = url.searchParams.get("mode") === "ticket";
+    let spec: { metaP: Promise<Response>; contentP: Promise<Response> | null; exportMime: string | undefined } | null = null;
+    if (req.method === "GET" && action === "file" && fileId && !contentCache.has(fileId)) {
+      const hint = url.searchParams.get("mime") ?? "";
+      const exportMime = GOOGLE_EXPORT[hint];
+      spec = {
+        metaP: gateway(`/drive/v3/files/${fileId}`, { fields: "id,name,mimeType,parents", supportsAllDrives: "true" }),
+        contentP: isTicketReq || !hint ? null : (exportMime
+          ? gateway(`/drive/v3/files/${fileId}/export`, { mimeType: exportMime })
+          : gateway(`/drive/v3/files/${fileId}`, { alt: "media", supportsAllDrives: "true" })),
+        exportMime,
+      };
+    }
+    const discardEarly = () => {
+      spec?.metaP.then((r) => r.body?.cancel()).catch(() => {});
+      spec?.contentP?.then((r) => r.body?.cancel()).catch(() => {});
+    };
+
+    const { data: userData, error: userErr } = await admin.auth.getUser(token);
+    const user = userData?.user;
+    if (userErr || !user) { discardEarly(); return json({ error: "Not signed in" }, 401); }
     if (req.method === "POST") {
       const body = await req.json().catch(() => ({}));
       action = body.action ?? action;
@@ -194,25 +231,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!profileId) return json({ error: "Missing profile" }, 400);
+    if (!profileId) { discardEarly(); return json({ error: "Missing profile" }, 400); }
 
-    // Authorize: this user must have been granted this profile.
-    const { data: grant } = await admin
-      .from("investor_profile_access")
-      .select("profile_id")
-      .eq("user_id", user.id)
-      .eq("profile_id", profileId)
-      .maybeSingle();
-    const { data: isAdmin } = await admin.rpc("has_role", { _user_id: user.id, _role: "admin" });
-    if (!grant && !isAdmin) return json({ error: "Not authorized for this profile" }, 403);
-
-    const { data: profile } = await admin
-      .from("investor_profiles")
-      .select("id, name, drive_url")
-      .eq("id", profileId)
-      .maybeSingle();
+    // Authorize: this user must have been granted this profile. All lookups run at once.
+    const [{ data: grant }, { data: isAdmin }, { data: profile }, { data: itemRows }] = await Promise.all([
+      admin.from("investor_profile_access").select("profile_id").eq("user_id", user.id).eq("profile_id", profileId).maybeSingle(),
+      admin.rpc("has_role", { _user_id: user.id, _role: "admin" }),
+      admin.from("investor_profiles").select("id, name, drive_url").eq("id", profileId).maybeSingle(),
+      admin.from("investor_document_access").select("item_id").eq("user_id", user.id).eq("profile_id", profileId),
+    ]);
+    if (!grant && !isAdmin) { discardEarly(); return json({ error: "Not authorized for this profile" }, 403); }
     const rootFolder = folderIdFromUrl(profile?.drive_url ?? null);
-    if (!rootFolder) return json({ error: "This profile has no folder yet." }, 404);
+    if (!rootFolder) { discardEarly(); return json({ error: "This profile has no folder yet." }, 404); }
 
     if (action === "rename_folder") {
       if (!isAdmin) return json({ error: "Admins only" }, 403);
@@ -237,14 +267,7 @@ Deno.serve(async (req) => {
 
     // Specific subfolder/file grants. None for this profile = whole folder.
     let allowed: Set<string> | null = null;
-    if (!isAdmin) {
-      const { data: items } = await admin
-        .from("investor_document_access")
-        .select("item_id")
-        .eq("user_id", user.id)
-        .eq("profile_id", profileId);
-      if (items && items.length) allowed = new Set(items.map((i: { item_id: string }) => i.item_id));
-    }
+    if (!isAdmin && itemRows && itemRows.length) allowed = new Set(itemRows.map((i: { item_id: string }) => i.item_id));
     // Is `id` (or one of its ancestors) in `targets`? Walks up to 8 levels, parents cached briefly.
     const within = async (id: string, targets: Set<string>) => {
       let frontier = [id];
@@ -265,9 +288,11 @@ Deno.serve(async (req) => {
       } else if (allowed) {
         // Top level for restricted users = exactly the items they were given.
         const metas = await Promise.all([...allowed].map(async (id) => {
-          const r = await gateway(`/drive/v3/files/${id}`, { fields: "id,name,mimeType,size,modifiedTime,trashed", supportsAllDrives: "true" });
+          const r = await gateway(`/drive/v3/files/${id}`, { fields: "id,name,mimeType,size,modifiedTime,trashed,parents", supportsAllDrives: "true" });
           if (!r.ok) { await r.body?.cancel(); return null; }
           const m = await r.json();
+          if (m.parents) parentCache.set(id, { p: m.parents, t: Date.now() });
+          delete m.parents;
           return m.trashed ? null : m;
         }));
         const files = orderFiles(metas.filter(Boolean));
@@ -287,28 +312,40 @@ Deno.serve(async (req) => {
         return json({ error: "Could not load documents", status: res.status, details: text }, res.status);
       }
       const parsed = JSON.parse(text);
+      // Children of a listed folder: remember their parent so later file opens skip Drive lookups.
+      const now = Date.now();
+      for (const f of (parsed.files ?? []) as { id: string }[]) if (!parentCache.has(f.id)) parentCache.set(f.id, { p: [folder], t: now });
       return json({ folder, files: orderFiles(parsed.files ?? []) });
     }
 
     if (action === "file") {
       if (!fileId) return json({ error: "Missing file" }, 400);
-      // Metadata first, then authorization and the download run at the same time.
-      const metaRes = await gateway(`/drive/v3/files/${fileId}`, {
-        fields: "id,name,mimeType,parents",
-        supportsAllDrives: "true",
-      });
-      const metaText = await metaRes.text();
-      if (!metaRes.ok) {
-        console.error(`Drive meta failed [${metaRes.status}]: ${metaText}`);
-        return json({ error: "File not available", status: metaRes.status, details: metaText }, metaRes.status);
+      const cached = contentCache.get(fileId);
+      const fresh = cached && cached.exp > Date.now() ? cached : null;
+      let meta: { name: string; mimeType: string; parents?: string[] };
+      if (fresh) meta = { name: fresh.name, mimeType: fresh.srcMime };
+      else {
+        const metaRes = await (spec?.metaP ?? gateway(`/drive/v3/files/${fileId}`, { fields: "id,name,mimeType,parents", supportsAllDrives: "true" }));
+        const metaText = await metaRes.text();
+        if (!metaRes.ok) {
+          discardEarly();
+          console.error(`Drive meta failed [${metaRes.status}]: ${metaText}`);
+          return json({ error: "File not available", status: metaRes.status, details: metaText }, metaRes.status);
+        }
+        meta = JSON.parse(metaText);
+        parentCache.set(fileId, { p: meta.parents ?? [], t: Date.now() });
       }
-      const meta = JSON.parse(metaText) as { name: string; mimeType: string; parents?: string[] };
-      parentCache.set(fileId, { p: meta.parents ?? [], t: Date.now() });
-      const isTicket = url.searchParams.get("mode") === "ticket";
       const exportMime = GOOGLE_EXPORT[meta.mimeType];
-      const contentP = isTicket ? null : (exportMime
-        ? gateway(`/drive/v3/files/${fileId}/export`, { mimeType: exportMime })
-        : gateway(`/drive/v3/files/${fileId}`, { alt: "media", supportsAllDrives: "true" }));
+      let contentP: Promise<Response> | null = null;
+      if (!fresh && !isTicketReq) {
+        if (spec?.contentP && spec.exportMime === exportMime) contentP = spec.contentP;
+        else {
+          spec?.contentP?.then((r) => r.body?.cancel()).catch(() => {});
+          contentP = exportMime
+            ? gateway(`/drive/v3/files/${fileId}/export`, { mimeType: exportMime })
+            : gateway(`/drive/v3/files/${fileId}`, { alt: "media", supportsAllDrives: "true" });
+        }
+      }
       const [inTree, okItem] = await Promise.all([
         within(fileId, new Set([rootFolder])),
         allowed ? within(fileId, allowed) : Promise.resolve(true),
@@ -318,30 +355,36 @@ Deno.serve(async (req) => {
         return json({ error: !inTree ? "File is outside your authorized folder" : "Not authorized for this file" }, 403);
       }
 
-      if (url.searchParams.get("mode") === "ticket") {
+      if (isTicketReq) {
         const isSheet = /spreadsheet|ms-excel|text\/csv/i.test(meta.mimeType) || /\.(xlsx|xlsm|xls|csv)$/i.test(meta.name);
         if (!isSheet) return json({ error: "Only spreadsheets can be downloaded" }, 403);
         return json({ ticket: await makeTicket({ f: fileId, n: meta.name, m: meta.mimeType }) });
       }
 
-      const contentRes = await contentP!;
+      const headersFor = (type: string, len?: string | null) => ({
+        ...corsHeaders,
+        "Content-Type": type,
+        "Content-Disposition": `inline; filename="${meta.name.replace(/[^\x20-\x7e]|"/g, "_")}"`,
+        ...(len ? { "Content-Length": len } : {}),
+        "Cache-Control": "private, no-store",
+      });
+      if (fresh) return new Response(fresh.buf, { headers: headersFor(fresh.type, String(fresh.buf.byteLength)) });
 
+      const contentRes = await contentP!;
       if (!contentRes.ok) {
         const errText = await contentRes.text();
         console.error(`Drive download failed [${contentRes.status}]: ${errText}`);
         return json({ error: "Could not open file", status: contentRes.status, details: errText }, contentRes.status);
       }
-
-      return new Response(contentRes.body, {
-        status: 200,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": exportMime || meta.mimeType || "application/octet-stream",
-          "Content-Disposition": `inline; filename="${meta.name.replace(/"/g, "")}"`,
-          ...(contentRes.headers.get("Content-Length") ? { "Content-Length": contentRes.headers.get("Content-Length")! } : {}),
-          "Cache-Control": "private, no-store",
-        },
-      });
+      const type = exportMime || meta.mimeType || "application/octet-stream";
+      const len = contentRes.headers.get("Content-Length");
+      if (len && Number(len) <= CACHE_MAX_FILE) {
+        // Small files: keep a short-lived server copy so the next open skips Google Drive entirely.
+        const buf = new Uint8Array(await contentRes.arrayBuffer());
+        rememberContent(fileId, { buf, type, name: meta.name, srcMime: meta.mimeType });
+        return new Response(buf, { headers: headersFor(type, String(buf.byteLength)) });
+      }
+      return new Response(contentRes.body, { headers: headersFor(type, len) });
     }
 
     return json({ error: "Unknown action" }, 400);

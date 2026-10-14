@@ -50,13 +50,23 @@ Deno.serve(async (req) => {
     const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
     if (!token) return json({ error: "Not signed in" }, 401);
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const { data: u, error: ue } = await admin.auth.getUser(token);
-    const user = u?.user;
-    if (ue || !user) return json({ error: ue?.message ?? "Not signed in" }, 401);
-
     const url = new URL(req.url);
     const action = url.searchParams.get("action") ?? "";
     const fileId = url.searchParams.get("file_id") ?? "";
+
+    // Speed: start Drive downloads while the user is verified; nothing is sent until authorized.
+    const cachedHit = action === "view" && fileId ? htmlCache.get(fileId) : undefined;
+    const spec = action === "view" && fileId && !(cachedHit && cachedHit.exp > Date.now())
+      ? [
+          gateway(`/drive/v3/files/${encodeURIComponent(fileId)}`, { fields: "id,name,parents", supportsAllDrives: "true" }),
+          gateway(`/drive/v3/files/${encodeURIComponent(fileId)}`, { alt: "media", supportsAllDrives: "true" }),
+        ] as const
+      : null;
+    const discard = () => spec?.forEach((p) => p.then((r) => r.body?.cancel()).catch(() => {}));
+
+    const { data: u, error: ue } = await admin.auth.getUser(token);
+    const user = u?.user;
+    if (ue || !user) { discard(); return json({ error: ue?.message ?? "Not signed in" }, 401); }
 
     const [{ data: roleRows }, { data: grants }] = await Promise.all([
       admin.from("user_roles").select("role").eq("user_id", user.id),
@@ -79,14 +89,14 @@ Deno.serve(async (req) => {
 
     if (action === "view") {
       if (!fileId) return json({ error: "Missing page" }, 400);
-      if (!isAdmin && !(roles.has("project") && granted.has(fileId))) return json({ error: "Not authorized for this page" }, 403);
+      if (!isAdmin && !(roles.has("project") && granted.has(fileId))) { discard(); return json({ error: "Not authorized for this page" }, 403); }
       const send = (h: string) => new Response(h, {
         headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8", "Cache-Control": "private, no-store" },
       });
       const hit = htmlCache.get(fileId);
       if (hit && hit.exp > Date.now()) return send(hit.html);
       // Fetch metadata and content at the same time to cut waiting.
-      const [metaRes, res] = await Promise.all([
+      const [metaRes, res] = await Promise.all(spec ?? [
         gateway(`/drive/v3/files/${encodeURIComponent(fileId)}`, { fields: "id,name,parents", supportsAllDrives: "true" }),
         gateway(`/drive/v3/files/${encodeURIComponent(fileId)}`, { alt: "media", supportsAllDrives: "true" }),
       ]);
@@ -99,7 +109,7 @@ Deno.serve(async (req) => {
         return json({ error: "Could not open page", status: res.status, details: t }, res.status);
       }
       const html = await res.text();
-      htmlCache.set(fileId, { html, exp: Date.now() + 5 * 60_000 });
+      htmlCache.set(fileId, { html, exp: Date.now() + 15 * 60_000 });
       return send(html);
     }
 
