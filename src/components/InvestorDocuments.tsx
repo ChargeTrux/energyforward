@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { PortalNav } from "@/components/PortalNav";
-import { PortalDrawer } from "@/components/PortalDrawer";
 import { ZoomFrame } from "@/components/ZoomFrame";
 import { DocsTree, type DocFile } from "@/components/DocsTree";
 
@@ -208,8 +207,6 @@ export function InvestorDocuments() {
           </div>
         </div>
       )}
-
-      <PortalDrawer current="documents" onOpenDoc={openFile} activeDocId={activeFileId} />
 
       <div style={{ padding: "16px clamp(16px,4vw,56px)", borderBottom: "1px solid rgba(238,234,226,0.12)" }}>
         <h1 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: 22, margin: "0 0 4px", color: pearl }}>Documents (Data Room)</h1>
