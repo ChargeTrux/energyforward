@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PortalNav, NoAccessScreen, usePortalAccess } from "@/components/PortalNav";
-import { PortalDrawer } from "@/components/PortalDrawer";
 import { cachedItems, rememberItems } from "@/components/PortalSidebar";
 import { Link, useSearchParams } from "react-router-dom";
 import { LockKeyhole, Play } from "lucide-react";
@@ -138,19 +137,7 @@ function InvestorVideosInner() {
         </Link>
         <PortalNav current="videos" />
       </header>
-      {user && <PortalDrawer current="videos" pinned>
-        <div>
-          {(loading ? !cachedItems("videos")?.length : videos.length === 0) && <div style={{ fontSize: 12, opacity: 0.6, padding: "4px 0 4px 18px" }}>{loading ? "Loading…" : "Nothing shared yet."}</div>}
-          {(loading ? (cachedItems("videos") ?? []) as Video[] : videos).map((v) => (
-            <button key={v.id} type="button" data-drawer-close="" onClick={() => !loading && playVideo(v)} style={{
-              display: "block", width: "100%", textAlign: "left", border: "none", borderTop: "1px solid rgba(238,234,226,0.08)", fontFamily: "inherit",
-              background: active?.id === v.id ? "rgba(232,177,74,0.14)" : "transparent", color: pearl, padding: "6px 4px 6px 14px", cursor: "pointer", fontSize: 12,
-            }}>
-              <span style={{ color: amber, marginRight: 8 }}>•</span>{v.name}
-            </button>
-          ))}
-        </div>
-      </PortalDrawer>}
+
 
       <main style={{ maxWidth: 1040, margin: "0 auto", padding: "clamp(24px,4vw,44px) clamp(18px,5vw,64px) 80px" }}>
 

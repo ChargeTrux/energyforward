@@ -1,5 +1,4 @@
 import { Link, Navigate } from "react-router-dom";
-import { PortalDrawer } from "@/components/PortalDrawer";
 import { PortalNav, NoAccessScreen, usePortalAccess } from "@/components/PortalNav";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -32,7 +31,7 @@ export default function PortalWelcome() {
   if (!shown.length) return <NoAccessScreen />;
 
   return (
-    <div style={{ minHeight: "100vh", background: teal, color: pearl, fontFamily: "'General Sans', Arial, sans-serif", display: "flex", flexDirection: "column" }}>
+    <div style={{ height: "100vh", overflow: "hidden", background: teal, color: pearl, fontFamily: "'General Sans', Arial, sans-serif", display: "flex", flexDirection: "column" }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px clamp(16px,4vw,56px)", borderBottom: "1px solid rgba(238,234,226,0.12)", flexWrap: "wrap", gap: 12 }}>
         <Link to="/investor/welcome" style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: 18, color: pearl, textDecoration: "none" }}>
           energyforward<span style={{ color: amber }}>.</span>
@@ -40,37 +39,36 @@ export default function PortalWelcome() {
         <PortalNav current="home" />
       </header>
       <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative" }}>
-        <PortalDrawer pinned />
-        <main style={{ flex: 1, minWidth: 0, padding: "clamp(24px,5vw,64px)", display: "flex", justifyContent: "center" }}>
-          <div style={{ maxWidth: 820, width: "100%" }}>
-            <h1 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(28px,4vw,44px)", lineHeight: 1.15, margin: "0 0 16px", color: pearl, textAlign: "center" }}>
+        <main style={{ flex: 1, minWidth: 0, padding: "clamp(12px,3vh,40px) clamp(16px,4vw,56px)", display: "flex", justifyContent: "center", alignItems: "center", overflowY: "auto" }}>
+          <div style={{ maxWidth: 900, width: "100%" }}>
+            <h1 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(24px,4.5vh,42px)", lineHeight: 1.15, margin: "0 0 1.2vh", color: pearl, textAlign: "center" }}>
               Welcome to EnergyForward<span style={{ color: amber }}>.</span>
             </h1>
-            <p style={{ fontSize: 19, lineHeight: 1.6, color: pearl, margin: "0 auto 20px", textAlign: "center", maxWidth: 640 }}>
+            <p style={{ fontSize: "clamp(14px,2vh,18px)", lineHeight: 1.5, color: pearl, margin: "0 auto 1.2vh", textAlign: "center", maxWidth: 640 }}>
               Energy Forward is building the delivery infrastructure for the next era of energy—connecting technology, operations and execution to move critical projects from ambition to reality.
             </p>
-            <p style={{ fontSize: 17, lineHeight: 1.6, color: pearl, opacity: 0.9, margin: "0 auto 36px", textAlign: "center", maxWidth: 680 }}>
+            <p style={{ fontSize: "clamp(13px,1.8vh,16px)", lineHeight: 1.5, color: pearl, opacity: 0.9, margin: "0 auto 2.5vh", textAlign: "center", maxWidth: 680 }}>
               Your access request has been reviewed and approved. You are now authorized to access the following through the EnergyForward investor portal.
             </p>
-            <div style={{ display: "grid", gap: 16 }}>
+            <div style={{ display: "grid", gap: "1.5vh" }}>
               {shown.map((s, i) => (
-                <Link key={s.key} to={s.to} style={{ display: "block", textDecoration: "none", color: pearl, border: "1px solid rgba(238,234,226,0.16)", borderRadius: 12, padding: "22px 24px", background: "rgba(238,234,226,0.03)" }}
+                <Link key={s.key} to={s.to} style={{ display: "block", textDecoration: "none", color: pearl, border: "1px solid rgba(238,234,226,0.16)", borderRadius: 12, padding: "clamp(10px,2vh,20px) 22px", background: "rgba(238,234,226,0.03)" }}
                   onMouseEnter={(e) => (e.currentTarget.style.borderColor = amber)}
                   onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(238,234,226,0.16)")}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, marginBottom: 8 }}>
-                    <span style={{ fontSize: 20, fontWeight: 600 }}><span style={{ color: amber, marginRight: 10 }}>{i + 1}.</span>{s.title}</span>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, marginBottom: 4 }}>
+                    <span style={{ fontSize: "clamp(15px,2.2vh,19px)", fontWeight: 600 }}><span style={{ color: amber, marginRight: 10 }}>{i + 1}.</span>{s.title}</span>
                     <span style={{ color: amber, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", whiteSpace: "nowrap" }}>Open →</span>
                   </div>
-                  <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, opacity: 0.8 }}>{s.text}</p>
+                  <p style={{ margin: 0, fontSize: "clamp(12px,1.65vh,15px)", lineHeight: 1.45, opacity: 0.8 }}>{s.text}</p>
                 </Link>
               ))}
             </div>
             {shown.length > 1 && (
-              <p style={{ fontSize: 14, lineHeight: 1.6, opacity: 0.7, marginTop: 28 }}>
+              <p style={{ fontSize: "clamp(12px,1.6vh,14px)", lineHeight: 1.5, opacity: 0.7, marginTop: "2vh", marginBottom: 0 }}>
                 <strong style={{ color: amber, fontWeight: 600 }}>Suggested viewing order:</strong> we suggest working through your materials in the order listed above. Each item builds on the one before it.
               </p>
             )}
-            <div style={{ fontSize: 11, opacity: 0.6, marginTop: 36 }}>Confidential — do not share.</div>
+            <div style={{ fontSize: 11, opacity: 0.6, marginTop: "1.5vh" }}>Confidential — do not share.</div>
           </div>
         </main>
       </div>
