@@ -59,6 +59,17 @@ async function gateway(path: string, params: Record<string, string>) {
 // Short-lived encrypted download tickets so the browser's own download manager can
 // fetch large spreadsheets directly (no auth header on navigations, no Drive ids in URLs).
 const TICKET_TTL_MS = 120_000;
+const parentCache = new Map<string, { p: string[]; t: number }>();
+async function getParents(id: string): Promise<string[]> {
+  const c = parentCache.get(id);
+  if (c && Date.now() - c.t < 300_000) return c.p;
+  const r = await gateway(`/drive/v3/files/${id}`, { fields: "parents", supportsAllDrives: "true" });
+  if (!r.ok) { await r.body?.cancel(); return []; }
+  const p = ((await r.json()).parents ?? []) as string[];
+  parentCache.set(id, { p, t: Date.now() });
+  return p;
+}
+
 let ticketKey: Promise<CryptoKey> | null = null;
 function getTicketKey() {
   ticketKey ??= crypto.subtle
@@ -234,19 +245,13 @@ Deno.serve(async (req) => {
         .eq("profile_id", profileId);
       if (items && items.length) allowed = new Set(items.map((i: { item_id: string }) => i.item_id));
     }
-    // Is `id` (or one of its ancestors) in `targets`? Walks up to 8 levels.
+    // Is `id` (or one of its ancestors) in `targets`? Walks up to 8 levels, parents cached briefly.
     const within = async (id: string, targets: Set<string>) => {
       let frontier = [id];
       for (let d = 0; d < 8 && frontier.length; d++) {
         if (frontier.some((f) => targets.has(f))) return true;
-        const next: string[] = [];
-        for (const f of frontier) {
-          if (f === rootFolder) continue;
-          const r = await gateway(`/drive/v3/files/${f}`, { fields: "parents", supportsAllDrives: "true" });
-          if (!r.ok) { await r.body?.cancel(); continue; }
-          next.push(...((await r.json()).parents ?? []));
-        }
-        frontier = next;
+        const lists = await Promise.all(frontier.filter((f) => f !== rootFolder).map(getParents));
+        frontier = lists.flat();
       }
       return false;
     };
@@ -287,8 +292,7 @@ Deno.serve(async (req) => {
 
     if (action === "file") {
       if (!fileId) return json({ error: "Missing file" }, 400);
-      if (allowed && !(await within(fileId, allowed))) return json({ error: "Not authorized for this file" }, 403);
-      // Confirm the file lives inside this profile's folder tree.
+      // Metadata first, then authorization and the download run at the same time.
       const metaRes = await gateway(`/drive/v3/files/${fileId}`, {
         fields: "id,name,mimeType,parents",
         supportsAllDrives: "true",
@@ -299,20 +303,20 @@ Deno.serve(async (req) => {
         return json({ error: "File not available", status: metaRes.status, details: metaText }, metaRes.status);
       }
       const meta = JSON.parse(metaText) as { name: string; mimeType: string; parents?: string[] };
-
-      let inTree = false;
-      let frontier = meta.parents ?? [];
-      for (let depth = 0; depth < 6 && frontier.length && !inTree; depth++) {
-        if (frontier.includes(rootFolder)) { inTree = true; break; }
-        const lists = await Promise.all(frontier.map(async (p) => {
-          const r = await gateway(`/drive/v3/files/${p}`, { fields: "id,parents", supportsAllDrives: "true" });
-          if (!r.ok) return [] as string[];
-          const pm = await r.json();
-          return (pm.parents ?? []) as string[];
-        }));
-        frontier = lists.flat();
+      parentCache.set(fileId, { p: meta.parents ?? [], t: Date.now() });
+      const isTicket = url.searchParams.get("mode") === "ticket";
+      const exportMime = GOOGLE_EXPORT[meta.mimeType];
+      const contentP = isTicket ? null : (exportMime
+        ? gateway(`/drive/v3/files/${fileId}/export`, { mimeType: exportMime })
+        : gateway(`/drive/v3/files/${fileId}`, { alt: "media", supportsAllDrives: "true" }));
+      const [inTree, okItem] = await Promise.all([
+        within(fileId, new Set([rootFolder])),
+        allowed ? within(fileId, allowed) : Promise.resolve(true),
+      ]);
+      if (!inTree || !okItem) {
+        contentP?.then((r) => r.body?.cancel()).catch(() => {});
+        return json({ error: !inTree ? "File is outside your authorized folder" : "Not authorized for this file" }, 403);
       }
-      if (!inTree) return json({ error: "File is outside your authorized folder" }, 403);
 
       if (url.searchParams.get("mode") === "ticket") {
         const isSheet = /spreadsheet|ms-excel|text\/csv/i.test(meta.mimeType) || /\.(xlsx|xlsm|xls|csv)$/i.test(meta.name);
@@ -320,10 +324,7 @@ Deno.serve(async (req) => {
         return json({ ticket: await makeTicket({ f: fileId, n: meta.name, m: meta.mimeType }) });
       }
 
-      const exportMime = GOOGLE_EXPORT[meta.mimeType];
-      const contentRes = exportMime
-        ? await gateway(`/drive/v3/files/${fileId}/export`, { mimeType: exportMime })
-        : await gateway(`/drive/v3/files/${fileId}`, { alt: "media", supportsAllDrives: "true" });
+      const contentRes = await contentP!;
 
       if (!contentRes.ok) {
         const errText = await contentRes.text();
@@ -337,6 +338,7 @@ Deno.serve(async (req) => {
           ...corsHeaders,
           "Content-Type": exportMime || meta.mimeType || "application/octet-stream",
           "Content-Disposition": `inline; filename="${meta.name.replace(/"/g, "")}"`,
+          ...(contentRes.headers.get("Content-Length") ? { "Content-Length": contentRes.headers.get("Content-Length")! } : {}),
           "Cache-Control": "private, no-store",
         },
       });
