@@ -338,7 +338,7 @@ Deno.serve(async (req) => {
       const exportMime = GOOGLE_EXPORT[meta.mimeType];
       let contentP: Promise<Response> | null = null;
       if (!fresh && !isTicketReq) {
-        if (spec?.contentP && spec.exportMime === exportMime) contentP = early.contentP;
+        if (spec?.contentP && spec.exportMime === exportMime) contentP = spec.contentP;
         else {
           spec?.contentP?.then((r) => r.body?.cancel()).catch(() => {});
           contentP = exportMime
