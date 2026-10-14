@@ -727,11 +727,7 @@ Deno.serve(async (req) => {
     return json({ error: (e as Error).message }, 500);
   }
 });
-/** Invite link destination: investor portal home only when granted; otherwise the first section in menu order. */
-function landingPath(portals: string[], hasDocs: boolean): string {
-  if (portals.includes("Investor")) return "/investor";
-  if (portals.includes("Project 3D Demo")) return "/investor/project";
-  if (portals.includes("Video")) return "/investor/videos";
-  if (hasDocs) return "/investor/documents";
-  return "/";
+/** Invite link destination: always the investor portal welcome (home) page; it shows only authorized sections. */
+function landingPath(_portals: string[], _hasDocs: boolean): string {
+  return "/investor/welcome";
 }
