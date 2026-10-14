@@ -43,11 +43,10 @@ export default function PortalWelcome() {
         <PortalDrawer pinned />
         <main style={{ flex: 1, minWidth: 0, padding: "clamp(24px,5vw,64px)", display: "flex", justifyContent: "center" }}>
           <div style={{ maxWidth: 820, width: "100%" }}>
-            <div style={{ color: amber, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 14 }}>Investor portal</div>
-            <h1 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(28px,4vw,44px)", lineHeight: 1.15, margin: "0 0 16px" }}>
+            <h1 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(28px,4vw,44px)", lineHeight: 1.15, margin: "0 0 16px", color: pearl, textAlign: "center" }}>
               Welcome to EnergyForward<span style={{ color: amber }}>.</span>
             </h1>
-            <p style={{ fontSize: 17, lineHeight: 1.6, opacity: 0.85, margin: "0 0 36px" }}>
+            <p style={{ fontSize: 17, lineHeight: 1.6, color: pearl, opacity: 0.9, margin: "0 auto 36px", textAlign: "center", maxWidth: 680 }}>
               Your access request has been reviewed and approved. You are now authorized to access the following through the EnergyForward investor portal.
             </p>
             <div style={{ display: "grid", gap: 16 }}>

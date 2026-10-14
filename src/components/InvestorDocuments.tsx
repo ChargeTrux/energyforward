@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { PortalNav } from "@/components/PortalNav";
 import { PortalDrawer } from "@/components/PortalDrawer";
 import { ZoomFrame } from "@/components/ZoomFrame";
-import type { DocFile } from "@/components/DocsTree";
+import { DocsTree, type DocFile } from "@/components/DocsTree";
 
 const teal = "#0A2A2E";
 const amber = "#E8B14A";
@@ -209,9 +209,19 @@ export function InvestorDocuments() {
         </div>
       )}
 
-      <PortalDrawer current="documents" pinned onOpenDoc={openFile} activeDocId={activeFileId} />
+      <PortalDrawer current="documents" onOpenDoc={openFile} activeDocId={activeFileId} />
 
-      <main style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", paddingLeft: 0 }}>
+      <div style={{ padding: "16px clamp(16px,4vw,56px)", borderBottom: "1px solid rgba(238,234,226,0.12)" }}>
+        <h1 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: 22, margin: "0 0 4px", color: pearl }}>Documents (Data Room)</h1>
+        <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: pearl, opacity: 0.8 }}>The data room holds narrative documents, memos, financial models and other due diligence materials.</p>
+      </div>
+
+      <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
+      <aside style={{ width: "30%", minWidth: 220, borderRight: "1px solid rgba(238,234,226,0.12)", overflowY: "auto", padding: "12px 10px" }}>
+        <div style={{ ...label, color: amber, fontSize: 10, padding: "0 0 8px 6px" }}>Document repository</div>
+        <DocsTree onOpenFile={openFile} activeFileId={activeFileId} />
+      </aside>
+      <main style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
         {error && <div style={{ padding: 16, fontSize: 13, color: "#f4b5a3" }}>{error}</div>}
         {preview ? (
           <>
@@ -255,7 +265,7 @@ export function InvestorDocuments() {
           <div style={{ margin: "auto", textAlign: "center", maxWidth: 440, padding: 24 }}>
             <div style={{ ...label, color: amber, marginBottom: 8 }}>{loading ? (progress ?? "Opening…") : notice ?? "View only"}</div>
             <div style={{ fontSize: 14, opacity: 0.75, lineHeight: 1.6 }}>
-              Open the gold Investor Materials tab on the left and choose a document to view it here. Documents are streamed to your session only —
+              Choose a document from the folders on the left to view it here. Documents are streamed to your session only —
               they cannot be shared, forwarded or downloaded.
             </div>
           </div>
@@ -264,6 +274,7 @@ export function InvestorDocuments() {
           Confidential — do not share. For additional access, use the Contact Us page.
         </div>
       </main>
+      </div>
     </div>
   );
 }
