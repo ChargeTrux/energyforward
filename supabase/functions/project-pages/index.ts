@@ -20,6 +20,8 @@ function gateway(path: string, params: Record<string, string>) {
 }
 
 type Page = { id: string; name: string; order: number };
+// Short-lived content cache (authorization is still checked on every request).
+const htmlCache = new Map<string, { html: string; exp: number }>();
 
 async function listPages(): Promise<Page[]> {
   const res = await gateway("/drive/v3/files", {
@@ -78,19 +80,27 @@ Deno.serve(async (req) => {
     if (action === "view") {
       if (!fileId) return json({ error: "Missing page" }, 400);
       if (!isAdmin && !(roles.has("project") && granted.has(fileId))) return json({ error: "Not authorized for this page" }, 403);
-      const metaRes = await gateway(`/drive/v3/files/${encodeURIComponent(fileId)}`, { fields: "id,name,parents", supportsAllDrives: "true" });
+      const send = (h: string) => new Response(h, {
+        headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8", "Cache-Control": "private, no-store" },
+      });
+      const hit = htmlCache.get(fileId);
+      if (hit && hit.exp > Date.now()) return send(hit.html);
+      // Fetch metadata and content at the same time to cut waiting.
+      const [metaRes, res] = await Promise.all([
+        gateway(`/drive/v3/files/${encodeURIComponent(fileId)}`, { fields: "id,name,parents", supportsAllDrives: "true" }),
+        gateway(`/drive/v3/files/${encodeURIComponent(fileId)}`, { alt: "media", supportsAllDrives: "true" }),
+      ]);
       const metaText = await metaRes.text();
-      if (!metaRes.ok) return json({ error: "Page not available", status: metaRes.status, details: metaText }, metaRes.status);
+      if (!metaRes.ok) { void res.body?.cancel(); return json({ error: "Page not available", status: metaRes.status, details: metaText }, metaRes.status); }
       const meta = JSON.parse(metaText) as { parents?: string[] };
-      if (!(meta.parents ?? []).includes(ROOT_FOLDER)) return json({ error: "Page is outside Project Run" }, 403);
-      const res = await gateway(`/drive/v3/files/${encodeURIComponent(fileId)}`, { alt: "media", supportsAllDrives: "true" });
+      if (!(meta.parents ?? []).includes(ROOT_FOLDER)) { void res.body?.cancel(); return json({ error: "Page is outside Project Run" }, 403); }
       if (!res.ok) {
         const t = await res.text();
         return json({ error: "Could not open page", status: res.status, details: t }, res.status);
       }
-      return new Response(await res.text(), {
-        headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8", "Cache-Control": "private, no-store" },
-      });
+      const html = await res.text();
+      htmlCache.set(fileId, { html, exp: Date.now() + 5 * 60_000 });
+      return send(html);
     }
 
     return json({ error: "Unknown action" }, 400);
