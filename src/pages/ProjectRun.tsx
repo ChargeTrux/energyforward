@@ -14,6 +14,26 @@ const amber = "#E8B14A";
 const pearl = "#EEEAE2";
 const FN_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/project-pages`;
 const htmlCache = new Map<string, string>();
+const inflight = new Map<string, Promise<string>>();
+/** One shared download per page, reused by background preloading and clicks. */
+function fetchPage(id: string): Promise<string> {
+  const hit = htmlCache.get(id);
+  if (hit) return Promise.resolve(hit);
+  const running = inflight.get(id);
+  if (running) return running;
+  const p = (async () => {
+    const res = await callFn(`action=view&file_id=${encodeURIComponent(id)}`);
+    if (!res.ok) {
+      const b = await res.json().catch(() => ({}));
+      throw new Error(b.error ?? "Could not open this page.");
+    }
+    const text = await res.text();
+    htmlCache.set(id, text);
+    return text;
+  })().finally(() => inflight.delete(id));
+  inflight.set(id, p);
+  return p;
+}
 
 async function callFn(qs: string) {
   const { data } = await supabase.auth.getSession();
@@ -66,16 +86,12 @@ export default function ProjectRun() {
     const hit = htmlCache.get(p.id);
     if (hit) { setHtml(hit); return; }
     setHtml(null);
-    const res = await callFn(`action=view&file_id=${encodeURIComponent(p.id)}`);
-    if (id !== reqRef.current) return;
-    if (!res.ok) {
-      const b = await res.json().catch(() => ({}));
-      setError(b.error ?? "Could not open this page.");
-      return;
+    try {
+      const text = await fetchPage(p.id);
+      if (id === reqRef.current) setHtml(text);
+    } catch (e) {
+      if (id === reqRef.current) setError(e instanceof Error ? e.message : "Could not open this page.");
     }
-    const text = await res.text();
-    htmlCache.set(p.id, text);
-    if (id === reqRef.current) setHtml(text);
   };
 
   // Start opening the last-known first page right away instead of waiting for the list.
@@ -93,6 +109,8 @@ export default function ProjectRun() {
     const want = new URLSearchParams(window.location.search).get("page");
     const target = pages.find((p) => p.id === want) ?? (!active ? pages[0] : null);
     if (target && target.id !== active?.id) void open(target);
+    // Preload the other pages in the background so switching is instant.
+    pages.forEach((p) => void fetchPage(p.id).catch(() => undefined));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pages]);
 
