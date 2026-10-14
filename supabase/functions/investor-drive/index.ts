@@ -338,6 +338,7 @@ Deno.serve(async (req) => {
           ...corsHeaders,
           "Content-Type": exportMime || meta.mimeType || "application/octet-stream",
           "Content-Disposition": `inline; filename="${meta.name.replace(/"/g, "")}"`,
+          ...(contentRes.headers.get("Content-Length") ? { "Content-Length": contentRes.headers.get("Content-Length")! } : {}),
           "Cache-Control": "private, no-store",
         },
       });
