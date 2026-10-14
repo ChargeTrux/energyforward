@@ -74,7 +74,7 @@ async function getParents(id: string): Promise<string[]> {
 const CACHE_MAX_FILE = 12 * 1048576;
 const CACHE_MAX_TOTAL = 120 * 1048576;
 const CACHE_TTL_MS = 10 * 60_000;
-type Cached = { buf: Uint8Array; type: string; name: string; srcMime: string; exp: number };
+type Cached = { buf: Uint8Array<ArrayBuffer>; type: string; name: string; srcMime: string; exp: number };
 const contentCache = new Map<string, Cached>();
 function rememberContent(id: string, c: Omit<Cached, "exp">) {
   contentCache.delete(id);
