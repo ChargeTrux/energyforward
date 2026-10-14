@@ -79,10 +79,8 @@ export default function ResetPassword() {
         .eq("user_id", user.id);
       const roles = new Set((rolesData ?? []).map((r) => r.role as string));
       if (roles.has("admin")) dest = "/admin";
-      else if (roles.has("investor")) dest = "/investor";
-      else if (roles.has("video")) dest = "/investor/videos";
-      else if (roles.has("project")) dest = "/investor/project";
-      else if (roles.has("customer")) dest = "/customer";
+      else if (roles.has("customer") && !roles.has("investor") && !roles.has("video") && !roles.has("project")) dest = "/customer";
+      else dest = "/investor/welcome";
     }
     toast({ title: "Password updated", description: "You're now signed in." });
     navigate(dest);
