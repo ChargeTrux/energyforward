@@ -11,6 +11,7 @@ import { LandingStealth, CustomerPortal, InvestorPortal, ContactPage } from "@/p
 import AdminDashboard from "@/pages/AdminDashboard";
 import ResetPassword from "@/pages/ResetPassword";
 import ProjectRun from "./pages/ProjectRun";
+import PortalWelcome from "./pages/PortalWelcome";
 import DocumentsPage from "./pages/DocumentsPage";
 import InvestorVideos from "@/pages/InvestorVideos";
 import NotFound from "./pages/NotFound";
@@ -69,12 +70,12 @@ function AppContent() {
         const onVideos = location.pathname === '/investor/videos';
         if (roles.has('admin')) navigate('/admin', { replace: true });
         else if (roles.has('investor')) navigate(onVideos ? '/investor/videos' : '/investor', { replace: true });
-        else if (roles.has('project')) navigate('/investor/project', { replace: true });
-        else if (roles.has('video')) navigate('/investor/videos', { replace: true });
+        else if (roles.has('project')) navigate('/investor/welcome', { replace: true });
+        else if (roles.has('video')) navigate(onVideos ? '/investor/videos' : '/investor/welcome', { replace: true });
         else if (roles.has('customer')) navigate('/customer', { replace: true });
         else {
           const { count } = await supabase.from('investor_profile_access').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id);
-          if (count) navigate('/investor/documents', { replace: true });
+          if (count) navigate('/investor/welcome', { replace: true });
           else await supabase.auth.signOut();
         } // no portal access: let them sign in with another account
       })();
@@ -142,12 +143,12 @@ function AppContent() {
           : '/investor/videos';
         if (roles.has('admin')) navigate('/admin');
         else if (roles.has('investor')) navigate(window.location.pathname === '/investor/videos' ? currentVideoUrl : '/investor');
-        else if (roles.has('project')) navigate('/investor/project');
-        else if (roles.has('video')) navigate(currentVideoUrl);
+        else if (roles.has('project')) navigate('/investor/welcome');
+        else if (roles.has('video')) navigate(window.location.pathname === '/investor/videos' ? currentVideoUrl : '/investor/welcome');
         else if (roles.has('customer')) navigate('/customer');
         else {
           const { count } = await supabase.from('investor_profile_access').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id);
-          navigate(count ? '/investor/documents' : '/');
+          navigate(count ? '/investor/welcome' : '/');
         }
       })();
     }
@@ -174,6 +175,7 @@ function AppContent() {
     path === "/investor" ||
     path === "/investor/videos" ||
     path === "/investor/project" ||
+    path === "/investor/welcome" ||
     path === "/investor/documents" ||
     path === "/contact" ||
     path === "/admin" ||
@@ -194,6 +196,7 @@ function AppContent() {
         <Route path="/investor" element={<InvestorPortal />} />
         <Route path="/investor/videos" element={<InvestorVideos />} />
         <Route path="/investor/project" element={<ProjectRun />} />
+        <Route path="/investor/welcome" element={<PortalWelcome />} />
         <Route path="/investor/documents" element={<DocumentsPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/home-v1" element={<Home />} />

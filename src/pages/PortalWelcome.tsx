@@ -40,7 +40,7 @@ export default function PortalWelcome() {
         <PortalNav current="home" />
       </header>
       <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative" }}>
-        <PortalDrawer>{null}</PortalDrawer>
+        <PortalDrawer pinned />
         <main style={{ flex: 1, minWidth: 0, padding: "clamp(24px,5vw,64px)", display: "flex", justifyContent: "center" }}>
           <div style={{ maxWidth: 820, width: "100%" }}>
             <div style={{ color: amber, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 14 }}>Investor portal</div>

@@ -46,7 +46,7 @@ export function usePortalAccess() {
   return access;
 }
 
-type Current = "videos" | "project" | "documents";
+type Current = "home" | "videos" | "project" | "documents";
 const pearl = "#EEEAE2";
 const amber = "#E8B14A";
 const link = { color: pearl, opacity: 0.75, textDecoration: "none" };
@@ -59,7 +59,9 @@ export function PortalNav({ current }: { current: Current }) {
       : <Link key={key} to={to} style={link}>{label}</Link>;
   return (
     <nav style={{ display: "flex", gap: 28, fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end", marginLeft: "auto" }}>
-      <a href="/?public=1" style={link}>Home</a>
+      {a.investor || !(a.project || a.videos || a.documents)
+        ? <a href="/?public=1" style={link}>Home</a>
+        : current === "home" ? <span style={{ color: amber }}>Home</span> : <Link to="/investor/welcome" style={link}>Home</Link>}
       {a.investor && <Link to="/investor" style={link}>Investor portal</Link>}
       {a.investor && a.customer && <Link to="/customer" style={link}>Customer portal</Link>}
       {item("project", "/investor/project", "Project 3D Demo", a.project)}
