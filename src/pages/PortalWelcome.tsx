@@ -1,0 +1,77 @@
+import { Link, Navigate } from "react-router-dom";
+import { PortalDrawer } from "@/components/PortalDrawer";
+import { PortalNav, NoAccessScreen, usePortalAccess } from "@/components/PortalNav";
+import { useAuth } from "@/hooks/useAuth";
+
+const teal = "#0A2A2E";
+const amber = "#E8B14A";
+const pearl = "#EEEAE2";
+
+const SECTIONS = [
+  {
+    key: "project" as const, to: "/investor/project", title: "Project 3D Demo",
+    text: "A 3D animated simulation of one 24-hour period of the EnergyForward loop, following energy from the solar project through the EnergyHub and EnergyPort to the customer's vehicles. A guided tour walks you through the full day in a few minutes, so you can see how the whole system fits together before reading anything else.",
+  },
+  {
+    key: "videos" as const, to: "/investor/videos", title: "Videos",
+    text: "Short video overviews of the EnergyForward business, from the introduction of the company through each part of the model. These are built to bring a new reader, whether an investor or a member of an investor's team, up to speed on EnergyForward quickly. They make the written materials in the data room easier to work through.",
+  },
+  {
+    key: "documents" as const, to: "/investor/documents", title: "Documents (Data Room)",
+    text: "The data room holds narrative documents, memos, financial models and other due diligence materials.",
+  },
+];
+
+export default function PortalWelcome() {
+  const { user, loading } = useAuth();
+  const access = usePortalAccess();
+  if (loading) return <div className="min-h-screen grid place-items-center">Loading…</div>;
+  if (!user) return <Navigate to="/?login=1" replace />;
+  if (!access.ready) return <div className="min-h-screen grid place-items-center">Loading…</div>;
+  const shown = SECTIONS.filter((s) => access[s.key]);
+  if (!shown.length) return <NoAccessScreen />;
+
+  return (
+    <div style={{ minHeight: "100vh", background: teal, color: pearl, fontFamily: "'General Sans', Arial, sans-serif", display: "flex", flexDirection: "column" }}>
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px clamp(16px,4vw,56px)", borderBottom: "1px solid rgba(238,234,226,0.12)", flexWrap: "wrap", gap: 12 }}>
+        <Link to="/investor/welcome" style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: 18, color: pearl, textDecoration: "none" }}>
+          energyforward<span style={{ color: amber }}>.</span>
+        </Link>
+        <PortalNav current="home" />
+      </header>
+      <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative" }}>
+        <PortalDrawer>{null}</PortalDrawer>
+        <main style={{ flex: 1, minWidth: 0, padding: "clamp(24px,5vw,64px)", display: "flex", justifyContent: "center" }}>
+          <div style={{ maxWidth: 820, width: "100%" }}>
+            <div style={{ color: amber, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 14 }}>Investor portal</div>
+            <h1 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(28px,4vw,44px)", lineHeight: 1.15, margin: "0 0 16px" }}>
+              Welcome to EnergyForward<span style={{ color: amber }}>.</span>
+            </h1>
+            <p style={{ fontSize: 17, lineHeight: 1.6, opacity: 0.85, margin: "0 0 36px" }}>
+              Your access request has been reviewed and approved. You are now authorized to access the following through the EnergyForward investor portal.
+            </p>
+            <div style={{ display: "grid", gap: 16 }}>
+              {shown.map((s, i) => (
+                <Link key={s.key} to={s.to} style={{ display: "block", textDecoration: "none", color: pearl, border: "1px solid rgba(238,234,226,0.16)", borderRadius: 12, padding: "22px 24px", background: "rgba(238,234,226,0.03)" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = amber)}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(238,234,226,0.16)")}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, marginBottom: 8 }}>
+                    <span style={{ fontSize: 20, fontWeight: 600 }}><span style={{ color: amber, marginRight: 10 }}>{i + 1}.</span>{s.title}</span>
+                    <span style={{ color: amber, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", whiteSpace: "nowrap" }}>Open →</span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, opacity: 0.8 }}>{s.text}</p>
+                </Link>
+              ))}
+            </div>
+            {shown.length > 1 && (
+              <p style={{ fontSize: 14, lineHeight: 1.6, opacity: 0.7, marginTop: 28 }}>
+                <strong style={{ color: amber, fontWeight: 600 }}>Suggested viewing order:</strong> we suggest working through your materials in the order listed above. Each item builds on the one before it.
+              </p>
+            )}
+            <div style={{ fontSize: 11, opacity: 0.6, marginTop: 36 }}>Confidential — do not share.</div>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
