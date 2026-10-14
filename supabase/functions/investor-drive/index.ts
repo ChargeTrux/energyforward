@@ -157,11 +157,11 @@ Deno.serve(async (req) => {
     // Speed: for file opens, start the Drive metadata + content requests while we verify the
     // user. Nothing is returned to the browser until every authorization check has passed.
     const isTicketReq = url.searchParams.get("mode") === "ticket";
-    let early: { metaP: Promise<Response>; contentP: Promise<Response> | null; exportMime: string | undefined } | null = null;
+    let spec: { metaP: Promise<Response>; contentP: Promise<Response> | null; exportMime: string | undefined } | null = null;
     if (req.method === "GET" && action === "file" && fileId && !contentCache.has(fileId)) {
       const hint = url.searchParams.get("mime") ?? "";
       const exportMime = GOOGLE_EXPORT[hint];
-      early = {
+      spec = {
         metaP: gateway(`/drive/v3/files/${fileId}`, { fields: "id,name,mimeType,parents", supportsAllDrives: "true" }),
         contentP: isTicketReq || !hint ? null : (exportMime
           ? gateway(`/drive/v3/files/${fileId}/export`, { mimeType: exportMime })
@@ -170,8 +170,8 @@ Deno.serve(async (req) => {
       };
     }
     const discardEarly = () => {
-      early?.metaP.then((r) => r.body?.cancel()).catch(() => {});
-      early?.contentP?.then((r) => r.body?.cancel()).catch(() => {});
+      spec?.metaP.then((r) => r.body?.cancel()).catch(() => {});
+      spec?.contentP?.then((r) => r.body?.cancel()).catch(() => {});
     };
 
     const { data: userData, error: userErr } = await admin.auth.getUser(token);
@@ -325,7 +325,7 @@ Deno.serve(async (req) => {
       let meta: { name: string; mimeType: string; parents?: string[] };
       if (fresh) meta = { name: fresh.name, mimeType: fresh.srcMime };
       else {
-        const metaRes = await (early?.metaP ?? gateway(`/drive/v3/files/${fileId}`, { fields: "id,name,mimeType,parents", supportsAllDrives: "true" }));
+        const metaRes = await (spec?.metaP ?? gateway(`/drive/v3/files/${fileId}`, { fields: "id,name,mimeType,parents", supportsAllDrives: "true" }));
         const metaText = await metaRes.text();
         if (!metaRes.ok) {
           discardEarly();
@@ -338,9 +338,9 @@ Deno.serve(async (req) => {
       const exportMime = GOOGLE_EXPORT[meta.mimeType];
       let contentP: Promise<Response> | null = null;
       if (!fresh && !isTicketReq) {
-        if (early?.contentP && early.exportMime === exportMime) contentP = early.contentP;
+        if (spec?.contentP && spec.exportMime === exportMime) contentP = early.contentP;
         else {
-          early?.contentP?.then((r) => r.body?.cancel()).catch(() => {});
+          spec?.contentP?.then((r) => r.body?.cancel()).catch(() => {});
           contentP = exportMime
             ? gateway(`/drive/v3/files/${fileId}/export`, { mimeType: exportMime })
             : gateway(`/drive/v3/files/${fileId}`, { alt: "media", supportsAllDrives: "true" });
