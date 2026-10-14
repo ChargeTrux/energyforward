@@ -257,7 +257,7 @@ export function InvestorDocuments() {
       <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
       <aside style={{ width: "30%", minWidth: 220, borderRight: "1px solid rgba(238,234,226,0.12)", overflowY: "auto", padding: "12px 10px" }}>
         <div style={{ ...label, color: amber, fontSize: 10, padding: "0 0 8px 6px" }}>Document repository</div>
-        <DocsTree onOpenFile={openFile} activeFileId={activeFileId} />
+        <DocsTree onOpenFile={openFile} activeFileId={activeFileId} onFiles={preloadDocs} />
       </aside>
       <main style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
         {error && <div style={{ padding: 16, fontSize: 13, color: "#f4b5a3" }}>{error}</div>}
