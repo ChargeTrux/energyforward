@@ -12,6 +12,64 @@ const pearl = "#EEEAE2";
 const FN_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/investor-drive`;
 // Files already opened this visit reopen instantly (kept in memory only, cleared on sign-out/reload).
 const blobCache = new Map<string, Blob>();
+// In-flight downloads, shared between background preloading and clicks (no duplicate requests).
+const inflight = new Map<string, Promise<Blob>>();
+const isSheetFile = (f: { name: string; mimeType: string }) =>
+  /spreadsheet|ms-excel|text\/csv/i.test(f.mimeType) || /\.(xlsx|xlsm|xls|csv)$/i.test(f.name);
+
+function fetchBlob(profileId: string, f: { id: string; name: string; mimeType: string }, onProgress?: (mb: number) => void): Promise<Blob> {
+  const hit = blobCache.get(f.id);
+  if (hit) return Promise.resolve(hit);
+  const running = inflight.get(f.id);
+  if (running) return running;
+  const p = (async () => {
+    const qs = new URLSearchParams({ action: "file", profile_id: profileId, file_id: f.id, mime: f.mimeType });
+    const res = await callFn(`?${qs}`);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? "Could not open this document.");
+    }
+    const type = res.headers.get("Content-Type") ?? "";
+    const reader = res.body?.getReader();
+    let blob: Blob;
+    if (reader) {
+      const chunks: Uint8Array[] = [];
+      let got = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        got += value.length;
+        onProgress?.(got / 1048576);
+      }
+      blob = new Blob(chunks as BlobPart[], { type });
+    } else blob = await res.blob();
+    if (blob.size < 15 * 1048576) {
+      blobCache.set(f.id, blob);
+      if (blobCache.size > 24) blobCache.delete(blobCache.keys().next().value as string);
+    }
+    return blob;
+  })().finally(() => inflight.delete(f.id));
+  inflight.set(f.id, p);
+  return p;
+}
+
+/** Quietly download small PDFs/HTML ahead of time so clicking them opens instantly. */
+export function preloadDocs(items: { profileId: string; id: string; name: string; mimeType: string; size?: string | number }[]) {
+  const queue = items
+    .filter((f) => !isSheetFile(f) && f.mimeType !== "application/vnd.google-apps.folder")
+    .filter((f) => /pdf|html|google-apps\.(document|presentation)/i.test(f.mimeType) || /\.(pdf|html?)$/i.test(f.name))
+    .filter((f) => !f.size || Number(f.size) <= 8 * 1048576)
+    .filter((f) => !blobCache.has(f.id) && !inflight.has(f.id))
+    .slice(0, 20);
+  let i = 0;
+  const next = (): Promise<void> | undefined => {
+    const f = queue[i++];
+    if (!f) return;
+    return fetchBlob(f.profileId, f).catch(() => undefined).then(() => next());
+  };
+  for (let k = 0; k < 3; k++) void next();
+}
 
 async function callFn(path: string) {
   const { data } = await supabase.auth.getSession();
@@ -95,7 +153,7 @@ export function InvestorDocuments() {
     try {
       const qs = new URLSearchParams({ action: "file", profile_id: profileId, file_id: f.id });
       // Excel: hand off to the browser's own downloader immediately (shows its native progress).
-      if (/spreadsheet|ms-excel|text\/csv/i.test(f.mimeType) || /\.(xlsx|xlsm|xls|csv)$/i.test(f.name)) {
+      if (isSheetFile(f)) {
         qs.set("mode", "ticket");
         const tr = await callFn(`?${qs}`);
         const tb = await tr.json().catch(() => ({}));
@@ -112,45 +170,9 @@ export function InvestorDocuments() {
         window.setTimeout(() => setDlName((n) => (n === f.name ? null : n)), 7000);
         return;
       }
-      const cached = blobCache.get(f.id);
-      if (cached) {
-        const mime = cached.type || f.mimeType;
-        if (mime.startsWith("text/html") || /\.html?$/i.test(f.name)) {
-          setHtmlDoc(await cached.text());
-          setPreview({ name: f.name, url: "", mime: "text/html" });
-        } else {
-          const u = URL.createObjectURL(cached);
-          urlRef.current = u;
-          setPreview({ name: f.name, url: u, mime });
-        }
-        return;
-      }
-      const res = await callFn(`?${qs}`);
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        if (run === openSeq.current) setError(body.error ?? "Could not open this document.");
-        return;
-      }
-      // Read with a live MB counter so large files show progress instead of a silent wait.
-      const type = res.headers.get("Content-Type") ?? "";
-      const chunks: Uint8Array[] = [];
-      let got = 0;
-      const reader = res.body?.getReader();
-      if (reader) {
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          if (run !== openSeq.current) { void reader.cancel(); return; }
-          chunks.push(value);
-          got += value.length;
-          setProgress(`Downloading… ${(got / 1048576).toFixed(1)} MB`);
-        }
-      }
-      const blob = reader ? new Blob(chunks as BlobPart[], { type }) : await res.blob();
-      if (blob.size < 15 * 1048576) {
-        blobCache.set(f.id, blob);
-        if (blobCache.size > 12) blobCache.delete(blobCache.keys().next().value as string);
-      }
+      const blob = await fetchBlob(profileId, f, (mb) => {
+        if (run === openSeq.current) setProgress(`Downloading… ${mb.toFixed(1)} MB`);
+      });
       if (run !== openSeq.current) return;
       const mime = blob.type || f.mimeType;
       if (mime.startsWith("text/html") || /\.html?$/i.test(f.name)) {
