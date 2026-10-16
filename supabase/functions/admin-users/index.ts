@@ -327,6 +327,7 @@ Deno.serve(async (req) => {
             loginUrl: loginDestination,
             portals,
             investorProfiles: grantedProfiles,
+            permanentPassword: !!customPwd,
           });
           const r = await sendBrandedEmail(RESEND_API_KEY, {
             to: email,
