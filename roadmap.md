@@ -21,7 +21,7 @@
 - [x] Keep the investor portal primary when both access types are selected, with a visible video link.
 - [x] Verify the investor/video routing and access boundaries.
 
-- [ ] Invite with admin-chosen password (no forced change)
-- [ ] Password-protected single-item share links (no sign-in)
-- [ ] Per-user activity email alerts to admin-chosen address (sign-in once, each material open)
-- [ ] Share links: optional expiration date
+- [x] Invite with admin-chosen password (no forced change)
+- [x] Password-protected single-item share links (no sign-in)
+- [x] Per-user activity email alerts to admin-chosen address (sign-in once, each material open)
+- [x] Share links: optional expiration date
