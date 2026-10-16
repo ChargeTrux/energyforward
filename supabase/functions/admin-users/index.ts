@@ -121,8 +121,10 @@ Deno.serve(async (req) => {
       const sendEmail = body.send_email !== false;
       if (!email || typeof email !== "string") return json({ error: "Invalid email" }, 400);
 
-      // Generate a strong temporary password
-      const tempPassword = makeTempPassword();
+      // Admin may set a lasting password; otherwise a temporary one is generated.
+      const customPwd = typeof body.custom_password === "string" ? body.custom_password.trim() : "";
+      if (customPwd && (customPwd.length < 8 || customPwd.length > 72)) return json({ error: "Password must be 8–72 characters" }, 400);
+      const tempPassword = customPwd || makeTempPassword();
 
       let newUserId: string | undefined;
       let userAlreadyExisted = false;
@@ -178,7 +180,7 @@ Deno.serve(async (req) => {
           user_id: newUserId,
           email,
           full_name: full_name ?? "",
-          must_change_password: true,
+          must_change_password: !customPwd,
           is_active: true,
         },
         { onConflict: "user_id" },
@@ -422,6 +424,9 @@ Deno.serve(async (req) => {
       // sets a fresh temporary password and emails the branded welcome.
       const { user_ids, app_origin } = body;
       if (!Array.isArray(user_ids) || user_ids.length === 0) return json({ error: "Missing user_ids" }, 400);
+      const customPwd = typeof body.custom_password === "string" ? body.custom_password.trim() : "";
+      if (customPwd && (customPwd.length < 8 || customPwd.length > 72)) return json({ error: "Password must be 8–72 characters" }, 400);
+      if (customPwd && user_ids.length !== 1) return json({ error: "A chosen password can only be sent to one person at a time" }, 400);
       if (user_ids.length > 200) return json({ error: "Maximum 200 at once" }, 400);
       const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
       if (!RESEND_API_KEY) return json({ error: "Email provider not configured" }, 500);
@@ -449,13 +454,13 @@ Deno.serve(async (req) => {
         const pids = ((accessRows ?? []) as Array<{ profile_id: string }>).map((a) => a.profile_id);
         let grantedProfiles: { name: string; description: string | null; drive_url: string | null }[] | null = null;
         if (pids.length) grantedProfiles = await grantedDocFolders(admin, uid);
-        const tempPassword = makeTempPassword();
+        const tempPassword = customPwd || makeTempPassword();
         const { error: pwErr } = await admin.auth.admin.updateUserById(uid, { password: tempPassword, ban_duration: "none" });
         if (pwErr) { results.push({ user_id: uid, email, ok: false, message: pwErr.message }); continue; }
-        await admin.from("profiles").update({ must_change_password: true }).eq("user_id", uid);
+        await admin.from("profiles").update({ must_change_password: !customPwd }).eq("user_id", uid);
         const loginParams = `?login=1&email=${encodeURIComponent(email)}`;
         const loginUrl = `${origin}${landingPath(portals, !!grantedProfiles?.length)}${loginParams}`;
-        const tpl = welcomeEmail({ name: fullName, email, tempPassword, loginUrl, portals, investorProfiles: grantedProfiles });
+        const tpl = welcomeEmail({ name: fullName, email, tempPassword, loginUrl, portals, investorProfiles: grantedProfiles, permanentPassword: !!customPwd });
         const r = await sendBrandedEmail(RESEND_API_KEY, { to: email, subject: tpl.subject, html: tpl.html, from: tpl.from, replyTo: tpl.replyTo });
         if (r.ok) await admin.from("profiles").update({ invite_sent_at: new Date().toISOString(), is_active: true }).eq("user_id", uid);
         results.push({ user_id: uid, email, ok: r.ok, message: r.ok ? "Invite sent" : String(r.error) });

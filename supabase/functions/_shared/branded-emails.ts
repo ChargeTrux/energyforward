@@ -194,6 +194,8 @@ export function welcomeEmail(args: {
   loginUrl?: string;
   portals?: string[];
   investorProfiles?: InvestorProfileInfo[] | null;
+  /** Admin chose a lasting password: no forced change on first sign-in. */
+  permanentPassword?: boolean;
 }) {
   const name = escapeHtml(args.name || "Investor");
   const email = escapeHtml(args.email);
@@ -232,13 +234,13 @@ export function welcomeEmail(args: {
     <p style="margin:0 0 14px;">Dear ${name},</p>
     <p style="margin:0 0 14px;">Welcome to EnergyForward. Your access request has been reviewed and approved. You are now authorized to access the following through the EnergyForward investor portal.</p>
     ${itemsHtml}
-    <p style="margin:0 0 10px;"><strong style="color:${PEARL};">Signing in</strong><br/>Use the credentials below to sign in for the first time. On your first sign-in you will be prompted to set a new password of your own; the temporary password below is for that first sign-in only. Once you are logged in, the content you have been granted appears in the navigation on the left; click any item to open it. Your account settings are in the top right corner.</p>
+    <p style="margin:0 0 10px;"><strong style="color:${PEARL};">Signing in</strong><br/>${args.permanentPassword ? "Use the credentials below to sign in. You can change your password at any time with “Forgot password” on the sign-in screen." : "Use the credentials below to sign in for the first time. On your first sign-in you will be prompted to set a new password of your own; the temporary password below is for that first sign-in only."} Once you are logged in, the content you have been granted appears in the navigation on the left; click any item to open it. Your account settings are in the top right corner.</p>
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:6px 0 4px;border:1px solid ${BORDER};border-radius:8px;background:#0d1730;">
       <tr><td style="padding:14px 16px;font-family:Arial,Helvetica,sans-serif;font-size:13px;">
         <div style="color:${MUTED};text-transform:uppercase;letter-spacing:1px;font-size:11px;font-weight:700;">Email</div>
         <div style="color:${PEARL};font-weight:600;font-size:14px;margin-top:2px;font-family:Consolas,Menlo,monospace;">${email}</div>
         <div style="height:1px;background:${BORDER};margin:12px 0;"></div>
-        <div style="color:${MUTED};text-transform:uppercase;letter-spacing:1px;font-size:11px;font-weight:700;">Temporary Password</div>
+        <div style="color:${MUTED};text-transform:uppercase;letter-spacing:1px;font-size:11px;font-weight:700;">${args.permanentPassword ? "Password" : "Temporary Password"}</div>
         <div style="color:${AMBER};font-family:Consolas,Menlo,monospace;font-weight:700;font-size:15px;margin-top:2px;letter-spacing:0.5px;">${pwd}</div>
       </td></tr>
     </table>
