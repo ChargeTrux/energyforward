@@ -1,20 +1,13 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { shell } from "../_shared/branded-emails.ts";
+import { lookupRequest } from "../_shared/geo.ts";
 
 // Emails ONLY the address an admin set for this person (activity_watchers).
 // People without an enabled watcher never trigger any email.
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 const LABEL: Record<string, string> = { login: "signed in", video: "opened a video", document: "opened a document", project: "opened a Project 3D Demo page" };
-
-function describeDevice(ua: string): string {
-  if (!ua) return "Unknown";
-  const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? (/Mobile/.test(ua) ? "Android phone" : "Android tablet")
-    : /Windows/.test(ua) ? "Windows computer" : /Mac OS X|Macintosh/.test(ua) ? "Mac" : /CrOS/.test(ua) ? "Chromebook" : /Linux/.test(ua) ? "Linux computer" : "Unknown device";
-  const br = /Edg\//.test(ua) ? "Edge" : /OPR\//.test(ua) ? "Opera" : /Firefox\//.test(ua) ? "Firefox" : /CriOS|Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "Unknown browser";
-  return `${os} · ${br}`;
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -29,6 +22,12 @@ Deno.serve(async (req) => {
     const ref = String(b.ref ?? "").slice(0, 200);
     const name = String(b.name ?? "").slice(0, 300);
 
+    // Record approximate location for the admin activity map (every event, alerts or not).
+    const { ip, device, place, isp, lat, lon } = await lookupRequest(req);
+    const { data: p } = await db.from("profiles").select("full_name,email").eq("user_id", u.user.id).maybeSingle();
+    const who = p?.full_name ? `${p.full_name} (${p.email})` : (p?.email ?? u.user.email ?? "A user");
+    await db.from("activity_locations").insert({ user_id: u.user.id, who, kind, item_name: name, ip: ip || null, place, isp, device, lat, lon });
+
     const { data: w } = await db.from("activity_watchers").select("notify_email,enabled").eq("user_id", u.user.id).maybeSingle();
     if (!w?.enabled || !w.notify_email) return json({ ok: true, sent: false });
 
@@ -38,27 +37,8 @@ Deno.serve(async (req) => {
     const { error: dup } = await db.from("activity_alerts_sent").insert({ user_id: u.user.id, dedupe_key: key });
     if (dup) return json({ ok: true, sent: false });
 
-    const { data: p } = await db.from("profiles").select("full_name,email").eq("user_id", u.user.id).maybeSingle();
-    const who = p?.full_name ? `${p.full_name} (${p.email})` : (p?.email ?? u.user.email ?? "A user");
     const when = new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles", dateStyle: "medium", timeStyle: "short" }) + " PT";
     const subject = `${who} ${LABEL[kind]}${name ? `: ${name}` : ""}`;
-
-    // Device, IP and approximate location (from IP; city-level, not exact).
-    const ua = req.headers.get("user-agent") ?? "";
-    const device = describeDevice(ua);
-    const ip = (req.headers.get("cf-connecting-ip") || req.headers.get("x-real-ip") || (req.headers.get("x-forwarded-for") ?? "").split(",")[0]).trim();
-    let place = "Unknown", lat: number | null = null, lon: number | null = null, isp = "";
-    if (ip) {
-      try {
-        const g = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}`, { signal: AbortSignal.timeout(2500) }).then((r) => r.json());
-        if (g?.success) {
-          place = [g.city, g.region, g.country].filter(Boolean).join(", ") || "Unknown";
-          lat = typeof g.latitude === "number" ? g.latitude : null;
-          lon = typeof g.longitude === "number" ? g.longitude : null;
-          isp = g.connection?.isp ?? "";
-        }
-      } catch { /* location optional */ }
-    }
     const mapUrl = lat != null && lon != null ? `https://www.google.com/maps?q=${lat},${lon}` : undefined;
     const row = (k: string, v: string) => `<tr><td style="padding:10px 16px;border-top:1px solid #1f2a44;color:#8a99b3;font-size:11px;text-transform:uppercase;letter-spacing:1px;font-weight:700;width:120px;vertical-align:top;">${k}</td><td style="padding:10px 16px;border-top:1px solid #1f2a44;color:#f4f1ea;font-size:14px;">${v}</td></tr>`;
     const bodyHtml = `
