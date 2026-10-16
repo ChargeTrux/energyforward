@@ -17,3 +17,7 @@ project_id = "scyqmmakqmnzpnhrrnlx"
     verify_jwt = false
   [functions.investor-drive]
     verify_jwt = false
+  [functions.share-link]
+    verify_jwt = false
+  [functions.notify-activity]
+    verify_jwt = false

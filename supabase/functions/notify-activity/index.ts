@@ -3,7 +3,6 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 // Emails ONLY the address an admin set for this person (activity_watchers).
 // People without an enabled watcher never trigger any email.
-const GATEWAY = "https://connector-gateway.lovable.dev/resend";
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 const LABEL: Record<string, string> = { login: "signed in", video: "opened a video", document: "opened a document", project: "opened a Project 3D Demo page" };
@@ -38,11 +37,11 @@ Deno.serve(async (req) => {
       <p><strong>${esc(who)}</strong> ${LABEL[kind]}${name ? `: <strong>${esc(name)}</strong>` : ""}.</p>
       <p>Time: ${esc(when)}</p>
       <p style="color:#64748b;font-size:12px">You receive this because an EnergyForward admin turned on activity alerts for this person.</p></div>`;
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY"), RESEND = Deno.env.get("RESEND_API_KEY");
-    if (!LOVABLE_API_KEY || !RESEND) return json({ error: "Email not configured" }, 500);
-    const r = await fetch(`${GATEWAY}/emails`, {
+    const RESEND = Deno.env.get("RESEND_API_KEY");
+    if (!RESEND) return json({ error: "Email not configured" }, 500);
+    const r = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_API_KEY}`, "X-Connection-Api-Key": RESEND },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND}` },
       body: JSON.stringify({ from: "Energy Forward Investor Portal <investor@energyforward.com>", to: [w.notify_email], subject, html }),
     });
     if (!r.ok) { const t = await r.text(); console.error("alert email failed", r.status, t); return json({ error: "Email failed", status: r.status, details: t }, 502); }

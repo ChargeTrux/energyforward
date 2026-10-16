@@ -1,3 +1,4 @@
+import { notifyActivity } from "@/lib/notifyActivity";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -148,7 +149,7 @@ export function InvestorDocuments() {
     setProgress(null);
     setNotice(null);
     revoke();
-    if (user) void supabase.from("content_views").insert({ user_id: user.id, content_type: "document", item_id: f.id, item_name: f.name });
+    if (user) { notifyActivity("document", f.id, f.name); void supabase.from("content_views").insert({ user_id: user.id, content_type: "document", item_id: f.id, item_name: f.name }); }
     setLoading(true);
     try {
       const qs = new URLSearchParams({ action: "file", profile_id: profileId, file_id: f.id });
