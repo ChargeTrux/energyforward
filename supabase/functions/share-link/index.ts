@@ -1,5 +1,6 @@
 import { corsHeaders as baseCors } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { lookupRequest } from "../_shared/geo.ts";
 
 // Password-protected links to exactly one item. No account needed.
 // Drive ids never reach the browser; access is rechecked on every request.
@@ -117,6 +118,8 @@ Deno.serve(async (req) => {
         return json({ error: "Wrong password." }, 403);
       }
       await db.from("share_link_views").insert({ link_id: link.id });
+      const g = await lookupRequest(req);
+      await db.from("activity_locations").insert({ share_link_id: link.id, who: `Share link /share/${link.slug}`, kind: "share", item_name: link.item_name, ip: g.ip || null, place: g.place, isp: g.isp, device: g.device, lat: g.lat, lon: g.lon });
       return json({ ticket: await makeTicket(link.id, tagOf(link.password_hash)), name: link.item_name, type: link.item_type });
     }
 
