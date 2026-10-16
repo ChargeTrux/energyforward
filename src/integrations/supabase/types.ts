@@ -35,6 +35,62 @@ export type Database = {
         }
         Relationships: []
       }
+      activity_locations: {
+        Row: {
+          created_at: string
+          device: string | null
+          id: string
+          ip: string | null
+          isp: string | null
+          item_name: string
+          kind: string
+          lat: number | null
+          lon: number | null
+          place: string | null
+          share_link_id: string | null
+          user_id: string | null
+          who: string
+        }
+        Insert: {
+          created_at?: string
+          device?: string | null
+          id?: string
+          ip?: string | null
+          isp?: string | null
+          item_name?: string
+          kind: string
+          lat?: number | null
+          lon?: number | null
+          place?: string | null
+          share_link_id?: string | null
+          user_id?: string | null
+          who?: string
+        }
+        Update: {
+          created_at?: string
+          device?: string | null
+          id?: string
+          ip?: string | null
+          isp?: string | null
+          item_name?: string
+          kind?: string
+          lat?: number | null
+          lon?: number | null
+          place?: string | null
+          share_link_id?: string | null
+          user_id?: string | null
+          who?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_locations_share_link_id_fkey"
+            columns: ["share_link_id"]
+            isOneToOne: false
+            referencedRelation: "share_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       activity_watchers: {
         Row: {
           created_at: string
