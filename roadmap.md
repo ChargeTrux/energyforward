@@ -20,3 +20,7 @@
 - [x] Route video-only users to the dedicated video page after sign-in and password setup.
 - [x] Keep the investor portal primary when both access types are selected, with a visible video link.
 - [x] Verify the investor/video routing and access boundaries.
+
+- [ ] Invite with admin-chosen password (no forced change)
+- [ ] Password-protected single-item share links (no sign-in)
+- [ ] Per-user activity email alerts to admin-chosen address (sign-in once, each material open)
