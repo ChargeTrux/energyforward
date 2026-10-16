@@ -65,7 +65,7 @@ function escapeHtml(s: string): string {
     .replace(/'/g, "&#039;");
 }
 
-function shell(opts: {
+export function shell(opts: {
   preheader: string;
   heading: string;
   bodyHtml: string;
