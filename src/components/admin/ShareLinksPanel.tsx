@@ -163,13 +163,16 @@ export function ActivityAlertToggle({ userId }: { userId: string }) {
   }, [userId]);
 
   const save = async (on: boolean, addr: string) => {
-    const a = addr.trim().toLowerCase();
-    if (on && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a)) { toast({ title: "Type a valid email first", variant: "destructive" }); return; }
+    const list = Array.from(new Set(addr.split(/[\s,;]+/).map((s) => s.trim().toLowerCase()).filter(Boolean)));
+    const bad = list.find((x) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x));
+    if (on && (list.length === 0 || bad)) { toast({ title: bad ? `Not a valid email: ${bad}` : "Type a valid email first", variant: "destructive" }); return; }
+    if (list.length > 10) { toast({ title: "Up to 10 emails", variant: "destructive" }); return; }
+    const a = list.join(", ");
     const { error } = on || a
       ? await supabase.from("activity_watchers").upsert({ user_id: userId, notify_email: a || saved, enabled: on }, { onConflict: "user_id" })
       : { error: null };
     if (error) { toast({ title: "Could not save", description: error.message, variant: "destructive" }); return; }
-    setEnabled(on); setSaved(a);
+    setEnabled(on); setSaved(a); setEmail(a);
     toast({ title: on ? `Alerts on — emails go only to ${a}` : "Alerts off" });
   };
 
@@ -179,7 +182,7 @@ export function ActivityAlertToggle({ userId }: { userId: string }) {
         <input type="checkbox" checked={enabled} onChange={(e) => void save(e.target.checked, email)} />
         Email notification
       </label>
-      <Input className="h-8 max-w-xs" type="email" placeholder="Send alerts to…" value={email} onChange={(e) => setEmail(e.target.value)}
+      <Input className="h-8 min-w-[16rem] max-w-md" type="text" placeholder="a@x.com, b@y.com" value={email} onChange={(e) => setEmail(e.target.value)}
         onBlur={() => { if (enabled && email.trim().toLowerCase() !== saved) void save(true, email); }} />
       <span className="text-xs text-muted-foreground">Sign-ins and each video, document or 3D page they open.</span>
     </div>

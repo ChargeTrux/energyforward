@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND}` },
-      body: JSON.stringify({ from: "Energy Forward Investor Portal <investor@energyforward.com>", to: [w.notify_email], subject, html }),
+      body: JSON.stringify({ from: "Energy Forward Investor Portal <investor@energyforward.com>", to: w.notify_email.split(/[\s,;]+/).filter((x: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x)).slice(0, 10), subject, html }),
     });
     if (!r.ok) { const t = await r.text(); console.error("alert email failed", r.status, t); return json({ error: "Email failed", status: r.status, details: t }, 502); }
     return json({ ok: true, sent: true });
