@@ -14,7 +14,15 @@
 - In a new **Share links** list you can see every link, copy it again, change its password, or turn it off instantly.
 - Each opening is recorded (link, date/time) so you can see it in activity.
 
-## 3. Safety
+## 3. Activity alerts for one person
+- In each person's row in the Access manager: a **Notify me** checkbox with an email box next to it.
+- When ticked, that email address (and only that one) gets a short email when this person:
+  - signs in (once per sign-in),
+  - opens a video, a Documents file, or a Project 3D Demo page (once per item opened).
+- Nobody else is emailed: not admins, not other people. People without the box ticked never trigger any email.
+- Untick it to stop the alerts right away.
+
+## 4. Safety
 - Existing users, access, invites and links stay exactly as they are.
 - The Drive address is never shown; the password is checked on the server on every open, and wrong passwords are slowed down.
 - No emails sent while building or checking.
@@ -24,3 +32,4 @@
 - Migration: `share_links (id, slug, item_type project|video|document, item_id, item_name, profile_id, password_hash, active, created_by, created_at)` admin-only RLS; `share_link_views (link_id, viewed_at)`.
 - New edge function `share-link`: `unlock` (slug+password -> short-lived signed ticket), `content` (ticket -> HTML/PDF/file, video with Range support). Admin create/list/update via the same function.
 - New public route `/share/:slug` with password form and single-item viewer (iframe for HTML, PDF viewer, video player).
+- Migration: `activity_watchers (user_id unique, notify_email, enabled)` admin-only RLS. Database triggers on `login_sessions` and `content_views` inserts call a `notify-activity` edge function (via pg_net) only when an enabled watcher row exists for that user; the function emails only `notify_email` via Resend, with dedupe per session/item.
