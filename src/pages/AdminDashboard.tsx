@@ -2124,12 +2124,6 @@ export default function AdminDashboard() {
         </CardContent>
       </Collapse>
 
-<Collapse nested title={<>Activity map (where people opened content)</>}>
-        <CardContent>
-          <ActivityMap />
-        </CardContent>
-      </Collapse>
-
 <Collapse nested title={<>Share links (password, no sign-in)</>}>
         <CardContent>
           <ShareLinksPanel videos={videoCatalog} pages={projectCatalog} />
@@ -2531,6 +2525,9 @@ export default function AdminDashboard() {
             <Activity className="w-5 h-5" /> Login Activity & Time Spent
 </>}>
         <CardContent className="space-y-4">
+          <Collapse nested defaultOpen title={<>Activity map (where people opened content)</>}>
+            <div className="px-1 pb-2"><ActivityMap /></div>
+          </Collapse>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">Download a spreadsheet of every user: invite status, sign-ins, videos watched and documents opened.</p>
             <Button type="button" variant="outline" onClick={exportReport} className="gap-2">
