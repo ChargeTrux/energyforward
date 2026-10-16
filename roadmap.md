@@ -24,3 +24,4 @@
 - [ ] Invite with admin-chosen password (no forced change)
 - [ ] Password-protected single-item share links (no sign-in)
 - [ ] Per-user activity email alerts to admin-chosen address (sign-in once, each material open)
+- [ ] Share links: optional expiration date
