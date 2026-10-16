@@ -2,6 +2,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { shell } from "../_shared/branded-emails.ts";
 import { lookupRequest } from "../_shared/geo.ts";
+import { staticMapPng, toBase64 } from "../_shared/static-map.ts";
 
 // Emails ONLY the address an admin set for this person (activity_watchers).
 // People without an enabled watcher never trigger any email.
@@ -39,7 +40,7 @@ Deno.serve(async (req) => {
 
     const when = new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles", dateStyle: "medium", timeStyle: "short" }) + " PT";
     const subject = `${who} ${LABEL[kind]}${name ? `: ${name}` : ""}`;
-    const mapUrl = lat != null && lon != null ? `https://www.google.com/maps?q=${lat},${lon}` : undefined;
+    const png = lat != null && lon != null ? await staticMapPng(lat, lon) : null;
     const row = (k: string, v: string) => `<tr><td style="padding:10px 16px;border-top:1px solid #1f2a44;color:#8a99b3;font-size:11px;text-transform:uppercase;letter-spacing:1px;font-weight:700;width:120px;vertical-align:top;">${k}</td><td style="padding:10px 16px;border-top:1px solid #1f2a44;color:#f4f1ea;font-size:14px;">${v}</td></tr>`;
     const bodyHtml = `
       <p style="margin:0 0 16px;"><strong style="color:#f4f1ea;">${esc(who)}</strong> ${LABEL[kind]}${name ? `: <strong style="color:#f5a524;">${esc(name)}</strong>` : ""}.</p>
