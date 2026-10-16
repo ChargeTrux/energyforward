@@ -1,4 +1,5 @@
 import { ShareLinksPanel, ActivityAlertToggle } from "@/components/admin/ShareLinksPanel";
+import { ActivityMap } from "@/components/admin/ActivityMap";
 import type React from "react";
 import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react";
 import { activityInRange, userAccessStatus, type ActivityPreset } from "@/lib/admin-activity";
@@ -2120,6 +2121,12 @@ export default function AdminDashboard() {
               <p className="text-sm text-muted-foreground">No investor accounts yet.</p>
             )}
           </div>
+        </CardContent>
+      </Collapse>
+
+<Collapse nested title={<>Activity map (where people opened content)</>}>
+        <CardContent>
+          <ActivityMap />
         </CardContent>
       </Collapse>
 
