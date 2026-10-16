@@ -35,9 +35,15 @@ export default function SharePage() {
     setLoading(true);
     fetch(contentUrl(open.ticket)).then(async (r) => {
       if (!r.ok) { const b = await r.json().catch(() => ({})); throw new Error(b.error ?? "Could not open this item."); }
-      const type = r.headers.get("Content-Type") ?? "";
+      // The server may relabel HTML as plain text, so trust the item type / file name too.
+      const hdr = r.headers.get("Content-Type") ?? "";
+      const n = open.name.toLowerCase();
+      const type = open.type === "project" || /\.html?$/.test(n) ? "text/html"
+        : /\.pdf$/.test(n) ? "application/pdf"
+        : /\.(png|jpe?g|gif|webp)$/.test(n) ? `image/${n.split(".").pop()!.replace("jpg", "jpeg")}`
+        : hdr;
       const blob = await r.blob();
-      url = URL.createObjectURL(type.startsWith("text/html") ? new Blob([blob], { type: "text/html" }) : blob);
+      url = URL.createObjectURL(new Blob([blob], { type: type || blob.type }));
       setBlobType(type);
       setBlobUrl(url);
     }).catch((e) => setError(e.message)).finally(() => setLoading(false));
@@ -54,7 +60,7 @@ export default function SharePage() {
     setOpen(b);
   };
 
-  const viewable = blobType.startsWith("text/html") || blobType.includes("pdf") || blobType.startsWith("image/");
+  const viewable = blobType.startsWith("text/html") || blobType.includes("pdf") || blobType.startsWith("image/") || blobType.startsWith("text/");
 
   return (
     <div style={{ minHeight: "100vh", background: teal, color: pearl, fontFamily: "'General Sans', Arial, sans-serif", display: "flex", flexDirection: "column" }}>
@@ -64,10 +70,10 @@ export default function SharePage() {
         </span>
       </header>
       <section style={{ textAlign: "center", padding: "28px clamp(16px,4vw,56px) 18px", maxWidth: 760, margin: "0 auto" }}>
-        <h1 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(24px,4vh,38px)", margin: "0 0 10px" }}>
+        <h1 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(24px,4vh,38px)", margin: "0 0 10px", color: pearl }}>
           Welcome to EnergyForward<span style={{ color: amber }}>.</span>
         </h1>
-        <p style={{ fontSize: 16, lineHeight: 1.5, margin: 0 }}>
+        <p style={{ fontSize: 16, lineHeight: 1.5, margin: 0, color: pearl }}>
           Energy Forward is building the delivery infrastructure for the next era of energy—connecting technology, operations and execution to move critical projects from ambition to reality.
         </p>
       </section>
