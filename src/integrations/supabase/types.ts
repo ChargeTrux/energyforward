@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_alerts_sent: {
+        Row: {
+          dedupe_key: string
+          id: string
+          sent_at: string
+          user_id: string
+        }
+        Insert: {
+          dedupe_key: string
+          id?: string
+          sent_at?: string
+          user_id: string
+        }
+        Update: {
+          dedupe_key?: string
+          id?: string
+          sent_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      activity_watchers: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          notify_email: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          notify_email: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          notify_email?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       contact_submissions: {
         Row: {
           company: string | null
@@ -424,6 +472,74 @@ export type Database = {
           granted_at?: string
           id?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      share_link_views: {
+        Row: {
+          id: string
+          link_id: string
+          viewed_at: string
+        }
+        Insert: {
+          id?: string
+          link_id: string
+          viewed_at?: string
+        }
+        Update: {
+          id?: string
+          link_id?: string
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "share_link_views_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "share_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      share_links: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          item_id: string
+          item_name: string
+          item_type: string
+          password_hash: string
+          profile_id: string | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id: string
+          item_name?: string
+          item_type: string
+          password_hash: string
+          profile_id?: string | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id?: string
+          item_name?: string
+          item_type?: string
+          password_hash?: string
+          profile_id?: string | null
+          slug?: string
+          updated_at?: string
         }
         Relationships: []
       }
