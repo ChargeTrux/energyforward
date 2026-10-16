@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, CircleMarker, Popup, Tooltip } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ export function ActivityMap() {
   const [rows, setRows] = useState<Row[]>([]);
   const [days, setDays] = useState(7);
   const [kind, setKind] = useState("all");
+  const [person, setPerson] = useState("all");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -23,7 +24,9 @@ export function ActivityMap() {
       .then(({ data }) => { setRows((data as unknown as Row[]) ?? []); setLoading(false); });
   }, [days]);
 
-  const shown = useMemo(() => rows.filter((r) => kind === "all" || r.kind === kind), [rows, kind]);
+  const people = useMemo(() => Array.from(new Set(rows.map((r) => r.who))).sort(), [rows]);
+  const shown = useMemo(() => rows.filter((r) => (kind === "all" || r.kind === kind) && (person === "all" || r.who === person)), [rows, kind, person]);
+  const short = (w: string) => w.replace(/\s*\(.*\)$/, "");
   const pts = shown.filter((r) => r.lat != null && r.lon != null);
 
   return (
@@ -34,6 +37,10 @@ export function ActivityMap() {
           <option value="all">All activity</option>
           {Object.entries(KIND).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
         </select>
+        <select className="h-9 rounded-md border px-2 bg-background max-w-xs" value={person} onChange={(e) => setPerson(e.target.value)}>
+          <option value="all">Everyone</option>
+          {people.map((w) => <option key={w} value={w}>{w}</option>)}
+        </select>
         <span className="text-muted-foreground">{loading ? "Loading…" : `${shown.length} events · ${pts.length} on map`}</span>
       </div>
       <div className="h-[420px] rounded-md overflow-hidden border relative z-0">
@@ -41,6 +48,7 @@ export function ActivityMap() {
           <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           {pts.map((r) => (
             <CircleMarker key={r.id} center={[r.lat!, r.lon!]} radius={7} pathOptions={{ color: COLOR[r.kind] ?? "#2563eb", fillOpacity: 0.6 }}>
+              <Tooltip permanent direction="top" offset={[0, -6]}>{short(r.who)}</Tooltip>
               <Popup>
                 <strong>{r.who}</strong><br />
                 {KIND[r.kind] ?? r.kind}{r.item_name ? `: ${r.item_name}` : ""}<br />
@@ -59,7 +67,7 @@ export function ActivityMap() {
             {shown.map((r) => (
               <tr key={r.id} className="border-t">
                 <td className="p-2 whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
-                <td className="p-2">{r.who}</td>
+                <td className="p-2"><button className="underline" onClick={() => setPerson(r.who)}>{r.who}</button></td>
                 <td className="p-2">{KIND[r.kind] ?? r.kind}{r.item_name ? `: ${r.item_name}` : ""}</td>
                 <td className="p-2">{r.place ?? "Unknown"}</td>
                 <td className="p-2">{r.ip ?? "—"}</td>
