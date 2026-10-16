@@ -1,3 +1,4 @@
+import { ShareLinksPanel, ActivityAlertToggle } from "@/components/admin/ShareLinksPanel";
 import type React from "react";
 import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react";
 import { activityInRange, userAccessStatus, type ActivityPreset } from "@/lib/admin-activity";
@@ -1581,6 +1582,7 @@ export default function AdminDashboard() {
                       {u.is_active === false && (
                         <span className="ef-badge ef-badge--off">Suspended</span>
                       )}
+                      <div className="w-full"><ActivityAlertToggle userId={u.user_id} /></div>
                       <Button
                         size="sm"
                         variant="outline"
@@ -2118,6 +2120,12 @@ export default function AdminDashboard() {
               <p className="text-sm text-muted-foreground">No investor accounts yet.</p>
             )}
           </div>
+        </CardContent>
+      </Collapse>
+
+<Collapse nested title={<>Share links (password, no sign-in)</>}>
+        <CardContent>
+          <ShareLinksPanel videos={videoCatalog} pages={projectCatalog} />
         </CardContent>
       </Collapse>
 

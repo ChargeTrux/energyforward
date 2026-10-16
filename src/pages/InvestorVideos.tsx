@@ -1,3 +1,4 @@
+import { notifyActivity } from "@/lib/notifyActivity";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PortalNav, NoAccessScreen, usePortalAccess } from "@/components/PortalNav";
 import { cachedItems, rememberItems } from "@/components/PortalSidebar";
@@ -172,7 +173,7 @@ function InvestorVideosInner() {
                   if (!user) return;
                   const entry = { id: null as string | null, max: 0 };
                   watches.current.set(v.id, entry);
-                  void supabase.from("content_views").insert({ user_id: user.id, content_type: "video", item_id: v.id, item_name: v.name }).select("id").single()
+                  (notifyActivity("video", v.id, v.name), supabase.from("content_views").insert({ user_id: user.id, content_type: "video", item_id: v.id, item_name: v.name })).select("id").single()
                     .then(({ data }) => { entry.id = data?.id ?? null; });
                 }}
                 onTimeUpdate={(e) => { const w = watches.current.get(v.id); if (w) w.max = Math.max(w.max, e.currentTarget.currentTime); }}

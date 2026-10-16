@@ -1,3 +1,4 @@
+import { notifyActivity } from "@/lib/notifyActivity";
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
@@ -47,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (ls) {
               setSessionId(ls.id);
               localStorage.setItem("login_session_id", ls.id);
+              notifyActivity("login", ls.id);
             }
           } else if (event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
             const stored = localStorage.getItem("login_session_id");

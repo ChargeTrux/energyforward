@@ -1,0 +1,187 @@
+import { useCallback, useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { DocsTree } from "@/components/DocsTree";
+
+type Item = { id: string; name: string };
+type Kind = "project" | "video" | "document";
+type LinkRow = { id: string; slug: string; item_type: Kind; item_name: string; active: boolean; expires_at: string | null; created_at: string };
+
+const FN = "share-link";
+const SITE = "https://energyforward.com";
+const KIND_LABEL: Record<Kind, string> = { project: "Project 3D Demo", video: "Video", document: "Document" };
+const linkUrl = (slug: string) => `${SITE}/share/${slug}`;
+
+async function call(action: string, body: object) {
+  const { data, error } = await supabase.functions.invoke(`${FN}?action=${action}`, { body });
+  if (error) {
+    const ctx = (error as { context?: Response }).context;
+    const msg = ctx ? (await ctx.json().catch(() => ({}))).error : null;
+    throw new Error(msg ?? error.message);
+  }
+  return data;
+}
+
+/** Create password-protected public links to exactly one item, with optional expiry. */
+export function ShareLinksPanel({ videos, pages }: { videos: Item[]; pages: Item[] }) {
+  const { toast } = useToast();
+  const [kind, setKind] = useState<Kind>("video");
+  const [item, setItem] = useState<(Item & { profileId?: string }) | null>(null);
+  const [password, setPassword] = useState("");
+  const [expires, setExpires] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [links, setLinks] = useState<LinkRow[]>([]);
+  const [opens, setOpens] = useState<Map<string, { count: number; last: string }>>(new Map());
+
+  const load = useCallback(async () => {
+    const [{ data: l }, { data: v }] = await Promise.all([
+      supabase.from("share_links").select("id,slug,item_type,item_name,active,expires_at,created_at").order("created_at", { ascending: false }),
+      supabase.from("share_link_views").select("link_id,viewed_at").order("viewed_at", { ascending: false }).limit(1000),
+    ]);
+    setLinks((l ?? []) as LinkRow[]);
+    const m = new Map<string, { count: number; last: string }>();
+    for (const r of v ?? []) { const e = m.get(r.link_id); if (e) e.count++; else m.set(r.link_id, { count: 1, last: r.viewed_at }); }
+    setOpens(m);
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+
+  const copy = (slug: string) => { void navigator.clipboard.writeText(linkUrl(slug)); toast({ title: "Link copied", description: linkUrl(slug) }); };
+
+  const create = async () => {
+    if (!item) { toast({ title: "Pick an item first", variant: "destructive" }); return; }
+    if (password.trim().length < 6) { toast({ title: "Password needs at least 6 characters", variant: "destructive" }); return; }
+    setBusy(true);
+    try {
+      const r = await call("create", {
+        item_type: kind, item_id: item.id, item_name: item.name, profile_id: item.profileId,
+        password: password.trim(), expires_at: expires ? new Date(expires).toISOString() : null,
+      });
+      copy(r.slug);
+      setPassword(""); setExpires(""); setItem(null);
+      await load();
+    } catch (e) { toast({ title: "Could not create link", description: (e as Error).message, variant: "destructive" }); }
+    setBusy(false);
+  };
+
+  const update = async (id: string, patch: object) => {
+    try { await call("update", { id, ...patch }); await load(); toast({ title: "Link updated" }); }
+    catch (e) { toast({ title: "Could not update", description: (e as Error).message, variant: "destructive" }); }
+  };
+
+  const list = kind === "video" ? videos : kind === "project" ? pages : [];
+  const status = (l: LinkRow) => !l.active ? "Turned off" : l.expires_at && new Date(l.expires_at) <= new Date() ? "Expired" : "Active";
+
+  return (
+    <div className="space-y-4 text-sm">
+      <p className="text-muted-foreground">
+        Make a link to one video, document or 3D page. Anyone with the link and password can open it without an account — you send both yourself. No email is sent.
+      </p>
+      <div className="flex flex-wrap gap-4">
+        {(["project", "video", "document"] as Kind[]).map((k) => (
+          <label key={k} className="flex items-center gap-2 font-semibold">
+            <input type="radio" name="share-kind" checked={kind === k} onChange={() => { setKind(k); setItem(null); }} />
+            {KIND_LABEL[k]}
+          </label>
+        ))}
+      </div>
+      {kind === "document" ? (
+        <div className="rounded p-2 max-h-72 overflow-y-auto" style={{ background: "#0A2A2E" }}>
+          <DocsTree onOpenFile={(profileId, f) => setItem({ id: f.id, name: f.name, profileId })} activeFileId={item?.id ?? null} />
+        </div>
+      ) : (
+        <div className="rounded border p-2 max-h-56 overflow-y-auto">
+          {list.length === 0 && <span className="text-muted-foreground">Nothing to pick yet.</span>}
+          {list.map((it) => (
+            <label key={it.id} className="flex items-center gap-2 py-0.5">
+              <input type="radio" name="share-item" checked={item?.id === it.id} onChange={() => setItem(it)} />
+              {it.name.replace(/\.[^.]+$/, "")}
+            </label>
+          ))}
+        </div>
+      )}
+      <p>Selected: <strong>{item ? item.name : "nothing yet"}</strong></p>
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <Label htmlFor="share-pw">Password</Label>
+          <Input id="share-pw" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" autoComplete="off" />
+        </div>
+        <div>
+          <Label htmlFor="share-exp">Expires (optional)</Label>
+          <Input id="share-exp" type="datetime-local" value={expires} onChange={(e) => setExpires(e.target.value)} />
+        </div>
+        <Button type="button" onClick={create} disabled={busy}>{busy ? "Creating…" : "Create link"}</Button>
+      </div>
+
+      <div>
+        <h4 className="font-semibold mb-2">Share links</h4>
+        {links.length === 0 && <p className="text-muted-foreground">No links yet.</p>}
+        <div className="space-y-2">
+          {links.map((l) => {
+            const o = opens.get(l.id);
+            return (
+              <div key={l.id} className="rounded border p-2 flex flex-wrap items-center gap-2 justify-between">
+                <div className="min-w-0">
+                  <div className="font-semibold break-words">{KIND_LABEL[l.item_type]}: {l.item_name}</div>
+                  <div className="text-xs text-muted-foreground break-all">
+                    {linkUrl(l.slug)} · {status(l)} · {l.expires_at ? `expires ${new Date(l.expires_at).toLocaleString()}` : "no expiry"} · opened {o?.count ?? 0}×{o ? ` (last ${new Date(o.last).toLocaleString()})` : ""}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => copy(l.slug)}>Copy link</Button>
+                  <Button size="sm" variant="outline" onClick={() => { const p = window.prompt("New password (at least 6 characters)"); if (p) void update(l.id, { password: p }); }}>Change password</Button>
+                  <Button size="sm" variant="outline" onClick={() => {
+                    const v = window.prompt("New expiration (YYYY-MM-DD HH:MM), or leave empty for no expiry", l.expires_at ? new Date(l.expires_at).toISOString().slice(0, 16).replace("T", " ") : "");
+                    if (v === null) return;
+                    const d = v.trim() ? new Date(v.trim().replace(" ", "T")) : null;
+                    if (d && isNaN(d.getTime())) { toast({ title: "Couldn't read that date", variant: "destructive" }); return; }
+                    void update(l.id, { expires_at: d ? d.toISOString() : null });
+                  }}>Change expiry</Button>
+                  <Button size="sm" variant={l.active ? "destructive" : "default"} onClick={() => update(l.id, { active: !l.active })}>{l.active ? "Turn off" : "Turn on"}</Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Per-person activity alert: emails only the address typed here. */
+export function ActivityAlertToggle({ userId }: { userId: string }) {
+  const { toast } = useToast();
+  const [enabled, setEnabled] = useState(false);
+  const [email, setEmail] = useState("");
+  const [saved, setSaved] = useState("");
+
+  useEffect(() => {
+    supabase.from("activity_watchers").select("notify_email,enabled").eq("user_id", userId).maybeSingle()
+      .then(({ data }) => { if (data) { setEnabled(data.enabled); setEmail(data.notify_email); setSaved(data.notify_email); } });
+  }, [userId]);
+
+  const save = async (on: boolean, addr: string) => {
+    const a = addr.trim().toLowerCase();
+    if (on && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a)) { toast({ title: "Type a valid email first", variant: "destructive" }); return; }
+    const { error } = on || a
+      ? await supabase.from("activity_watchers").upsert({ user_id: userId, notify_email: a || saved, enabled: on }, { onConflict: "user_id" })
+      : { error: null };
+    if (error) { toast({ title: "Could not save", description: error.message, variant: "destructive" }); return; }
+    setEnabled(on); setSaved(a);
+    toast({ title: on ? `Alerts on — emails go only to ${a}` : "Alerts off" });
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-sm">
+      <label className="flex items-center gap-2 font-semibold">
+        <input type="checkbox" checked={enabled} onChange={(e) => void save(e.target.checked, email)} />
+        Email notification
+      </label>
+      <Input className="h-8 max-w-xs" type="email" placeholder="Send alerts to…" value={email} onChange={(e) => setEmail(e.target.value)}
+        onBlur={() => { if (enabled && email.trim().toLowerCase() !== saved) void save(true, email); }} />
+      <span className="text-xs text-muted-foreground">Sign-ins and each video, document or 3D page they open.</span>
+    </div>
+  );
+}

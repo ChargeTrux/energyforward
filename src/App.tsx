@@ -15,6 +15,7 @@ import PortalWelcome from "./pages/PortalWelcome";
 import DocumentsPage from "./pages/DocumentsPage";
 import InvestorVideos from "@/pages/InvestorVideos";
 import NotFound from "./pages/NotFound";
+import SharePage from "./pages/SharePage";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { usePageTracking } from "@/hooks/usePageTracking";
 import { supabase } from "@/integrations/supabase/client";
@@ -179,7 +180,8 @@ function AppContent() {
     path === "/investor/documents" ||
     path === "/contact" ||
     path === "/admin" ||
-    path === "/reset-password";
+    path === "/reset-password" ||
+    path.startsWith("/share/");
 
   return (
     <>
@@ -203,6 +205,7 @@ function AppContent() {
         <Route path="/signout" element={<SignOutRoute onLogout={handleLogout} />} />
         {session && <Route path="/admin" element={<AdminDashboard />} />}
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/share/:slug" element={<SharePage />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>

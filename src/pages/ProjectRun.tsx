@@ -1,3 +1,4 @@
+import { notifyActivity } from "@/lib/notifyActivity";
 import { ZoomFrame } from "@/components/ZoomFrame";
 import { PortalDrawer } from "@/components/PortalDrawer";
 import { cachedItems, rememberItems } from "@/components/PortalSidebar";
@@ -82,7 +83,7 @@ export default function ProjectRun() {
     setActive(p);
     setError(null);
     const id = ++reqRef.current;
-    if (user) void supabase.from("content_views").insert({ user_id: user.id, content_type: "project", item_id: p.id, item_name: p.name });
+    if (user) { notifyActivity("project", p.id, p.name); void supabase.from("content_views").insert({ user_id: user.id, content_type: "project", item_id: p.id, item_name: p.name }); }
     const hit = htmlCache.get(p.id);
     if (hit) { setHtml(hit); return; }
     setHtml(null);
