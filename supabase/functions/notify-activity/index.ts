@@ -2,6 +2,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { shell } from "../_shared/branded-emails.ts";
 import { lookupRequest } from "../_shared/geo.ts";
+import { staticMapPng, toBase64 } from "../_shared/static-map.ts";
 
 // Emails ONLY the address an admin set for this person (activity_watchers).
 // People without an enabled watcher never trigger any email.
@@ -39,7 +40,7 @@ Deno.serve(async (req) => {
 
     const when = new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles", dateStyle: "medium", timeStyle: "short" }) + " PT";
     const subject = `${who} ${LABEL[kind]}${name ? `: ${name}` : ""}`;
-    const mapUrl = lat != null && lon != null ? `https://www.google.com/maps?q=${lat},${lon}` : undefined;
+    const png = lat != null && lon != null ? await staticMapPng(lat, lon) : null;
     const row = (k: string, v: string) => `<tr><td style="padding:10px 16px;border-top:1px solid #1f2a44;color:#8a99b3;font-size:11px;text-transform:uppercase;letter-spacing:1px;font-weight:700;width:120px;vertical-align:top;">${k}</td><td style="padding:10px 16px;border-top:1px solid #1f2a44;color:#f4f1ea;font-size:14px;">${v}</td></tr>`;
     const bodyHtml = `
       <p style="margin:0 0 16px;"><strong style="color:#f4f1ea;">${esc(who)}</strong> ${LABEL[kind]}${name ? `: <strong style="color:#f5a524;">${esc(name)}</strong>` : ""}.</p>
@@ -49,13 +50,13 @@ Deno.serve(async (req) => {
         ${row("IP address", esc(ip || "Unknown"))}
         ${row("Location", esc(place) + (isp ? `<div style="color:#8a99b3;font-size:12px;margin-top:2px;">${esc(isp)}</div>` : ""))}
       </table>
+      ${png ? `<div style="margin:14px 0 0;border:1px solid #1f2a44;border-radius:8px;overflow:hidden;"><img src="cid:locmap" width="520" alt="Map of approximate location: ${esc(place)}" style="display:block;width:100%;max-width:520px;height:auto;border:0;" /></div>
+      <p style="margin:4px 0 0;color:#8a99b3;font-size:11px;">Approximate area near ${esc(place)} · Map © OpenStreetMap contributors</p>` : ""}
       <p style="margin:14px 0 0;color:#8a99b3;font-size:12px;">Location is estimated from the IP address and may be approximate (VPNs and mobile networks can show a different city).</p>`;
     const html = shell({
       preheader: subject,
       heading: "Activity alert",
       bodyHtml,
-      ctaLabel: mapUrl ? "View location on map" : undefined,
-      ctaUrl: mapUrl,
       securityNote: "You receive this because an EnergyForward admin turned on activity alerts for this person.",
     });
     const RESEND = Deno.env.get("RESEND_API_KEY");
@@ -63,7 +64,12 @@ Deno.serve(async (req) => {
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND}` },
-      body: JSON.stringify({ from: "Energy Forward Investor Portal <investor@energyforward.com>", to: w.notify_email.split(/[\s,;]+/).filter((x: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x)).slice(0, 10), subject, html }),
+      body: JSON.stringify({
+        from: "Energy Forward Investor Portal <investor@energyforward.com>",
+        to: w.notify_email.split(/[\s,;]+/).filter((x: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x)).slice(0, 10),
+        subject, html,
+        ...(png ? { attachments: [{ filename: "location-map.png", content: toBase64(png), content_type: "image/png", content_id: "locmap" }] } : {}),
+      }),
     });
     if (!r.ok) { const t = await r.text(); console.error("alert email failed", r.status, t); return json({ error: "Email failed", status: r.status, details: t }, 502); }
     return json({ ok: true, sent: true });
