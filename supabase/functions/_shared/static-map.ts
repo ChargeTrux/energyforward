@@ -1,10 +1,11 @@
 // Builds a small PNG map (OpenStreetMap tiles) with a pin, for embedding inline in emails.
-import { Image } from "npm:imagescript@1.3.0";
+// Loaded lazily (pure WASM build) so a map failure can never block the alert email.
 
 const W = 520, H = 220, Z = 11, T = 256;
 
 export async function staticMapPng(lat: number, lon: number): Promise<Uint8Array | null> {
   try {
+    const { Image } = await import("https://deno.land/x/imagescript@1.3.0/mod.ts");
     const n = 2 ** Z;
     const px = ((lon + 180) / 360) * n * T;
     const r = (lat * Math.PI) / 180;
