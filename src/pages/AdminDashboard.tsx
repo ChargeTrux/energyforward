@@ -218,6 +218,8 @@ export default function AdminDashboard() {
   const [recentLoginCount, setRecentLoginCount] = useState(0);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
+  const [useOwnPassword, setUseOwnPassword] = useState(false);
+  const [ownPassword, setOwnPassword] = useState("");
   const [inviteInvestor, setInviteInvestor] = useState(false);
   const [inviteCustomer, setInviteCustomer] = useState(false);
   const [inviteVideo, setInviteVideo] = useState(false);
@@ -744,6 +746,10 @@ export default function AdminDashboard() {
     sendEmail = true,
   ) => {
     if (!email) return;
+    if (useOwnPassword && ownPassword.trim().length < 8) {
+      toast({ title: "Password too short", description: "Your chosen password needs at least 8 characters.", variant: "destructive" });
+      return;
+    }
     // Picking videos / 3D pages grants that section; investor portal stays independent.
     rolesArr = [...rolesArr];
     if (selectedVideoIds.length && rolesArr.includes("investor") && !rolesArr.includes("video")) rolesArr.push("video");
@@ -752,6 +758,7 @@ export default function AdminDashboard() {
       send_email: sendEmail,
       email,
       full_name: fullName,
+      ...(useOwnPassword ? { custom_password: ownPassword.trim() } : {}),
       roles: rolesArr,
       app_origin: window.location.origin,
       replace_access: true,
@@ -767,6 +774,8 @@ export default function AdminDashboard() {
         : { title: "User created — no email sent", description: `${email} (${list}). Use "Send invite" in the Access manager when ready.` });
       setInviteEmail("");
       setInviteName("");
+      setUseOwnPassword(false);
+      setOwnPassword("");
       setInviteInvestor(false);
       setInviteCustomer(false);
       setInviteVideo(false);
@@ -1595,6 +1604,19 @@ export default function AdminDashboard() {
                       >
                         Send invite
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const pwd = window.prompt(`Password to send to ${u.email} (at least 8 characters). They won't be asked to change it.`);
+                          if (pwd === null) return;
+                          if (pwd.trim().length < 8) { toast({ title: "Password too short", variant: "destructive" }); return; }
+                          if (!window.confirm(`Email ${u.email} a welcome invite with the password you typed?`)) return;
+                          callAdmin("send_welcome", { user_ids: [u.user_id], app_origin: window.location.origin, custom_password: pwd.trim() });
+                        }}
+                      >
+                        Send invite with my password
+                      </Button>
                       <Button size="sm" variant="outline" onClick={() => callAdmin("send_reset", { email: u.email })}>
                         Send reset password link
                       </Button>
@@ -1759,6 +1781,23 @@ export default function AdminDashboard() {
                 placeholder="user@example.com"
               />
             </div>
+            <div className="md:col-span-12 flex flex-wrap items-center gap-3 text-sm">
+              <label className="flex items-center gap-2 font-semibold">
+                <input type="checkbox" checked={useOwnPassword} onChange={(e) => setUseOwnPassword(e.target.checked)} />
+                Use my own password
+              </label>
+              {useOwnPassword && (
+                <Input
+                  className="max-w-xs"
+                  value={ownPassword}
+                  onChange={(e) => setOwnPassword(e.target.value)}
+                  placeholder="At least 8 characters"
+                  autoComplete="off"
+                  aria-label="Password to send"
+                />
+              )}
+              {useOwnPassword && <span className="text-xs text-muted-foreground">Sent in the welcome email; they won't be asked to change it.</span>}
+            </div>
             <div className="md:col-span-12 ef-access-permissions text-sm">
               <div className="flex flex-wrap gap-6 pb-3 mb-3 border-b">
                 <label className="flex items-center gap-2 font-semibold">
@@ -1865,8 +1904,8 @@ export default function AdminDashboard() {
             </div>
           </form>
           <p className="text-xs text-muted-foreground mt-3">
-            A temporary password will be generated. The user will be required to
-            change it on first sign-in.
+            A temporary password will be generated and the user will be required to
+            change it on first sign-in, unless you tick "Use my own password".
           </p>
         </CardContent>
         </TabsContent>
