@@ -158,6 +158,16 @@ Deno.serve(async (req) => {
       if (error) return json({ error: error.message }, 400);
       return json({ ok: true });
     }
+    if (action === "delete") {
+      const { id } = body;
+      if (typeof id !== "string") return json({ error: "Missing link" }, 400);
+      // Keep map history but detach it; remove open counts; then the link itself.
+      await db.from("activity_locations").update({ share_link_id: null }).eq("share_link_id", id);
+      await db.from("share_link_views").delete().eq("link_id", id);
+      const { error } = await db.from("share_links").delete().eq("id", id);
+      if (error) return json({ error: error.message }, 400);
+      return json({ ok: true });
+    }
     return json({ error: "Unknown action" }, 400);
   } catch (e) {
     console.error("share-link error", e);
