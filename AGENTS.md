@@ -10,3 +10,4 @@
 - Documents and Project 3D Demo files may be preloaded in the browser and cached briefly in their Edge Functions, but authorization is rechecked on every request and no content is sent before checks pass, because speed must never weaken access control.
 - Public share links (`/share/:slug`) go only through the `share-link` Edge Function: password checked server-side, short-lived signed tickets, expiry and on/off rechecked on every content request, because links work without accounts and Drive ids must stay hidden.
 - Activity alert emails are sent only by `notify-activity` to the address stored in `activity_watchers` for that person, deduped server-side, because alerts must never reach admins or anyone not chosen.
+- Activity map: activity_locations rows written only by notify-activity/share-link Edge Functions, admin-read only, because IP/location is sensitive.
