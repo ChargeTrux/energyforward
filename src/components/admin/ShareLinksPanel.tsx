@@ -140,6 +140,11 @@ export function ShareLinksPanel({ videos, pages }: { videos: Item[]; pages: Item
                     void update(l.id, { expires_at: d ? d.toISOString() : null });
                   }}>Change expiry</Button>
                   <Button size="sm" variant={l.active ? "destructive" : "default"} onClick={() => update(l.id, { active: !l.active })}>{l.active ? "Turn off" : "Turn on"}</Button>
+                  <Button size="sm" variant="destructive" onClick={async () => {
+                    if (!window.confirm(`Delete this link to "${l.item_name}"? Anyone using it will no longer be able to open it. This can't be undone.`)) return;
+                    try { await call("delete", { id: l.id }); await load(); toast({ title: "Link deleted" }); }
+                    catch (e) { toast({ title: "Could not delete", description: (e as Error).message, variant: "destructive" }); }
+                  }}>Delete</Button>
                 </div>
               </div>
             );
