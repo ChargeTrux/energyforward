@@ -246,6 +246,8 @@ export default function AdminDashboard() {
   const [selectedVideoIds, setSelectedVideoIds] = useState<string[]>([]);
   const [videoDescriptionDrafts, setVideoDescriptionDrafts] = useState<Record<string, string>>({});
   const [savingVideoId, setSavingVideoId] = useState<string | null>(null);
+  const [projectDescriptionDrafts, setProjectDescriptionDrafts] = useState<Record<string, string>>({});
+  const [savingProjectId, setSavingProjectId] = useState<string | null>(null);
   const [profileDrafts, setProfileDrafts] = useState<
     Record<string, { name: string; description: string; drive_url: string }>
   >({});
@@ -1026,6 +1028,7 @@ export default function AdminDashboard() {
     const body = await res.json().catch(() => ({}));
     if (res.ok) {
       setProjectCatalog(body.pages ?? []);
+      setProjectDescriptionDrafts(Object.fromEntries((body.pages ?? []).map((pg: { id: string; description?: string }) => [pg.id, pg.description ?? ""])));
       setProjectCatalogMsg((body.pages ?? []).length ? "" : "No HTML pages in the Project Run folder yet.");
     } else setProjectCatalogMsg(body.error ?? "Could not load Project Run pages.");
     const { data: acc } = await supabase.from("project_page_access").select("user_id, file_id");
@@ -1147,6 +1150,30 @@ export default function AdminDashboard() {
       title: body.already ? "Already optimized" : "Video optimized",
       description: body.already ? `${video.name} already starts playing fast.` : `${video.name} will now start playing much faster.`,
     });
+  };
+
+  const saveProjectDescription = async (pg: { id: string; name: string }) => {
+    setSavingProjectId(pg.id);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const res = await fetch(
+      `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/project-pages?action=save-description&file_id=${encodeURIComponent(pg.id)}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${sessionData.session?.access_token ?? ""}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ description: projectDescriptionDrafts[pg.id] ?? "" }),
+      },
+    );
+    const body = await res.json().catch(() => ({}));
+    setSavingProjectId(null);
+    if (!res.ok) {
+      toast({ title: "Description not saved", description: body.error ?? "Please try again.", variant: "destructive" });
+      return;
+    }
+    toast({ title: "Description saved", description: `Updated ${pg.name}.` });
   };
 
   const saveVideoDescription = async (video: VideoCatalogItem) => {
@@ -2175,7 +2202,7 @@ export default function AdminDashboard() {
           )}
         </CardContent>
       </Collapse>
-<Collapse nested title={<>Project Run — HTML pages</>}>
+<Collapse nested title={<>Project 3D Demo — descriptions</>}>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-3">
             HTML files in the "Project Run" Google Drive folder. Start a file name with a number (e.g. "1 - Overview.html") to set the order; the number isn't shown. Choose who can open each page in the Access manager.
@@ -2183,14 +2210,28 @@ export default function AdminDashboard() {
           {projectCatalog.length === 0 ? (
             <p className="text-sm text-muted-foreground">{projectCatalogMsg}</p>
           ) : (
-            <ul className="space-y-2 text-sm">
+            <div className="ef-video-description-grid">
               {projectCatalog.map((pg) => (
-                <li key={pg.id} className="flex flex-wrap items-center justify-between gap-2 rounded border p-3">
-                  <span className="font-medium">{pg.name}</span>
-                  <span className="text-muted-foreground">{projectAccess.filter((a) => a.file_id === pg.id).length} people</span>
-                </li>
+                <div key={pg.id} className="ef-video-description-editor">
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-sm font-semibold">{pg.name}</h3>
+                    <span className="text-xs text-muted-foreground">{projectAccess.filter((a) => a.file_id === pg.id).length} people</span>
+                  </div>
+                  <Textarea
+                    value={projectDescriptionDrafts[pg.id] ?? ""}
+                    onChange={(event) => setProjectDescriptionDrafts((current) => ({ ...current, [pg.id]: event.target.value }))}
+                    placeholder="Paste the text shown above this 3D demo"
+                    className="mt-3 min-h-[108px] resize-y"
+                    maxLength={12000}
+                  />
+                  <div className="ef-video-description-actions mt-3">
+                    <Button type="button" size="sm" className="ef-cta" disabled={savingProjectId === pg.id} onClick={() => saveProjectDescription(pg)}>
+                      {savingProjectId === pg.id ? "Saving…" : "Save description"}
+                    </Button>
+                  </div>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
         </CardContent>
       </Collapse></div></Collapse>
