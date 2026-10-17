@@ -8,7 +8,7 @@ import { Link, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-type Page = { id: string; name: string };
+type Page = { id: string; name: string; description?: string };
 
 const teal = "#0A2A2E";
 const amber = "#E8B14A";
@@ -48,21 +48,66 @@ async function callFn(qs: string) {
 
 const navLink = { color: pearl, opacity: 0.75, textDecoration: "none" };
 
+function ProjectSection({ page, idx, userId }: { page: Page; idx: number; userId: string }) {
+  const [html, setHtml] = useState<string | null>(htmlCache.get(page.id) ?? null);
+  const [error, setError] = useState<string | null>(null);
+  const [maxed, setMaxed] = useState(false);
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (html) return;
+    fetchPage(page.id).then(setHtml).catch((e) => setError(e instanceof Error ? e.message : "Could not open this page."));
+  }, [page.id, html]);
+  // Record a view once the section is actually on screen.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        obs.disconnect();
+        notifyActivity("project", page.id, page.name);
+        void supabase.from("content_views").insert({ user_id: userId, content_type: "project", item_id: page.id, item_name: page.name });
+      }
+    }, { threshold: 0.3 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [page.id, page.name, userId]);
+  useEffect(() => {
+    if (!maxed) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMaxed(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [maxed]);
+  const btn = { fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase" as const, background: amber, color: teal, border: "none", borderRadius: 999, cursor: "pointer", fontWeight: 700 };
+  return (
+    <section ref={ref} id={`project-${page.id}`} style={{ scrollMarginTop: 24, maxWidth: 1100, margin: "0 auto 56px", textAlign: "center" }}>
+      <h2 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(18px,2vw,26px)", margin: "0 0 10px", lineHeight: 1.22, color: "rgba(238,234,226,0.94)" }}><span style={{ color: amber, marginRight: 10 }}>{idx + 1}.</span>{page.name}</h2>
+      {page.description && <p style={{ maxWidth: 760, margin: "0 auto 20px", fontSize: "clamp(14px,1.5vw,17px)", lineHeight: 1.65, color: "rgba(238,234,226,0.68)", whiteSpace: "pre-line" }}>{page.description}</p>}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+        <button type="button" onClick={() => setMaxed(true)} style={{ ...btn, padding: "6px 14px" }}>Maximize</button>
+      </div>
+      <div style={maxed
+        ? { position: "fixed", inset: 0, zIndex: 300, background: "#000", display: "flex", flexDirection: "column" }
+        : { position: "relative", width: "100%", height: "min(78vh, 760px)", background: "#061719", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(238,234,226,0.14)", boxShadow: "0 18px 48px rgba(0,0,0,0.24)", display: "flex", flexDirection: "column" }}>
+        {maxed && <button type="button" onClick={() => setMaxed(false)} style={{ ...btn, position: "absolute", top: 16, right: 16, zIndex: 301, padding: "10px 18px" }}>Exit ✕</button>}
+        {error ? <div style={{ margin: "auto", color: "#f4b5a3", fontSize: 14 }}>{error}</div>
+          : html !== null ? <ZoomFrame resetKey={page.id}><iframe title={page.name} srcDoc={html} sandbox="allow-scripts" style={{ flex: 1, width: "100%", height: "100%", border: "none", background: "#fff" }} /></ZoomFrame>
+          : <div style={{ margin: "auto", opacity: 0.7, fontSize: 14 }}>Loading {page.name}…</div>}
+      </div>
+    </section>
+  );
+}
+
 export default function ProjectRun() {
   const { user, loading: authLoading } = useAuth();
   const access = usePortalAccess();
-  const [roles, setRoles] = useState<Set<string>>(new Set());
-  const [pages, setPages] = useState<Page[]>([]);
-  const [active, setActive] = useState<Page | null>(null);
-  const [html, setHtml] = useState<string | null>(null);
+  const [pages, setPages] = useState<Page[]>(() => (cachedItems("project") ?? []) as Page[]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const reqRef = useRef(0);
+
+  useEffect(() => { document.title = "energyforward · project 3D demo"; }, []);
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("user_roles").select("role").eq("user_id", user.id)
-      .then(({ data }) => setRoles(new Set((data ?? []).map((r) => r.role as string))));
     (async () => {
       setLoading(true);
       try {
@@ -79,40 +124,11 @@ export default function ProjectRun() {
     })();
   }, [user]);
 
-  const open = async (p: Page) => {
-    setActive(p);
-    setError(null);
-    const id = ++reqRef.current;
-    if (user) { notifyActivity("project", p.id, p.name); void supabase.from("content_views").insert({ user_id: user.id, content_type: "project", item_id: p.id, item_name: p.name }); }
-    const hit = htmlCache.get(p.id);
-    if (hit) { setHtml(hit); return; }
-    setHtml(null);
-    try {
-      const text = await fetchPage(p.id);
-      if (id === reqRef.current) setHtml(text);
-    } catch (e) {
-      if (id === reqRef.current) setError(e instanceof Error ? e.message : "Could not open this page.");
-    }
-  };
-
-  // Start opening the last-known first page right away instead of waiting for the list.
-  useEffect(() => {
-    if (!user || active) return;
-    const want = new URLSearchParams(window.location.search).get("page");
-    const known = (cachedItems("project") ?? []) as Page[];
-    const target = known.find((p) => p.id === want) ?? (want ? { id: want, name: "Project 3D Demo" } : known[0]);
-    if (target) void open(target);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
+  // Jump to a requested page (?page=id) once the list is on screen.
   useEffect(() => {
     if (!pages.length) return;
     const want = new URLSearchParams(window.location.search).get("page");
-    const target = pages.find((p) => p.id === want) ?? (!active ? pages[0] : null);
-    if (target && target.id !== active?.id) void open(target);
-    // Preload the other pages in the background so switching is instant.
-    pages.forEach((p) => void fetchPage(p.id).catch(() => undefined));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (want && want !== pages[0].id) setTimeout(() => document.getElementById(`project-${want}`)?.scrollIntoView({ block: "start" }), 80);
   }, [pages]);
 
   if (authLoading) return <div className="min-h-screen grid place-items-center">Loading…</div>;
@@ -121,43 +137,27 @@ export default function ProjectRun() {
   if (!access.project) return <NoAccessScreen />;
 
   return (
-    <div onContextMenu={(e) => e.preventDefault()} style={{ minHeight: "100vh", background: teal, color: pearl, fontFamily: "'General Sans', Arial, sans-serif", display: "flex", flexDirection: "column" }}>
+    <div onContextMenu={(e) => e.preventDefault()} style={{ minHeight: "100vh", background: teal, color: pearl, fontFamily: "'General Sans', Arial, sans-serif" }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px clamp(16px,4vw,56px)", borderBottom: "1px solid rgba(238,234,226,0.12)", flexWrap: "wrap", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <Link to="/" style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: 18, color: pearl, textDecoration: "none" }}>
-            energyforward<span style={{ color: amber }}>.</span>
-          </Link>
-        </div>
+        <Link to="/" style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: 18, color: pearl, textDecoration: "none" }}>
+          energyforward<span style={{ color: amber }}>.</span>
+        </Link>
         <PortalNav current="project" />
       </header>
-
-      <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative" }}>
-        <PortalDrawer current="project" pinned>
-          <div>
-          {loading && !cachedItems("project")?.length && <div style={{ fontSize: 13, opacity: 0.7 }}>Loading…</div>}
-          {!loading && pages.length === 0 && !error && <div style={{ fontSize: 13, opacity: 0.7 }}>No pages have been shared with you yet.</div>}
-          {(loading ? (cachedItems("project") ?? []) as Page[] : pages).map((p) => (
-            <button key={p.id} type="button" data-drawer-close="" onClick={() => !loading && open(p)} style={{
-              display: "block", width: "100%", textAlign: "left", border: "none", borderTop: "1px solid rgba(238,234,226,0.10)",
-              background: active?.id === p.id ? "rgba(232,177,74,0.14)" : "transparent", color: pearl, padding: "6px 4px 6px 14px", cursor: "pointer", fontSize: 12, fontFamily: "inherit",
-            }}>
-              <span style={{ color: amber, marginRight: 8 }}>•</span>{p.name}
-            </button>
-          ))}
-          </div>
-        </PortalDrawer>
-        <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", minHeight: "70vh" }}>
-          {error && <div style={{ padding: 16, color: "#f4b5a3", fontSize: 14 }}>{error}</div>}
-          {html !== null ? (
-            <ZoomFrame resetKey={active?.id}><iframe title={active?.name ?? "Project 3D Demo"} srcDoc={html} sandbox="allow-scripts" style={{ flex: 1, width: "100%", height: "100%", border: "none", background: "#fff" }} /></ZoomFrame>
-          ) : active && !error ? (
-            <div style={{ margin: "auto", opacity: 0.7, fontSize: 14 }}>Loading {active.name}…</div>
-          ) : null}
-          <div style={{ padding: "10px 16px", fontSize: 11, opacity: 0.6, borderTop: "1px solid rgba(238,234,226,0.12)" }}>
-            Confidential — do not share.
-          </div>
-        </main>
-      </div>
+      <PortalDrawer current="project" pinned><div /></PortalDrawer>
+      <main style={{ maxWidth: 1180, margin: "0 auto", padding: "clamp(24px,4vw,44px) clamp(18px,5vw,64px) 80px" }}>
+        <div style={{ textAlign: "center", maxWidth: 820, margin: "0 auto 44px" }}>
+          <h1 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(26px,3.4vw,40px)", margin: "0 0 14px", color: pearl }}>Project 3D Demo</h1>
+          <p style={{ fontSize: "clamp(14px,1.5vw,17px)", lineHeight: 1.65, color: "rgba(238,234,226,0.75)", margin: 0 }}>
+            A 3D animated simulation of one 24-hour period of the EnergyForward loop, following energy from the solar project through the EnergyHub and EnergyPort to the customer's vehicles. A guided tour walks you through the full day in a few minutes, so you can see how the whole system fits together before reading anything else.
+          </p>
+        </div>
+        {loading && !pages.length && <p style={{ opacity: 0.7, textAlign: "center" }}>Loading your 3D demos…</p>}
+        {error && <p style={{ color: amber, textAlign: "center" }}>{error}</p>}
+        {!loading && !error && pages.length === 0 && <p style={{ opacity: 0.8, textAlign: "center" }}>No 3D demos have been shared with you yet.</p>}
+        {pages.map((p, idx) => <ProjectSection key={p.id} page={p} idx={idx} userId={user.id} />)}
+        <div style={{ paddingTop: 10, fontSize: 11, opacity: 0.6, textAlign: "center" }}>Confidential — do not share.</div>
+      </main>
     </div>
   );
 }
