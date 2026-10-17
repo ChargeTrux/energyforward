@@ -184,11 +184,18 @@ export function ActivityAlertToggle({ userId }: { userId: string }) {
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm">
       <label className="flex items-center gap-2 font-semibold">
-        <input type="checkbox" checked={enabled} onChange={(e) => void save(e.target.checked, email)} />
+        <input type="checkbox" checked={enabled} onChange={(e) => {
+          if (e.target.checked && !email.trim()) { setEnabled(true); toast({ title: "Now type the email address(es) to notify" }); return; }
+          if (!e.target.checked && !saved) { setEnabled(false); return; }
+          void save(e.target.checked, email);
+        }} />
         Email notification
       </label>
-      <Input className="h-8 min-w-[16rem] max-w-md" type="text" placeholder="a@x.com, b@y.com" value={email} onChange={(e) => setEmail(e.target.value)}
-        onBlur={() => { if (enabled && email.trim().toLowerCase() !== saved) void save(true, email); }} />
+      <div onClick={() => { if (!enabled) toast({ title: "Enable Email notification first", description: "Tick the Email notification box, then type the emails." }); }}>
+        <Input className="h-8 min-w-[16rem] max-w-md disabled:pointer-events-none" type="text" placeholder="a@x.com, b@y.com" value={email} disabled={!enabled}
+          onChange={(e) => setEmail(e.target.value)}
+          onBlur={() => { if (enabled && email.trim() && email.trim().toLowerCase() !== saved) void save(true, email); }} />
+      </div>
       <span className="text-xs text-muted-foreground">Sign-ins and each video, document or 3D page they open.</span>
     </div>
   );
