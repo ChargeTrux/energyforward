@@ -531,6 +531,30 @@ export type Database = {
         }
         Relationships: []
       }
+      project_page_descriptions: {
+        Row: {
+          created_at: string
+          description: string
+          file_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          file_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          file_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       share_link_views: {
         Row: {
           id: string
