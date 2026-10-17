@@ -19,7 +19,13 @@ function gateway(path: string, params: Record<string, string>) {
   });
 }
 
-type Page = { id: string; name: string; order: number };
+type Page = { id: string; name: string; order: number; description?: string };
+// deno-lint-ignore no-explicit-any
+async function withDescriptions(admin: any, pages: Page[]): Promise<Page[]> {
+  const { data } = await admin.from("project_page_descriptions").select("file_id, description");
+  const map = new Map((data ?? []).map((r: { file_id: string; description: string }) => [r.file_id, r.description]));
+  return pages.map((p) => ({ ...p, description: (map.get(p.id) as string | undefined) ?? "" }));
+}
 // Short-lived content cache (authorization is still checked on every request).
 const htmlCache = new Map<string, { html: string; exp: number }>();
 
@@ -76,14 +82,25 @@ Deno.serve(async (req) => {
     const isAdmin = roles.has("admin");
     const granted = new Set((grants ?? []).map((g: { file_id: string }) => g.file_id));
 
+    if (action === "save-description") {
+      if (!isAdmin) return json({ error: "Admins only" }, 403);
+      const body = await req.json().catch(() => ({}));
+      const description = typeof body.description === "string" ? body.description.replace(/\r/g, "").trim() : "";
+      if (!fileId || fileId.length > 200 || description.length > 12000) return json({ error: "Invalid description" }, 400);
+      const { error } = await admin.from("project_page_descriptions").upsert(
+        { file_id: fileId, description, updated_by: user.id }, { onConflict: "file_id" });
+      if (error) return json({ error: error.message }, 400);
+      return json({ ok: true });
+    }
+
     if (action === "catalog") {
       if (!isAdmin) return json({ error: "Admins only" }, 403);
-      return json({ pages: await listPages() });
+      return json({ pages: await withDescriptions(admin, await listPages()) });
     }
 
     if (action === "mine") {
       if (!isAdmin && !roles.has("project")) return json({ pages: [] });
-      const pages = await listPages();
+      const pages = await withDescriptions(admin, await listPages());
       return json({ pages: isAdmin ? pages : pages.filter((p) => granted.has(p.id)) });
     }
 
