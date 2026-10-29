@@ -1,7 +1,7 @@
 # Roadmap
 
 - [x] Diagnose admin preview rejection on the live website: it still serves the old portal-only page allowlist; redeploy admin-aware preview services and request publication of the pending frontend update (3 policy tests passed).
-- [ ] Confirm the new admin-preview update reaches energyforward.com after deployment.
+- [x] Confirm the new admin-preview update reaches energyforward.com after deployment: live bundle index-Bm2CutXs.js includes the Admin page button and server-verified is_admin page gate; real-account checks remain blocked by external authentication.
 - [x] Include the complete read-only admin page for a server-validated target admin; 3 policy tests and 5 authorization tests passed, and simulated browser checks confirmed all sections, ordinary-user denial, and no writes/emails. Real-account testing remains blocked by external authentication.
 - [x] Check publication blockers and request publication of pending View as user changes for all admins (scheduled for energyforward.com; fresh scan has no critical findings, and newsletter SELECT is confirmed admin-only).
 - [x] Confirm energyforward.com serves the published View as user code (live website assets checked after publishing).
