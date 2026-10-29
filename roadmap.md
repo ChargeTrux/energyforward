@@ -1,7 +1,7 @@
 # Roadmap
 
 - [x] Restrict newsletter email visibility to admins and verify access rules (SQL checks passed; rescan removed the email-read exposure).
-- [ ] Request publishing of the admin share-link changes.
+- [x] Request publishing of the admin share-link changes (scheduled for energyforward.com; completion not yet verified).
 
 - [x] Make password and personal share links directly visible to all admins; show loading errors rather than an empty list (both admin role checks and existing link visibility verified; build clean).
 - [ ] Verify shared-link controls while signed in as the second admin (blocked: authenticated end-to-end checks unavailable for external Supabase).
