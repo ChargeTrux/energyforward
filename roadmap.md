@@ -1,5 +1,6 @@
 # Roadmap
 
+- [x] Include the complete read-only admin page for a server-validated target admin; 3 policy tests and 5 authorization tests passed, and simulated browser checks confirmed all sections, ordinary-user denial, and no writes/emails. Real-account testing remains blocked by external authentication.
 - [x] Check publication blockers and request publication of pending View as user changes for all admins (scheduled for energyforward.com; fresh scan has no critical findings, and newsletter SELECT is confirmed admin-only).
 - [x] Confirm energyforward.com serves the published View as user code (live website assets checked after publishing).
 - [ ] Exercise View as user with a real admin account (blocked: authenticated checks unavailable for external Supabase).

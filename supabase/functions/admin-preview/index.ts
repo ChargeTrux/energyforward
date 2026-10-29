@@ -15,7 +15,9 @@ Deno.serve(async (req) => {
     const target = await resolvePreviewUser(db, data.user.id, body.user_id, "info", ["info"]);
     const { data: profile, error: profileError } = await db.from("profiles").select("user_id,full_name,email,is_active").eq("user_id", target.id).single();
     if (profileError) return json({ error: "Could not load user" }, 503);
-    return json({ profile });
+    const { data: targetIsAdmin, error: roleError } = await db.rpc("has_role", { _user_id: target.id, _role: "admin" });
+    if (roleError) return json({ error: "Could not verify admin access" }, 503);
+    return json({ profile: { ...profile, is_admin: targetIsAdmin === true } });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : "Could not start preview" }, e instanceof PreviewError ? e.status : 500);
   }
