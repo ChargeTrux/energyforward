@@ -2028,6 +2028,12 @@ export default function AdminDashboard() {
         </Tabs>
       </Collapse>
 
+      <Collapse defaultOpen title={<><ExternalLink className="w-5 h-5" /> Share links — password &amp; personal</>}>
+        <CardContent>
+          <ShareLinksPanel videos={videoCatalog} pages={projectCatalog} />
+        </CardContent>
+      </Collapse>
+
 <Collapse title={<><FolderOpen className="w-5 h-5" /> Material config</>}><div className="px-6 pb-6 space-y-4"><Collapse nested title={<>Documents — profile folders
 </>}>
         <CardContent>
@@ -2148,12 +2154,6 @@ export default function AdminDashboard() {
               <p className="text-sm text-muted-foreground">No investor accounts yet.</p>
             )}
           </div>
-        </CardContent>
-      </Collapse>
-
-<Collapse nested title={<>Share links (password, no sign-in)</>}>
-        <CardContent>
-          <ShareLinksPanel videos={videoCatalog} pages={projectCatalog} />
         </CardContent>
       </Collapse>
 

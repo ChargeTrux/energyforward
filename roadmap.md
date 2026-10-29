@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Make password and personal share links directly visible to all admins; show loading errors rather than an empty list.
+
 - [ ] Use energyforward.com for all outgoing portal, invitation, and reset links; activate only after its domain connection is repaired (blocked: domain currently points elsewhere).
 
 - [x] Reduce protected video startup round trips without changing quality or text or sending emails; mocked range/access tests passed, deployed preflight caching and signed-out rejection verified. Real signed-in playback remains blocked by external authentication (see below).
