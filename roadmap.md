@@ -1,5 +1,8 @@
 # Roadmap
 
+- [x] Make password and personal share links directly visible to all admins; show loading errors rather than an empty list (both admin role checks and existing link visibility verified; build clean).
+- [ ] Verify shared-link controls while signed in as the second admin (blocked: authenticated end-to-end checks unavailable for external Supabase).
+
 - [ ] Use energyforward.com for all outgoing portal, invitation, and reset links; activate only after its domain connection is repaired (blocked: domain currently points elsewhere).
 
 - [x] Reduce protected video startup round trips without changing quality or text or sending emails; mocked range/access tests passed, deployed preflight caching and signed-out rejection verified. Real signed-in playback remains blocked by external authentication (see below).

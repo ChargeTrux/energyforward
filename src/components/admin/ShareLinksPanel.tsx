@@ -38,17 +38,29 @@ export function ShareLinksPanel({ videos, pages }: { videos: Item[]; pages: Item
   const [expires, setExpires] = useState("");
   const [busy, setBusy] = useState(false);
   const [links, setLinks] = useState<LinkRow[]>([]);
+  const [loadingLinks, setLoadingLinks] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [opens, setOpens] = useState<Map<string, { count: number; last: string }>>(new Map());
 
   const load = useCallback(async () => {
-    const [{ data: l }, { data: v }] = await Promise.all([
+    setLoadingLinks(true);
+    setLoadError(null);
+    try {
+    const [{ data: l, error: linkError }, { data: v, error: viewError }] = await Promise.all([
       supabase.from("share_links").select("id,slug,item_type,item_name,active,expires_at,created_at,no_password,recipient_first_name,recipient_last_name,recipient_email,email_sent_at").order("created_at", { ascending: false }),
       supabase.from("share_link_views").select("link_id,viewed_at").order("viewed_at", { ascending: false }).limit(1000),
     ]);
+    if (linkError) throw linkError;
     setLinks((l ?? []) as LinkRow[]);
+    if (viewError) throw viewError;
     const m = new Map<string, { count: number; last: string }>();
     for (const r of v ?? []) { const e = m.get(r.link_id); if (e) e.count++; else m.set(r.link_id, { count: 1, last: r.viewed_at }); }
     setOpens(m);
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : (e as { message?: string }).message ?? "Could not load share links.");
+    } finally {
+      setLoadingLinks(false);
+    }
   }, []);
   useEffect(() => { void load(); }, [load]);
 
@@ -146,8 +158,13 @@ export function ShareLinksPanel({ videos, pages }: { videos: Item[]; pages: Item
       )}
 
       <div>
-        <h4 className="font-semibold mb-2">Share links</h4>
-        {links.length === 0 && <p className="text-muted-foreground">No links yet.</p>}
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <h4 className="font-semibold">Share links</h4>
+          <Button size="sm" variant="outline" disabled={loadingLinks} onClick={() => void load()}>Refresh</Button>
+        </div>
+        {loadingLinks && <p className="text-muted-foreground" role="status">Loading links…</p>}
+        {loadError && <p className="text-destructive" role="alert">Could not load share links: {loadError}</p>}
+        {!loadingLinks && !loadError && links.length === 0 && <p className="text-muted-foreground">No links yet.</p>}
         <div className="space-y-2">
           {links.map((l) => {
             const o = opens.get(l.id);
