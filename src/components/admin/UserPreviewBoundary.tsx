@@ -1,4 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 import { Eye, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,10 +12,12 @@ let verifiedProfile: Profile | null = null;
 export function usePortalUser() {
   const auth = useAuth();
   const profile = isUserPreview ? verifiedProfile : null;
-  return profile && auth.user ? { ...auth, isAdmin: false, user: { ...auth.user, id: profile.user_id, email: profile.email, user_metadata: { full_name: profile.full_name } } } : auth;
+  const user = useMemo(() => profile && auth.user ? { ...auth.user, id: profile.user_id, email: profile.email, user_metadata: { full_name: profile.full_name } } : auth.user, [profile, auth.user]);
+  return profile ? { ...auth, isAdmin: false, user } : auth;
 }
 
 export function UserPreviewBoundary({ children }: { children: ReactNode }) {
+  const location = useLocation();
   const { session, loading } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +52,7 @@ export function UserPreviewBoundary({ children }: { children: ReactNode }) {
     <div className="ef-preview-content">
       {error ? <div className="min-h-screen grid place-items-center text-destructive" role="alert">{error}</div>
         : !profile ? <div className="min-h-screen grid place-items-center">Loading user preview…</div>
-        : !allowed.includes(window.location.pathname) ? <div className="min-h-screen grid place-items-center">This page is unavailable in user preview.</div>
+        : !allowed.includes(location.pathname) ? <div className="min-h-screen grid place-items-center">This page is unavailable in user preview.</div>
         : children}
     </div>
   </>;
