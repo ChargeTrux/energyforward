@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronRight, FileText, Folder, FolderOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { niceName } from "@/lib/nice-name";
+import { previewUrl } from "@/lib/admin-preview";
 
 export type DocFile = { id: string; name: string; mimeType: string; size?: string };
 type Node = DocFile & { profileId: string; key: string };
@@ -14,7 +15,7 @@ const FN_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/
 
 async function callFn(path: string, init?: RequestInit) {
   const { data } = await supabase.auth.getSession();
-  return fetch(`${FN_URL}${path}`, {
+  return fetch(previewUrl(`${FN_URL}${path}`), {
     ...init,
     headers: {
       ...(init?.headers ?? {}),

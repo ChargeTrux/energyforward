@@ -1,6 +1,6 @@
 import { Link, Navigate } from "react-router-dom";
 import { PortalNav, NoAccessScreen, usePortalAccess } from "@/components/PortalNav";
-import { useAuth } from "@/hooks/useAuth";
+import { usePortalUser as useAuth } from "@/components/admin/UserPreviewBoundary";
 
 const teal = "#0A2A2E";
 const amber = "#E8B14A";

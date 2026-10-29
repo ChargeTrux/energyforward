@@ -2,7 +2,8 @@ import { notifyActivity } from "@/lib/notifyActivity";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { usePortalUser as useAuth } from "@/components/admin/UserPreviewBoundary";
+import { isUserPreview, previewUrl } from "@/lib/admin-preview";
 import { PortalNav } from "@/components/PortalNav";
 import { ZoomFrame } from "@/components/ZoomFrame";
 import { DocsTree, type DocFile } from "@/components/DocsTree";
@@ -74,7 +75,7 @@ export function preloadDocs(items: { profileId: string; id: string; name: string
 
 async function callFn(path: string) {
   const { data } = await supabase.auth.getSession();
-  return fetch(`${FN_URL}${path}`, {
+  return fetch(previewUrl(`${FN_URL}${path}`), {
     headers: {
       Authorization: `Bearer ${data.session?.access_token ?? ""}`,
       apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
@@ -149,7 +150,7 @@ export function InvestorDocuments() {
     setProgress(null);
     setNotice(null);
     revoke();
-    if (user) { notifyActivity("document", f.id, f.name); void supabase.from("content_views").insert({ user_id: user.id, content_type: "document", item_id: f.id, item_name: f.name }); }
+    if (user && !isUserPreview) { notifyActivity("document", f.id, f.name); void supabase.from("content_views").insert({ user_id: user.id, content_type: "document", item_id: f.id, item_name: f.name }); }
     setLoading(true);
     try {
       const qs = new URLSearchParams({ action: "file", profile_id: profileId, file_id: f.id });

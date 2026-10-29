@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { PortalDrawer } from "@/components/PortalDrawer";
 import { Link, Navigate } from "react-router-dom";
 import { PlayCircle } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { usePortalUser as useAuth } from "@/components/admin/UserPreviewBoundary";
+import { isUserPreview } from "@/lib/admin-preview";
 import { supabase } from "@/integrations/supabase/client";
 
 export function EFFrame({ src, title }: { src: string; title: string }) {
@@ -24,9 +25,9 @@ export function EFFrame({ src, title }: { src: string; title: string }) {
       title={title}
       style={{
         position: "fixed",
-        inset: 0,
+        inset: isUserPreview ? "64px 0 0" : 0,
         width: "100vw",
-        height: "100vh",
+        height: isUserPreview ? "calc(100vh - 64px)" : "100vh",
         border: 0,
         background: "#0A2A2E",
         zIndex: 40,

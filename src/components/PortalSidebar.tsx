@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalAccess } from "@/components/PortalNav";
 import { DocsTree, type DocFile } from "@/components/DocsTree";
+import { previewUrl } from "@/lib/admin-preview";
 
 type Item = { id: string; name: string };
 export type Section = "documents" | "videos" | "project";
@@ -13,7 +14,7 @@ const base = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/fu
 
 async function call(fn: string, qs: string) {
   const { data } = await supabase.auth.getSession();
-  const res = await fetch(`${base}/${fn}${qs}`, {
+  const res = await fetch(previewUrl(`${base}/${fn}${qs}`), {
     headers: {
       Authorization: `Bearer ${data.session?.access_token ?? ""}`,
       apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,

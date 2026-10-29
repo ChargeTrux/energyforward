@@ -1,5 +1,5 @@
 import { Navigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
+import { usePortalUser as useAuth } from "@/components/admin/UserPreviewBoundary";
 import { InvestorDocuments } from "@/components/InvestorDocuments";
 import { NoAccessScreen, usePortalAccess } from "@/components/PortalNav";
 

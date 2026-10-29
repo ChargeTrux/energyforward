@@ -5,7 +5,8 @@ import { cachedItems, rememberItems } from "@/components/PortalSidebar";
 import { Link, useSearchParams } from "react-router-dom";
 import { LockKeyhole, Play } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { usePortalUser as useAuth } from "@/components/admin/UserPreviewBoundary";
+import { isUserPreview, previewUrl } from "@/lib/admin-preview";
 
 type Video = { id: string; name: string; description: string };
 
@@ -16,7 +17,7 @@ const FN_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/
 
 async function callFn(qs: string) {
   const { data } = await supabase.auth.getSession();
-  return fetch(`${FN_URL}?${qs}`, {
+  return fetch(previewUrl(`${FN_URL}?${qs}`), {
     headers: {
       Authorization: `Bearer ${data.session?.access_token ?? ""}`,
       apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
@@ -153,7 +154,7 @@ function InvestorVideosInner() {
         {!loading && user && !error && videos.length === 0 && <p style={{ opacity: 0.8 }}>No videos have been shared with you yet. Please reach out through the Contact page to request access.</p>}
 
         {streamOk && videos.map((v, idx) => {
-          const vsrc = `${FN_URL}?action=stream&file_id=${encodeURIComponent(v.id)}`;
+          const vsrc = previewUrl(`${FN_URL}?action=stream&file_id=${encodeURIComponent(v.id)}`);
           const isMax = maxedId === v.id;
           return (
           <section key={v.id} id={`video-${v.id}`} style={{ scrollMarginTop: 24, maxWidth: 860, margin: "0 auto 56px", textAlign: "center" }}>
@@ -170,7 +171,7 @@ function InvestorVideosInner() {
                 onPlay={() => {
                   setActive(v);
                   videoEls.current.forEach((el, id) => { if (id !== v.id && !el.paused) el.pause(); });
-                  if (!user) return;
+                  if (!user || isUserPreview) return;
                   const entry = { id: null as string | null, max: 0 };
                   watches.current.set(v.id, entry);
                   (notifyActivity("video", v.id, v.name), supabase.from("content_views").insert({ user_id: user.id, content_type: "video", item_id: v.id, item_name: v.name })).select("id").single()
