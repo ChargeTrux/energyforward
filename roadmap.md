@@ -1,5 +1,9 @@
 # Roadmap
 
+- [ ] Add View as user for every admin with an isolated, read-only preview and Exit preview.
+- [ ] Enforce target-user material grants on the server and suppress preview activity/emails.
+- [ ] Run preview authorization tests and verify available browser checks.
+
 - [x] Restrict newsletter email visibility to admins and verify access rules (SQL checks passed; rescan removed the email-read exposure).
 - [x] Request publishing of the admin share-link changes (scheduled for energyforward.com; completion not yet verified).
 
