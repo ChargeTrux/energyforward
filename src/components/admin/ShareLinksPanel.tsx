@@ -8,7 +8,7 @@ import { DocsTree } from "@/components/DocsTree";
 
 type Item = { id: string; name: string };
 type Kind = "project" | "video" | "document";
-type LinkRow = { id: string; slug: string; item_type: Kind; item_name: string; active: boolean; expires_at: string | null; created_at: string };
+type LinkRow = { id: string; slug: string; item_type: Kind; item_name: string; active: boolean; expires_at: string | null; created_at: string; no_password: boolean; recipient_first_name: string | null; recipient_last_name: string | null; recipient_email: string | null; email_sent_at: string | null };
 
 const FN = "share-link";
 const SITE = "https://energyforward.com";
@@ -31,6 +31,10 @@ export function ShareLinksPanel({ videos, pages }: { videos: Item[]; pages: Item
   const [kind, setKind] = useState<Kind>("video");
   const [item, setItem] = useState<(Item & { profileId?: string }) | null>(null);
   const [password, setPassword] = useState("");
+  const [personal, setPersonal] = useState(false);
+  const [first, setFirst] = useState("");
+  const [last, setLast] = useState("");
+  const [email, setEmail] = useState("");
   const [expires, setExpires] = useState("");
   const [busy, setBusy] = useState(false);
   const [links, setLinks] = useState<LinkRow[]>([]);
@@ -38,7 +42,7 @@ export function ShareLinksPanel({ videos, pages }: { videos: Item[]; pages: Item
 
   const load = useCallback(async () => {
     const [{ data: l }, { data: v }] = await Promise.all([
-      supabase.from("share_links").select("id,slug,item_type,item_name,active,expires_at,created_at").order("created_at", { ascending: false }),
+      supabase.from("share_links").select("id,slug,item_type,item_name,active,expires_at,created_at,no_password,recipient_first_name,recipient_last_name,recipient_email,email_sent_at").order("created_at", { ascending: false }),
       supabase.from("share_link_views").select("link_id,viewed_at").order("viewed_at", { ascending: false }).limit(1000),
     ]);
     setLinks((l ?? []) as LinkRow[]);
@@ -50,20 +54,32 @@ export function ShareLinksPanel({ videos, pages }: { videos: Item[]; pages: Item
 
   const copy = (slug: string) => { void navigator.clipboard.writeText(linkUrl(slug)); toast({ title: "Link copied", description: linkUrl(slug) }); };
 
-  const create = async () => {
+  const create = async (send = false) => {
     if (!item) { toast({ title: "Pick an item first", variant: "destructive" }); return; }
-    if (password.trim().length < 6) { toast({ title: "Password needs at least 6 characters", variant: "destructive" }); return; }
+    if (personal) {
+      if (!first.trim()) { toast({ title: "Enter a first name", variant: "destructive" }); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { toast({ title: "Enter a valid email address", variant: "destructive" }); return; }
+    } else if (password.trim().length < 6) { toast({ title: "Password needs at least 6 characters", variant: "destructive" }); return; }
     setBusy(true);
     try {
-      const r = await call("create", {
-        item_type: kind, item_id: item.id, item_name: item.name, profile_id: item.profileId,
-        password: password.trim(), expires_at: expires ? new Date(expires).toISOString() : null,
-      });
+      const r = await call("create", personal
+        ? { item_type: kind, item_id: item.id, item_name: item.name, profile_id: item.profileId, no_password: true, first_name: first.trim(), last_name: last.trim(), email: email.trim() }
+        : { item_type: kind, item_id: item.id, item_name: item.name, profile_id: item.profileId, password: password.trim(), expires_at: expires ? new Date(expires).toISOString() : null });
       copy(r.slug);
-      setPassword(""); setExpires(""); setItem(null);
+      if (send) {
+        try { await call("send_email", { id: r.id }); toast({ title: "Email sent", description: `Sent to ${email.trim()}` }); }
+        catch (e) { toast({ title: "Link created, but the email failed", description: (e as Error).message, variant: "destructive" }); }
+      }
+      setPassword(""); setExpires(""); setItem(null); setFirst(""); setLast(""); setEmail("");
       await load();
     } catch (e) { toast({ title: "Could not create link", description: (e as Error).message, variant: "destructive" }); }
     setBusy(false);
+  };
+
+  const sendEmail = async (l: LinkRow) => {
+    if (!window.confirm(`Send the email with this link to ${l.recipient_email}?`)) return;
+    try { await call("send_email", { id: l.id }); await load(); toast({ title: "Email sent", description: `Sent to ${l.recipient_email}` }); }
+    catch (e) { toast({ title: "Could not send", description: (e as Error).message, variant: "destructive" }); }
   };
 
   const update = async (id: string, patch: object) => {
@@ -77,7 +93,7 @@ export function ShareLinksPanel({ videos, pages }: { videos: Item[]; pages: Item
   return (
     <div className="space-y-4 text-sm">
       <p className="text-muted-foreground">
-        Make a link to one video, document or 3D page. Anyone with the link and password can open it without an account — you send both yourself. No email is sent.
+        Make a link to one video, document or 3D page. Anyone with the link and password can open it without an account — you send both yourself. No email is sent. Or make a personal link for one person (no password, expires in 2 weeks) and email it to them.
       </p>
       <div className="flex flex-wrap gap-4">
         {(["project", "video", "document"] as Kind[]).map((k) => (
@@ -103,6 +119,19 @@ export function ShareLinksPanel({ videos, pages }: { videos: Item[]; pages: Item
         </div>
       )}
       <p>Selected: <strong>{item ? item.name : "nothing yet"}</strong></p>
+      <div className="flex flex-wrap gap-4">
+        <label className="flex items-center gap-2 font-semibold"><input type="radio" name="share-mode" checked={!personal} onChange={() => setPersonal(false)} />With password</label>
+        <label className="flex items-center gap-2 font-semibold"><input type="radio" name="share-mode" checked={personal} onChange={() => setPersonal(true)} />For a person (no password, expires in 2 weeks)</label>
+      </div>
+      {personal ? (
+        <div className="flex flex-wrap items-end gap-3">
+          <div><Label htmlFor="share-first">First name</Label><Input id="share-first" value={first} onChange={(e) => setFirst(e.target.value)} maxLength={100} /></div>
+          <div><Label htmlFor="share-last">Last name</Label><Input id="share-last" value={last} onChange={(e) => setLast(e.target.value)} maxLength={100} /></div>
+          <div><Label htmlFor="share-email">Email</Label><Input id="share-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={255} /></div>
+          <Button type="button" variant="outline" onClick={() => create(false)} disabled={busy}>{busy ? "Working…" : "Create link"}</Button>
+          <Button type="button" onClick={() => create(true)} disabled={busy}>{busy ? "Working…" : "Create link & send email"}</Button>
+        </div>
+      ) : (
       <div className="flex flex-wrap items-end gap-3">
         <div>
           <Label htmlFor="share-pw">Password</Label>
@@ -112,8 +141,9 @@ export function ShareLinksPanel({ videos, pages }: { videos: Item[]; pages: Item
           <Label htmlFor="share-exp">Expires (optional)</Label>
           <Input id="share-exp" type="datetime-local" value={expires} onChange={(e) => setExpires(e.target.value)} />
         </div>
-        <Button type="button" onClick={create} disabled={busy}>{busy ? "Creating…" : "Create link"}</Button>
+        <Button type="button" onClick={() => create(false)} disabled={busy}>{busy ? "Creating…" : "Create link"}</Button>
       </div>
+      )}
 
       <div>
         <h4 className="font-semibold mb-2">Share links</h4>
@@ -125,13 +155,15 @@ export function ShareLinksPanel({ videos, pages }: { videos: Item[]; pages: Item
               <div key={l.id} className="rounded border p-2 flex flex-wrap items-center gap-2 justify-between">
                 <div className="min-w-0">
                   <div className="font-semibold break-words">{KIND_LABEL[l.item_type]}: {l.item_name}</div>
+                  {l.no_password && <div className="text-xs break-all">For <strong>{[l.recipient_first_name, l.recipient_last_name].filter(Boolean).join(" ")}</strong> ({l.recipient_email}) · no password · {l.email_sent_at ? `email sent ${new Date(l.email_sent_at).toLocaleString()}` : "email not sent"}</div>}
                   <div className="text-xs text-muted-foreground break-all">
                     {linkUrl(l.slug)} · {status(l)} · {l.expires_at ? `expires ${new Date(l.expires_at).toLocaleString()}` : "no expiry"} · opened {o?.count ?? 0}×{o ? ` (last ${new Date(o.last).toLocaleString()})` : ""}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" variant="outline" onClick={() => copy(l.slug)}>Copy link</Button>
-                  <Button size="sm" variant="outline" onClick={() => { const p = window.prompt("New password (at least 6 characters)"); if (p) void update(l.id, { password: p }); }}>Change password</Button>
+                  {l.no_password && <Button size="sm" variant="outline" onClick={() => sendEmail(l)}>{l.email_sent_at ? "Resend email" : "Send email"}</Button>}
+                  {!l.no_password && <Button size="sm" variant="outline" onClick={() => { const p = window.prompt("New password (at least 6 characters)"); if (p) void update(l.id, { password: p }); }}>Change password</Button>}
                   <Button size="sm" variant="outline" onClick={() => {
                     const v = window.prompt("New expiration (YYYY-MM-DD HH:MM), or leave empty for no expiry", l.expires_at ? new Date(l.expires_at).toISOString().slice(0, 16).replace("T", " ") : "");
                     if (v === null) return;
