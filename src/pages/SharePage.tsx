@@ -23,7 +23,7 @@ export default function SharePage() {
 
   useEffect(() => {
     fetch(`${base}?action=info`, { method: "POST", headers, body: JSON.stringify({ slug }) })
-      .then(async (r) => { const b = await r.json(); if (r.ok) setInfo(b); else setError(b.error ?? "This link is not available."); })
+      .then(async (r) => { const b = await r.json(); if (r.ok) { setInfo(b); if (b.open && b.ticket) setOpen(b); } else setError(b.error ?? "This link is not available."); })
       .catch(() => setError("Could not reach the server."));
   }, [slug]);
 

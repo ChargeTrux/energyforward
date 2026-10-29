@@ -1,6 +1,10 @@
 import { corsHeaders as baseCors } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { lookupRequest } from "../_shared/geo.ts";
+import { shell } from "../_shared/branded-emails.ts";
+const esc = (x: string) => x.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const KIND_LABEL: Record<string, string> = { project: "Project 3D Demo", video: "Video", document: "Document" };
 
 // Password-protected links to exactly one item. No account needed.
 // Drive ids never reach the browser; access is rechecked on every request.
@@ -72,7 +76,7 @@ const tagOf = (hash: string) => hash.slice(-10);
 const slugify = () => b64u(crypto.getRandomValues(new Uint8Array(9)));
 const isLive = (l: { active: boolean; expires_at: string | null }) => l.active && (!l.expires_at || new Date(l.expires_at).getTime() > Date.now());
 
-type Link = { id: string; slug: string; item_type: string; item_id: string; item_name: string; password_hash: string; active: boolean; expires_at: string | null };
+type Link = { id: string; slug: string; item_type: string; item_id: string; item_name: string; password_hash: string; active: boolean; expires_at: string | null; no_password?: boolean; recipient_first_name?: string | null; recipient_last_name?: string | null; recipient_email?: string | null };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -111,7 +115,16 @@ Deno.serve(async (req) => {
       const slug = typeof body.slug === "string" ? body.slug.slice(0, 40) : "";
       const { data: link } = await db.from("share_links").select("*").eq("slug", slug).maybeSingle<Link>();
       if (!link || !isLive(link)) return json({ error: link?.expires_at && new Date(link.expires_at).getTime() <= Date.now() ? "This link has expired." : "This link is not available." }, 404);
-      if (action === "info") return json({ name: link.item_name, type: link.item_type });
+      if (action === "info" && !link.no_password) return json({ name: link.item_name, type: link.item_type });
+      if (link.no_password) {
+        // Personal link: no password; opening it is the unlock.
+        await db.from("share_link_views").insert({ link_id: link.id });
+        const g = await lookupRequest(req);
+        const nm = [link.recipient_first_name, link.recipient_last_name].filter(Boolean).join(" ");
+        const who = nm ? `${nm}${link.recipient_email ? ` (${link.recipient_email})` : ""} via link` : `Share link /share/${link.slug}`;
+        await db.from("activity_locations").insert({ share_link_id: link.id, who, kind: "share", item_name: link.item_name, ip: g.ip || null, place: g.place, isp: g.isp, device: g.device, lat: g.lat, lon: g.lon });
+        return json({ ticket: await makeTicket(link.id, tagOf(link.password_hash)), name: link.item_name, type: link.item_type, open: true, first_name: link.recipient_first_name ?? null });
+      }
       const pw = typeof body.password === "string" ? body.password.slice(0, 200) : "";
       if (!(await checkPassword(pw, link.password_hash))) {
         await new Promise((r) => setTimeout(r, 1200)); // slow down guessing
@@ -131,15 +144,25 @@ Deno.serve(async (req) => {
     if (!isAdmin) return json({ error: "Admins only" }, 403);
 
     if (action === "create") {
-      const { item_type, item_id, item_name, password, expires_at, profile_id } = body;
+      const { item_type, item_id, item_name, password, expires_at, profile_id, no_password, first_name, last_name, email } = body;
       if (!TYPES.has(item_type) || typeof item_id !== "string" || !item_id || item_id.length > 200) return json({ error: "Pick a file, video or page" }, 400);
-      if (typeof password !== "string" || password.trim().length < 6 || password.length > 100) return json({ error: "Password must be at least 6 characters" }, 400);
+      const personal = no_password === true;
+      if (personal) {
+        if (typeof first_name !== "string" || !first_name.trim() || first_name.length > 100) return json({ error: "Enter a first name" }, 400);
+        if (typeof last_name !== "string" || last_name.length > 100) return json({ error: "Last name is too long" }, 400);
+        if (typeof email !== "string" || !EMAIL_RE.test(email.trim()) || email.length > 255) return json({ error: "Enter a valid email address" }, 400);
+      } else if (typeof password !== "string" || password.trim().length < 6 || password.length > 100) return json({ error: "Password must be at least 6 characters" }, 400);
       const exp = expires_at ? new Date(expires_at) : null;
       if (exp && (isNaN(exp.getTime()) || exp.getTime() <= Date.now())) return json({ error: "Expiration must be in the future" }, 400);
       const { data, error } = await db.from("share_links").insert({
         slug: slugify(), item_type, item_id, item_name: String(item_name ?? "").slice(0, 300),
         profile_id: typeof profile_id === "string" ? profile_id : null,
-        password_hash: await hashPassword(password.trim()), expires_at: exp?.toISOString() ?? null, created_by: u.user.id,
+        password_hash: personal ? `nopw$${b64u(crypto.getRandomValues(new Uint8Array(16)))}` : await hashPassword(password.trim()),
+        expires_at: personal ? (exp ?? new Date(Date.now() + 14 * 86400_000)).toISOString() : exp?.toISOString() ?? null, created_by: u.user.id,
+        no_password: personal,
+        recipient_first_name: personal ? first_name.trim() : null,
+        recipient_last_name: personal ? last_name.trim() || null : null,
+        recipient_email: personal ? email.trim().toLowerCase() : null,
       }).select("id,slug").single();
       if (error) return json({ error: error.message }, 400);
       return json({ ok: true, ...data });
@@ -156,6 +179,35 @@ Deno.serve(async (req) => {
       if (typeof active === "boolean") patch.active = active;
       const { error } = await db.from("share_links").update(patch).eq("id", id);
       if (error) return json({ error: error.message }, 400);
+      return json({ ok: true });
+    }
+    if (action === "send_email") {
+      const { id } = body;
+      if (typeof id !== "string") return json({ error: "Missing link" }, 400);
+      const { data: link } = await db.from("share_links").select("*").eq("id", id).maybeSingle<Link>();
+      if (!link?.no_password || !link.recipient_email) return json({ error: "This link has no recipient" }, 400);
+      if (!isLive(link)) return json({ error: "This link is off or expired" }, 400);
+      const RESEND = Deno.env.get("RESEND_API_KEY");
+      if (!RESEND) return json({ error: "Email not configured" }, 500);
+      const url = `https://energyforward.com/share/${link.slug}`;
+      const until = new Date(link.expires_at!).toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", dateStyle: "long" });
+      const kindLabel = KIND_LABEL[link.item_type] ?? "Item";
+      const bodyHtml = `
+        <p style="margin:0 0 14px;">Dear ${esc(link.recipient_first_name ?? "")},</p>
+        <p style="margin:0 0 14px;">Welcome to EnergyForward. Energy Forward is building the delivery infrastructure for the next era of energy—connecting technology, operations and execution to move critical projects from ambition to reality.</p>
+        <p style="margin:0 0 14px;">We have shared the following with you:</p>
+        <p style="margin:0 0 18px;padding:12px 16px;border:1px solid #1f2a44;border-radius:8px;background:#0d1730;"><span style="color:#8a99b3;font-size:11px;text-transform:uppercase;letter-spacing:1px;font-weight:700;">${esc(kindLabel)}</span><br/><strong style="color:#f5a524;font-size:16px;">${esc(link.item_name)}</strong></p>
+        <p style="margin:0 0 18px;text-align:center;"><a href="${url}" style="display:inline-block;background:#f5a524;color:#0a1428;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:6px;">Open ${esc(kindLabel)}</a></p>
+        <p style="margin:0 0 6px;color:#8a99b3;font-size:12px;">Or copy this link: <a href="${url}" style="color:#f5a524;">${url}</a></p>
+        <p style="margin:14px 0 0;padding:10px 14px;border-left:3px solid #f5a524;color:#f4f1ea;font-size:13px;"><strong>This link expires in two weeks (on ${esc(until)}).</strong> It is personal to you — please do not share it with anyone.</p>`;
+      const html = shell({ preheader: `EnergyForward shared ${link.item_name} with you`, heading: "Shared with you", bodyHtml, securityNote: "Confidential — Do Not Share. This link was created for you only." });
+      const r = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND}` },
+        body: JSON.stringify({ from: "Energy Forward Investor Portal <investor@energyforward.com>", to: [link.recipient_email], subject: `EnergyForward: ${link.item_name}`, html }),
+      });
+      if (!r.ok) { const t = await r.text(); console.error("share email failed", r.status, t); return json({ error: "Email failed", status: r.status, details: t }, 502); }
+      await db.from("share_links").update({ email_sent_at: new Date().toISOString() }).eq("id", id);
       return json({ ok: true });
     }
     if (action === "delete") {
