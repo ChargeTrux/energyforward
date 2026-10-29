@@ -586,13 +586,18 @@ export type Database = {
           active: boolean
           created_at: string
           created_by: string | null
+          email_sent_at: string | null
           expires_at: string | null
           id: string
           item_id: string
           item_name: string
           item_type: string
+          no_password: boolean
           password_hash: string
           profile_id: string | null
+          recipient_email: string | null
+          recipient_first_name: string | null
+          recipient_last_name: string | null
           slug: string
           updated_at: string
         }
@@ -600,13 +605,18 @@ export type Database = {
           active?: boolean
           created_at?: string
           created_by?: string | null
+          email_sent_at?: string | null
           expires_at?: string | null
           id?: string
           item_id: string
           item_name?: string
           item_type: string
+          no_password?: boolean
           password_hash: string
           profile_id?: string | null
+          recipient_email?: string | null
+          recipient_first_name?: string | null
+          recipient_last_name?: string | null
           slug: string
           updated_at?: string
         }
@@ -614,13 +624,18 @@ export type Database = {
           active?: boolean
           created_at?: string
           created_by?: string | null
+          email_sent_at?: string | null
           expires_at?: string | null
           id?: string
           item_id?: string
           item_name?: string
           item_type?: string
+          no_password?: boolean
           password_hash?: string
           profile_id?: string | null
+          recipient_email?: string | null
+          recipient_first_name?: string | null
+          recipient_last_name?: string | null
           slug?: string
           updated_at?: string
         }
