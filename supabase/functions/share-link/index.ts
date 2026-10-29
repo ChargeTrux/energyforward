@@ -78,6 +78,30 @@ const isLive = (l: { active: boolean; expires_at: string | null }) => l.active &
 
 type Link = { id: string; slug: string; item_type: string; item_id: string; item_name: string; password_hash: string; active: boolean; expires_at: string | null; no_password?: boolean; recipient_first_name?: string | null; recipient_last_name?: string | null; recipient_email?: string | null };
 
+// Alert the admin who created a personal link when it is opened from a new IP.
+// deno-lint-ignore no-explicit-any
+async function alertNewIp(db: any, link: Link & { created_by?: string | null }, who: string, g: { ip: string; place: string | null; isp: string | null; device: string | null }, ipCount: number, earlierPlaces: string[]) {
+  const RESEND = Deno.env.get("RESEND_API_KEY");
+  if (!RESEND || !link.created_by) return;
+  const { data: p } = await db.from("profiles").select("email").eq("user_id", link.created_by).maybeSingle();
+  if (!p?.email) return;
+  const earlier = [...new Set(earlierPlaces)].slice(0, 5).map(esc).join(", ") || "unknown";
+  const bodyHtml = `
+    <p style="margin:0 0 14px;">The personal link for <strong>${esc(link.item_name)}</strong> was just opened from a <strong>new IP address</strong>. It has now been opened from ${ipCount} different IPs.</p>
+    <p style="margin:0 0 6px;"><strong>Person:</strong> ${esc(who)}</p>
+    <p style="margin:0 0 6px;"><strong>New IP:</strong> ${esc(g.ip)}${g.place ? ` — ${esc(g.place)}` : ""}</p>
+    ${g.isp ? `<p style="margin:0 0 6px;"><strong>Network:</strong> ${esc(g.isp)}</p>` : ""}
+    ${g.device ? `<p style="margin:0 0 6px;"><strong>Device:</strong> ${esc(g.device)}</p>` : ""}
+    <p style="margin:0 0 14px;"><strong>Earlier locations:</strong> ${earlier}</p>
+    <p style="margin:0;color:#8a99b3;font-size:12px;">A phone network or VPN can also show a new IP. If this looks wrong, turn the link off in the admin page.</p>`;
+  const html = shell({ preheader: `New IP opened ${link.item_name}`, heading: "Link opened from a new IP", bodyHtml, securityNote: "Sent only to the admin who created this link." });
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND}` },
+    body: JSON.stringify({ from: "Energy Forward Investor Portal <investor@energyforward.com>", to: [p.email], subject: `Alert: ${link.item_name} opened from a new IP`, html }),
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
@@ -115,14 +139,25 @@ Deno.serve(async (req) => {
       const slug = typeof body.slug === "string" ? body.slug.slice(0, 40) : "";
       const { data: link } = await db.from("share_links").select("*").eq("slug", slug).maybeSingle<Link>();
       if (!link || !isLive(link)) return json({ error: link?.expires_at && new Date(link.expires_at).getTime() <= Date.now() ? "This link has expired." : "This link is not available." }, 404);
-      if (action === "info" && !link.no_password) return json({ name: link.item_name, type: link.item_type });
+      if (action === "info") return json({ name: link.item_name, type: link.item_type, personal: !!link.no_password, first_name: link.no_password ? link.recipient_first_name ?? null : null });
       if (link.no_password) {
-        // Personal link: no password; opening it is the unlock.
+        // Personal link: the recipient must type the email it was created for.
+        const typed = typeof body.email === "string" ? body.email.trim().toLowerCase().slice(0, 200) : "";
+        if (!typed || typed !== (link.recipient_email ?? "").toLowerCase()) {
+          await new Promise((r) => setTimeout(r, 1200));
+          return json({ error: "That email doesn't match this link. Use the email this link was sent to." }, 403);
+        }
         await db.from("share_link_views").insert({ link_id: link.id });
         const g = await lookupRequest(req);
         const nm = [link.recipient_first_name, link.recipient_last_name].filter(Boolean).join(" ");
         const who = nm ? `${nm}${link.recipient_email ? ` (${link.recipient_email})` : ""} via link` : `Share link /share/${link.slug}`;
+        const { data: prior } = await db.from("activity_locations").select("ip, place").eq("share_link_id", link.id).not("ip", "is", null);
         await db.from("activity_locations").insert({ share_link_id: link.id, who, kind: "share", item_name: link.item_name, ip: g.ip || null, place: g.place, isp: g.isp, device: g.device, lat: g.lat, lon: g.lon });
+        const priorIps = new Set((prior ?? []).map((p) => p.ip as string));
+        if (g.ip && priorIps.size > 0 && !priorIps.has(g.ip)) {
+          try { await alertNewIp(db, link, who, g, [...priorIps].length + 1, (prior ?? []).map((p) => p.place).filter(Boolean) as string[]); }
+          catch (e) { console.error("new-ip alert failed", e); }
+        }
         return json({ ticket: await makeTicket(link.id, tagOf(link.password_hash)), name: link.item_name, type: link.item_type, open: true, first_name: link.recipient_first_name ?? null });
       }
       const pw = typeof body.password === "string" ? body.password.slice(0, 200) : "";
