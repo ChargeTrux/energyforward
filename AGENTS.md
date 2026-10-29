@@ -12,3 +12,4 @@
 - Activity alert emails are sent only by `notify-activity` to the address stored in `activity_watchers` for that person, deduped server-side, because alerts must never reach admins or anyone not chosen.
 - Activity map: activity_locations rows written only by notify-activity/share-link Edge Functions, admin-read only, because IP/location is sensitive.
 - Share-link administration uses the current server-validated admin role, never creator ownership, because every admin must manage the same link list; the creator only determines new-IP alert delivery.
+- Newsletter signup records are read through admin-only RLS while public submission remains insert-only, because newsletter names and emails are private.

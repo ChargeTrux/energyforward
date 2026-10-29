@@ -1,0 +1,1 @@
+ALTER POLICY "Allow authenticated users to view signups" ON public.email_signups TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role));
