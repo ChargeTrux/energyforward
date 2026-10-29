@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Check publication blockers and request publication of pending View as user changes for all admins (scheduled for energyforward.com; fresh scan has no critical findings, and newsletter SELECT is confirmed admin-only).
+- [ ] Confirm View as user deployment on the live portal and exercise it with a real admin account (deployment completion not yet verified; authenticated checks unavailable for external Supabase).
 - [x] Add View as user for every admin with an isolated, read-only preview and Exit preview.
 - [x] Enforce target-user material grants on the server and suppress preview activity/emails.
 - [x] Run preview authorization tests (5 passed), signed-out denial and Exit preview browser checks (no activity writes; build clean).
