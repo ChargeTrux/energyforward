@@ -1,5 +1,6 @@
 # Roadmap
 
+- [ ] Include the complete read-only admin page when previewing a person with current admin access; verify ordinary-user denial and no preview writes.
 - [x] Check publication blockers and request publication of pending View as user changes for all admins (scheduled for energyforward.com; fresh scan has no critical findings, and newsletter SELECT is confirmed admin-only).
 - [x] Confirm energyforward.com serves the published View as user code (live website assets checked after publishing).
 - [ ] Exercise View as user with a real admin account (blocked: authenticated checks unavailable for external Supabase).
