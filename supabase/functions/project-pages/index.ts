@@ -1,5 +1,6 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { PreviewError, resolvePreviewUser } from "../_shared/preview-user.ts";
 
 // "Project Run" Drive folder (under Investors). Its id is never sent to browsers.
 const ROOT_FOLDER = "13tAkcFzs6eneJ-TFqPESFFpFqFW3JFqB";
@@ -73,10 +74,13 @@ Deno.serve(async (req) => {
     const { data: u, error: ue } = await admin.auth.getUser(token);
     const user = u?.user;
     if (ue || !user) { discard(); return json({ error: ue?.message ?? "Not signed in" }, 401); }
+    let effective;
+    try { effective = await resolvePreviewUser(admin, user.id, url.searchParams.get("preview_user"), action, ["mine", "view"]); }
+    catch (e) { discard(); throw e; }
 
     const [{ data: roleRows }, { data: grants }] = await Promise.all([
-      admin.from("user_roles").select("role").eq("user_id", user.id),
-      admin.from("project_page_access").select("file_id").eq("user_id", user.id),
+      admin.from("user_roles").select("role").eq("user_id", effective.id),
+      admin.from("project_page_access").select("file_id").eq("user_id", effective.id),
     ]);
     const roles = new Set((roleRows ?? []).map((r: { role: string }) => r.role));
     const isAdmin = roles.has("admin");
@@ -133,6 +137,6 @@ Deno.serve(async (req) => {
     return json({ error: "Unknown action" }, 400);
   } catch (e) {
     console.error("project-pages error", e);
-    return json({ error: e instanceof Error ? e.message : "Unexpected error" }, 500);
+    return json({ error: e instanceof Error ? e.message : "Unexpected error" }, e instanceof PreviewError ? e.status : 500);
   }
 });

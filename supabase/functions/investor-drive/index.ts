@@ -1,5 +1,6 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { PreviewError, resolvePreviewUser } from "../_shared/preview-user.ts";
 
 const GATEWAY = "https://connector-gateway.lovable.dev/google_drive";
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -183,9 +184,13 @@ Deno.serve(async (req) => {
       profileId = body.profile_id ?? profileId;
       fileId = body.file_id ?? fileId;
     }
+    let effective;
+    try { effective = await resolvePreviewUser(admin, user.id, url.searchParams.get("preview_user"), action, ["profiles", "list", "file"]); }
+    catch (e) { discardEarly(); throw e; }
 
     // Keep portal names in step with Drive folder names (Drive is the source of truth).
     const syncNames = async (rows: Array<Record<string, unknown>>) => {
+      if (effective.preview) return;
       await Promise.all(rows.map(async (p) => {
         const fid = folderIdFromUrl(p.drive_url as string | null);
         if (!fid) return;
@@ -211,7 +216,7 @@ Deno.serve(async (req) => {
       const { data: access } = await admin
         .from("investor_profile_access")
         .select("profile_id")
-        .eq("user_id", user.id);
+        .eq("user_id", effective.id);
       const ids = (access ?? []).map((a: { profile_id: string }) => a.profile_id);
       if (!ids.length) return json({ profiles: [] });
       const { data: profiles } = await admin
@@ -235,10 +240,10 @@ Deno.serve(async (req) => {
 
     // Authorize: this user must have been granted this profile. All lookups run at once.
     const [{ data: grant }, { data: isAdmin }, { data: profile }, { data: itemRows }] = await Promise.all([
-      admin.from("investor_profile_access").select("profile_id").eq("user_id", user.id).eq("profile_id", profileId).maybeSingle(),
-      admin.rpc("has_role", { _user_id: user.id, _role: "admin" }),
+      admin.from("investor_profile_access").select("profile_id").eq("user_id", effective.id).eq("profile_id", profileId).maybeSingle(),
+      admin.rpc("has_role", { _user_id: effective.id, _role: "admin" }),
       admin.from("investor_profiles").select("id, name, drive_url").eq("id", profileId).maybeSingle(),
-      admin.from("investor_document_access").select("item_id").eq("user_id", user.id).eq("profile_id", profileId),
+      admin.from("investor_document_access").select("item_id").eq("user_id", effective.id).eq("profile_id", profileId),
     ]);
     if (!grant && !isAdmin) { discardEarly(); return json({ error: "Not authorized for this profile" }, 403); }
     const rootFolder = folderIdFromUrl(profile?.drive_url ?? null);
