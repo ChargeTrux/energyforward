@@ -12,7 +12,7 @@ type Unlocked = { ticket: string; name: string; type: "project" | "video" | "doc
 /** Public, password-protected page for exactly one shared item. No menus or other links. */
 export default function SharePage() {
   const { slug = "" } = useParams();
-  const [info, setInfo] = useState<{ name: string } | null>(null);
+  const [info, setInfo] = useState<{ name: string; personal?: boolean; first_name?: string | null } | null>(null);
   const [error, setError] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -23,7 +23,7 @@ export default function SharePage() {
 
   useEffect(() => {
     fetch(`${base}?action=info`, { method: "POST", headers, body: JSON.stringify({ slug }) })
-      .then(async (r) => { const b = await r.json(); if (r.ok) { setInfo(b); if (b.open && b.ticket) setOpen(b); } else setError(b.error ?? "This link is not available."); })
+      .then(async (r) => { const b = await r.json(); if (r.ok) setInfo(b); else setError(b.error ?? "This link is not available."); })
       .catch(() => setError("Could not reach the server."));
   }, [slug]);
 
@@ -53,7 +53,7 @@ export default function SharePage() {
   const unlock = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true); setError("");
-    const r = await fetch(`${base}?action=unlock`, { method: "POST", headers, body: JSON.stringify({ slug, password }) });
+    const r = await fetch(`${base}?action=unlock`, { method: "POST", headers, body: JSON.stringify(info?.personal ? { slug, email: password } : { slug, password }) });
     const b = await r.json().catch(() => ({}));
     setBusy(false);
     if (!r.ok) { setError(b.error ?? "Could not open this link."); return; }
@@ -83,8 +83,9 @@ export default function SharePage() {
             {info && <p style={{ margin: "0 0 12px", fontSize: 15 }}>Shared with you: <strong style={{ color: amber }}>{info.name}</strong></p>}
             {(info || !error) && (
               <>
-                <label style={{ display: "block", fontSize: 13, marginBottom: 6 }} htmlFor="share-pw">Password</label>
-                <input id="share-pw" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoFocus
+                {info?.personal && <p style={{ margin: "0 0 12px", fontSize: 14 }}>{info.first_name ? `Hi ${info.first_name}, please` : "Please"} type the email address this link was sent to.</p>}
+                <label style={{ display: "block", fontSize: 13, marginBottom: 6 }} htmlFor="share-pw">{info?.personal ? "Your email" : "Password"}</label>
+                <input id="share-pw" type={info?.personal ? "email" : "password"} autoComplete={info?.personal ? "email" : "off"} value={password} onChange={(e) => setPassword(e.target.value)} required autoFocus
                   style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(238,234,226,0.3)", background: "rgba(0,0,0,0.2)", color: pearl, fontSize: 15 }} />
                 <button type="submit" disabled={busy || !info}
                   style={{ marginTop: 14, width: "100%", padding: "10px 12px", borderRadius: 8, border: "none", background: amber, color: teal, fontWeight: 700, cursor: "pointer" }}>
