@@ -242,12 +242,17 @@ Deno.serve(async (req) => {
     if (!profileId) { discardEarly(); return json({ error: "Missing profile" }, 400); }
 
     // Authorize: this user must have been granted this profile. All lookups run at once.
-    const [{ data: grant }, { data: isAdmin }, { data: profile }, { data: itemRows }] = await Promise.all([
+    const [grantResult, roleResult, profileResult, itemResult] = await Promise.all([
       admin.from("investor_profile_access").select("profile_id").eq("user_id", effective.id).eq("profile_id", profileId).maybeSingle(),
       admin.rpc("has_role", { _user_id: effective.id, _role: "admin" }),
       admin.from("investor_profiles").select("id, name, drive_url").eq("id", profileId).maybeSingle(),
       admin.from("investor_document_access").select("item_id").eq("user_id", effective.id).eq("profile_id", profileId),
     ]);
+    if (grantResult.error || roleResult.error || profileResult.error || itemResult.error) { discardEarly(); return json({ error: "Could not verify document access" }, 503); }
+    const grant = grantResult.data;
+    const isAdmin = roleResult.data;
+    const profile = profileResult.data;
+    const itemRows = itemResult.data;
     if (!grant && !isAdmin) { discardEarly(); return json({ error: "Not authorized for this profile" }, 403); }
     const rootFolder = folderIdFromUrl(profile?.drive_url ?? null);
     if (!rootFolder) { discardEarly(); return json({ error: "This profile has no folder yet." }, 404); }

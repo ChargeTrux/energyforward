@@ -20,6 +20,9 @@ export function UserPreviewBoundary({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     if (!isUserPreview || loading) return;
+    verifiedProfile = null;
+    setProfile(null);
+    setError(null);
     if (!session) { setError("Sign in as an admin to preview this user."); return; }
     let cancelled = false;
     supabase.functions.invoke("admin-preview", { body: { user_id: previewUserId } }).then(async ({ data, error }) => {
@@ -30,6 +33,7 @@ export function UserPreviewBoundary({ children }: { children: ReactNode }) {
         setError(detail?.error ?? "Could not start user preview.");
         return;
       }
+      if (cancelled) return;
       verifiedProfile = data.profile;
       setProfile(data.profile);
     });
