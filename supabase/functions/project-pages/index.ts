@@ -1,5 +1,6 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { PreviewError, resolvePreviewUser } from "../_shared/preview-user.ts";
 
 // "Project Run" Drive folder (under Investors). Its id is never sent to browsers.
 const ROOT_FOLDER = "13tAkcFzs6eneJ-TFqPESFFpFqFW3JFqB";
@@ -58,6 +59,7 @@ Deno.serve(async (req) => {
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const url = new URL(req.url);
     const action = url.searchParams.get("action") ?? "";
+    if (url.searchParams.has("preview_user") && req.method !== "GET") return json({ error: "User preview is read-only" }, 403);
     const fileId = url.searchParams.get("file_id") ?? "";
 
     // Speed: start Drive downloads while the user is verified; nothing is sent until authorized.
@@ -73,11 +75,17 @@ Deno.serve(async (req) => {
     const { data: u, error: ue } = await admin.auth.getUser(token);
     const user = u?.user;
     if (ue || !user) { discard(); return json({ error: ue?.message ?? "Not signed in" }, 401); }
+    let effective;
+    try { effective = await resolvePreviewUser(admin, user.id, url.searchParams.get("preview_user"), action, ["mine", "view"]); }
+    catch (e) { discard(); throw e; }
 
-    const [{ data: roleRows }, { data: grants }] = await Promise.all([
-      admin.from("user_roles").select("role").eq("user_id", user.id),
-      admin.from("project_page_access").select("file_id").eq("user_id", user.id),
+    const [roleResult, grantResult] = await Promise.all([
+      admin.from("user_roles").select("role").eq("user_id", effective.id),
+      admin.from("project_page_access").select("file_id").eq("user_id", effective.id),
     ]);
+    if (roleResult.error || grantResult.error) { discard(); return json({ error: "Could not verify page access" }, 503); }
+    const roleRows = roleResult.data;
+    const grants = grantResult.data;
     const roles = new Set((roleRows ?? []).map((r: { role: string }) => r.role));
     const isAdmin = roles.has("admin");
     const granted = new Set((grants ?? []).map((g: { file_id: string }) => g.file_id));
@@ -133,6 +141,6 @@ Deno.serve(async (req) => {
     return json({ error: "Unknown action" }, 400);
   } catch (e) {
     console.error("project-pages error", e);
-    return json({ error: e instanceof Error ? e.message : "Unexpected error" }, 500);
+    return json({ error: e instanceof Error ? e.message : "Unexpected error" }, e instanceof PreviewError ? e.status : 500);
   }
 });

@@ -2,6 +2,7 @@ import { notifyActivity } from "@/lib/notifyActivity";
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
+import { isUserPreview } from "@/lib/admin-preview";
 
 interface AuthContextType {
   session: Session | null;
@@ -39,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .eq("user_id", newSession.user.id);
           setIsAdmin(!!roles?.some((r) => r.role === "admin"));
 
-          if (event === "SIGNED_IN") {
+          if (event === "SIGNED_IN" && !isUserPreview) {
             const { data: ls } = await supabase
               .from("login_sessions")
               .insert({ user_id: newSession.user.id })

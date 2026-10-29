@@ -1,5 +1,6 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { PreviewError, resolvePreviewUser } from "../_shared/preview-user.ts";
 
 const GATEWAY = "https://connector-gateway.lovable.dev/google_drive";
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -122,6 +123,7 @@ Deno.serve(async (req) => {
     }
 
     const early = new URL(req.url);
+    if (early.searchParams.has("preview_user") && early.searchParams.get("action") === "download") return json({ error: "Use the authorized document viewer" }, 403);
     if (early.searchParams.get("action") === "download") {
       const t = await readTicket(early.searchParams.get("t") ?? "");
       if (!t) return new Response("This download link has expired. Please click the file again.", { status: 410, headers: corsHeaders });
@@ -183,9 +185,15 @@ Deno.serve(async (req) => {
       profileId = body.profile_id ?? profileId;
       fileId = body.file_id ?? fileId;
     }
+    if (url.searchParams.has("preview_user") && req.method !== "GET" && !(req.method === "POST" && action === "profiles")) { discardEarly(); return json({ error: "User preview is read-only" }, 403); }
+    if (url.searchParams.has("preview_user") && isTicketReq) { discardEarly(); return json({ error: "Download tickets are unavailable in user preview" }, 403); }
+    let effective;
+    try { effective = await resolvePreviewUser(admin, user.id, url.searchParams.get("preview_user"), action, ["profiles", "list", "file"]); }
+    catch (e) { discardEarly(); throw e; }
 
     // Keep portal names in step with Drive folder names (Drive is the source of truth).
     const syncNames = async (rows: Array<Record<string, unknown>>) => {
+      if (effective.preview) return;
       await Promise.all(rows.map(async (p) => {
         const fid = folderIdFromUrl(p.drive_url as string | null);
         if (!fid) return;
@@ -211,7 +219,7 @@ Deno.serve(async (req) => {
       const { data: access } = await admin
         .from("investor_profile_access")
         .select("profile_id")
-        .eq("user_id", user.id);
+        .eq("user_id", effective.id);
       const ids = (access ?? []).map((a: { profile_id: string }) => a.profile_id);
       if (!ids.length) return json({ profiles: [] });
       const { data: profiles } = await admin
@@ -234,12 +242,17 @@ Deno.serve(async (req) => {
     if (!profileId) { discardEarly(); return json({ error: "Missing profile" }, 400); }
 
     // Authorize: this user must have been granted this profile. All lookups run at once.
-    const [{ data: grant }, { data: isAdmin }, { data: profile }, { data: itemRows }] = await Promise.all([
-      admin.from("investor_profile_access").select("profile_id").eq("user_id", user.id).eq("profile_id", profileId).maybeSingle(),
-      admin.rpc("has_role", { _user_id: user.id, _role: "admin" }),
+    const [grantResult, roleResult, profileResult, itemResult] = await Promise.all([
+      admin.from("investor_profile_access").select("profile_id").eq("user_id", effective.id).eq("profile_id", profileId).maybeSingle(),
+      admin.rpc("has_role", { _user_id: effective.id, _role: "admin" }),
       admin.from("investor_profiles").select("id, name, drive_url").eq("id", profileId).maybeSingle(),
-      admin.from("investor_document_access").select("item_id").eq("user_id", user.id).eq("profile_id", profileId),
+      admin.from("investor_document_access").select("item_id").eq("user_id", effective.id).eq("profile_id", profileId),
     ]);
+    if (grantResult.error || roleResult.error || profileResult.error || itemResult.error) { discardEarly(); return json({ error: "Could not verify document access" }, 503); }
+    const grant = grantResult.data;
+    const isAdmin = roleResult.data;
+    const profile = profileResult.data;
+    const itemRows = itemResult.data;
     if (!grant && !isAdmin) { discardEarly(); return json({ error: "Not authorized for this profile" }, 403); }
     const rootFolder = folderIdFromUrl(profile?.drive_url ?? null);
     if (!rootFolder) { discardEarly(); return json({ error: "This profile has no folder yet." }, 404); }
@@ -390,6 +403,6 @@ Deno.serve(async (req) => {
     return json({ error: "Unknown action" }, 400);
   } catch (e) {
     console.error("investor-drive error", e);
-    return json({ error: e instanceof Error ? e.message : "Unexpected error" }, 500);
+    return json({ error: e instanceof Error ? e.message : "Unexpected error" }, e instanceof PreviewError ? e.status : 500);
   }
 });

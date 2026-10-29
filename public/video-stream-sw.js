@@ -1,19 +1,19 @@
 // Adds the signed-in user's credentials to protected video stream requests.
-let videoAuth = null;
+const videoAuth = new Map();
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
 
 self.addEventListener("message", (event) => {
   if (event.data?.type === "ENERGY_FORWARD_VIDEO_AUTH") {
-    videoAuth = { token: event.data.token, apikey: event.data.apikey };
+    if (event.source?.id) videoAuth.set(event.source.id, { token: event.data.token, apikey: event.data.apikey });
   }
 });
 
 // The worker can be stopped and restarted by the browser, losing memory; ask the page again.
 async function getAuth(clientId) {
-  if (videoAuth) return videoAuth;
-  const list = clientId ? [await self.clients.get(clientId)] : await self.clients.matchAll({ type: "window" });
+  if (videoAuth.has(clientId)) return videoAuth.get(clientId);
+  const list = clientId ? [await self.clients.get(clientId)] : [];
   for (const client of list.filter(Boolean)) {
     const auth = await new Promise((resolve) => {
       const ch = new MessageChannel();
@@ -21,7 +21,7 @@ async function getAuth(clientId) {
       ch.port1.onmessage = (e) => { clearTimeout(t); resolve(e.data); };
       client.postMessage({ type: "ENERGY_FORWARD_VIDEO_AUTH_REQUEST" }, [ch.port2]);
     });
-    if (auth?.token) { videoAuth = auth; return auth; }
+    if (auth?.token) { videoAuth.set(clientId, auth); return auth; }
   }
   return null;
 }

@@ -6,6 +6,7 @@ const corsHeaders: Record<string, string> = {
   "Access-Control-Max-Age": "600",
 };
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { PreviewError, resolvePreviewUser } from "../_shared/preview-user.ts";
 import JSZip from "npm:jszip@3.10.1";
 
 const GATEWAY = "https://connector-gateway.lovable.dev/google_drive";
@@ -187,10 +188,14 @@ Deno.serve(async (req) => {
     const { data: userData, error: userError } = await admin.auth.getUser(token);
     const user = userData?.user;
     if (!user) return json({ error: `Not signed in (${userError?.message ?? "invalid token"})` }, 401);
+    const url = new URL(req.url);
+    const action = url.searchParams.get("action") ?? "mine";
+    if (url.searchParams.has("preview_user") && req.method !== "GET") return json({ error: "User preview is read-only" }, 403);
+    const effective = await resolvePreviewUser(admin, user.id, url.searchParams.get("preview_user"), action, ["mine", "stream"]);
     // Read current roles and grants together on every request; never cache authorization.
     const [roleResult, grantResult] = await Promise.all([
-      admin.from("user_roles").select("role").eq("user_id", user.id),
-      admin.from("investor_video_access").select("file_id").eq("user_id", user.id),
+      admin.from("user_roles").select("role").eq("user_id", effective.id),
+      admin.from("investor_video_access").select("file_id").eq("user_id", effective.id),
     ]);
     if (roleResult.error || grantResult.error) return json({ error: "Could not verify video access" }, 503);
     const roleRows = roleResult.data;
@@ -198,8 +203,6 @@ Deno.serve(async (req) => {
     const isAdmin = roles.has("admin");
     const allowed = new Set((grantResult.data ?? []).map((grant: { file_id: string }) => grant.file_id));
     const canOpenVideos = Boolean(isAdmin) || roles.has("investor") || roles.has("video");
-    const url = new URL(req.url);
-    const action = url.searchParams.get("action") ?? "mine";
     const fileId = url.searchParams.get("file_id") ?? "";
 
     if (action === "save-description") {
@@ -328,7 +331,7 @@ Deno.serve(async (req) => {
         ...corsHeaders,
         "Content-Type": meta.mimeType || "video/mp4",
         "Content-Disposition": "inline",
-        "Cache-Control": "private, max-age=300",
+        "Cache-Control": effective.preview ? "private, no-store" : "private, max-age=300",
         "Accept-Ranges": "bytes",
       };
       for (const key of ["Content-Length", "Content-Range"]) {
@@ -341,6 +344,6 @@ Deno.serve(async (req) => {
     return json({ error: "Unknown action" }, 400);
   } catch (error) {
     console.error("investor-videos error", error);
-    return json({ error: error instanceof Error ? error.message : "Unexpected error" }, 500);
+    return json({ error: error instanceof Error ? error.message : "Unexpected error" }, error instanceof PreviewError ? error.status : 500);
   }
 });

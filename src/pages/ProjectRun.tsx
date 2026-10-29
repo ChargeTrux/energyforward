@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import { PortalNav, NoAccessScreen, usePortalAccess } from "@/components/PortalNav";
 import { Link, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { usePortalUser as useAuth } from "@/components/admin/UserPreviewBoundary";
+import { isUserPreview, previewUrl } from "@/lib/admin-preview";
 
 type Page = { id: string; name: string; description?: string };
 
@@ -38,7 +39,7 @@ function fetchPage(id: string): Promise<string> {
 
 async function callFn(qs: string) {
   const { data } = await supabase.auth.getSession();
-  return fetch(`${FN_URL}?${qs}`, {
+  return fetch(previewUrl(`${FN_URL}?${qs}`), {
     headers: {
       Authorization: `Bearer ${data.session?.access_token ?? ""}`,
       apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
@@ -60,7 +61,7 @@ function ProjectSection({ page, idx, userId }: { page: Page; idx: number; userId
   // Record a view once the section is actually on screen.
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || isUserPreview) return;
     const obs = new IntersectionObserver((entries) => {
       if (entries.some((e) => e.isIntersecting)) {
         obs.disconnect();

@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
+import { isUserPreview } from "@/lib/admin-preview";
 
 export function usePageTracking() {
   const location = useLocation();
@@ -9,7 +10,7 @@ export function usePageTracking() {
   const currentRef = useRef<{ id: string; enteredAt: number } | null>(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || isUserPreview) return;
 
     let cancelled = false;
 

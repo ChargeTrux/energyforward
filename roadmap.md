@@ -1,5 +1,10 @@
 # Roadmap
 
+- [x] Add View as user for every admin with an isolated, read-only preview and Exit preview.
+- [x] Enforce target-user material grants on the server and suppress preview activity/emails.
+- [x] Run preview authorization tests (5 passed), signed-out denial and Exit preview browser checks (no activity writes; build clean).
+- [ ] Verify real signed-in target portal, documents, videos, and 3D preview (blocked: authenticated checks unavailable for external Supabase).
+
 - [x] Restrict newsletter email visibility to admins and verify access rules (SQL checks passed; rescan removed the email-read exposure).
 - [x] Request publishing of the admin share-link changes (scheduled for energyforward.com; completion not yet verified).
 

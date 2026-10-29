@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { usePortalUser as useAuth } from "@/components/admin/UserPreviewBoundary";
+import { exitUserPreview, isUserPreview } from "@/lib/admin-preview";
 
 export type PortalAccess = {
   admin: boolean;
@@ -68,7 +69,7 @@ export function PortalNav({ current }: { current: Current }) {
       {item("videos", "/investor/videos", "Videos", a.videos)}
       {item("documents", "/investor/documents", "Documents (Data Room)", a.documents)}
       {a.admin && <Link to="/admin" style={link}>Admin</Link>}
-      <Link to="/signout" style={link}>Sign out</Link>
+      {isUserPreview ? <a href="/admin" style={link} onClick={(e) => { e.preventDefault(); exitUserPreview(); }}>Exit preview</a> : <Link to="/signout" style={link}>Sign out</Link>}
     </nav>
   );
 }

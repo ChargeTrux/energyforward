@@ -13,3 +13,5 @@
 - Activity map: activity_locations rows written only by notify-activity/share-link Edge Functions, admin-read only, because IP/location is sensitive.
 - Share-link administration uses the current server-validated admin role, never creator ownership, because every admin must manage the same link list; the creator only determines new-IP alert delivery.
 - Newsletter signup records are read through admin-only RLS while public submission remains insert-only, because newsletter names and emails are private.
+- View-as-user runs in a separate tab with the real admin session unchanged; every protected material request independently validates the caller's admin role and the target's current grants, and preview routes suppress writes, activity, and emails because preview must never impersonate credentials or inflate user history.
+- Video service-worker credentials are scoped to the requesting browser client rather than shared between tabs, because admin preview and normal playback must remain isolated.
