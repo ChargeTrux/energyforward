@@ -123,6 +123,7 @@ Deno.serve(async (req) => {
     }
 
     const early = new URL(req.url);
+    if (early.searchParams.has("preview_user") && early.searchParams.get("action") === "download") return json({ error: "Use the authorized document viewer" }, 403);
     if (early.searchParams.get("action") === "download") {
       const t = await readTicket(early.searchParams.get("t") ?? "");
       if (!t) return new Response("This download link has expired. Please click the file again.", { status: 410, headers: corsHeaders });
@@ -184,6 +185,8 @@ Deno.serve(async (req) => {
       profileId = body.profile_id ?? profileId;
       fileId = body.file_id ?? fileId;
     }
+    if (url.searchParams.has("preview_user") && req.method !== "GET" && !(req.method === "POST" && action === "profiles")) { discardEarly(); return json({ error: "User preview is read-only" }, 403); }
+    if (url.searchParams.has("preview_user") && isTicketReq) { discardEarly(); return json({ error: "Download tickets are unavailable in user preview" }, 403); }
     let effective;
     try { effective = await resolvePreviewUser(admin, user.id, url.searchParams.get("preview_user"), action, ["profiles", "list", "file"]); }
     catch (e) { discardEarly(); throw e; }

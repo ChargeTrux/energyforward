@@ -155,7 +155,7 @@ export function InvestorDocuments() {
     try {
       const qs = new URLSearchParams({ action: "file", profile_id: profileId, file_id: f.id });
       // Excel: hand off to the browser's own downloader immediately (shows its native progress).
-      if (isSheetFile(f)) {
+      if (isSheetFile(f) && !isUserPreview) {
         qs.set("mode", "ticket");
         const tr = await callFn(`?${qs}`);
         const tb = await tr.json().catch(() => ({}));

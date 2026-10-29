@@ -59,6 +59,7 @@ Deno.serve(async (req) => {
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const url = new URL(req.url);
     const action = url.searchParams.get("action") ?? "";
+    if (url.searchParams.has("preview_user") && req.method !== "GET") return json({ error: "User preview is read-only" }, 403);
     const fileId = url.searchParams.get("file_id") ?? "";
 
     // Speed: start Drive downloads while the user is verified; nothing is sent until authorized.
@@ -78,10 +79,13 @@ Deno.serve(async (req) => {
     try { effective = await resolvePreviewUser(admin, user.id, url.searchParams.get("preview_user"), action, ["mine", "view"]); }
     catch (e) { discard(); throw e; }
 
-    const [{ data: roleRows }, { data: grants }] = await Promise.all([
+    const [roleResult, grantResult] = await Promise.all([
       admin.from("user_roles").select("role").eq("user_id", effective.id),
       admin.from("project_page_access").select("file_id").eq("user_id", effective.id),
     ]);
+    if (roleResult.error || grantResult.error) { discard(); return json({ error: "Could not verify page access" }, 503); }
+    const roleRows = roleResult.data;
+    const grants = grantResult.data;
     const roles = new Set((roleRows ?? []).map((r: { role: string }) => r.role));
     const isAdmin = roles.has("admin");
     const granted = new Set((grants ?? []).map((g: { file_id: string }) => g.file_id));

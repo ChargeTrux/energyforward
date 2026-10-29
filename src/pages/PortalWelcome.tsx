@@ -27,6 +27,7 @@ export default function PortalWelcome() {
   if (loading) return <div className="min-h-screen grid place-items-center">Loading…</div>;
   if (!user) return <Navigate to="/?login=1" replace />;
   if (!access.ready) return <div className="min-h-screen grid place-items-center">Loading…</div>;
+  if (access.customer && !access.investor && !(access.project || access.videos || access.documents)) return <Navigate to="/customer" replace />;
   const shown = SECTIONS.filter((s) => access[s.key]);
   if (!shown.length) return <NoAccessScreen />;
 

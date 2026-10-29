@@ -190,6 +190,7 @@ Deno.serve(async (req) => {
     if (!user) return json({ error: `Not signed in (${userError?.message ?? "invalid token"})` }, 401);
     const url = new URL(req.url);
     const action = url.searchParams.get("action") ?? "mine";
+    if (url.searchParams.has("preview_user") && req.method !== "GET") return json({ error: "User preview is read-only" }, 403);
     const effective = await resolvePreviewUser(admin, user.id, url.searchParams.get("preview_user"), action, ["mine", "stream"]);
     // Read current roles and grants together on every request; never cache authorization.
     const [roleResult, grantResult] = await Promise.all([
