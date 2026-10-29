@@ -1,19 +1,21 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
-import { Eye, X } from "lucide-react";
+import { Eye, X, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { exitUserPreview, isUserPreview, previewUserId } from "@/lib/admin-preview";
+import { canPreviewPage } from "@/lib/preview-policy";
+import { Link } from "react-router-dom";
 
-type Profile = { user_id: string; full_name: string | null; email: string; is_active: boolean };
+type Profile = { user_id: string; full_name: string | null; email: string; is_active: boolean; is_admin: boolean };
 let verifiedProfile: Profile | null = null;
 
 export function usePortalUser() {
   const auth = useAuth();
   const profile = isUserPreview ? verifiedProfile : null;
   const user = useMemo(() => profile && auth.user ? { ...auth.user, id: profile.user_id, email: profile.email, user_metadata: { full_name: profile.full_name } } : auth.user, [profile, auth.user]);
-  return profile ? { ...auth, isAdmin: false, user } : auth;
+  return profile ? { ...auth, isAdmin: profile.is_admin, user } : auth;
 }
 
 export function UserPreviewBoundary({ children }: { children: ReactNode }) {
@@ -41,18 +43,20 @@ export function UserPreviewBoundary({ children }: { children: ReactNode }) {
       setProfile(data.profile);
     });
     return () => { cancelled = true; };
-  }, [session?.user.id, loading]);
+  }, [session?.user.id, loading, location.pathname]);
   if (!isUserPreview) return <>{children}</>;
-  const allowed = ["/", "/investor", "/investor/welcome", "/investor/videos", "/investor/project", "/investor/documents", "/customer"];
   return <>
     <div className="ef-preview-bar" role="status">
       <div className="flex min-w-0 items-center gap-2"><Eye className="h-5 w-5 shrink-0" /><span className="truncate">View as user{profile ? `: ${profile.full_name || profile.email}` : ""}</span></div>
-      <Button variant="outline" size="sm" onClick={exitUserPreview}><X className="mr-2 h-4 w-4" />Exit preview</Button>
+      <div className="flex shrink-0 items-center gap-2">
+        {profile?.is_admin && <Button variant="outline" size="sm" asChild><Link to="/admin"><ShieldCheck className="mr-2 h-4 w-4" />Admin page</Link></Button>}
+        <Button variant="outline" size="sm" onClick={exitUserPreview}><X className="mr-2 h-4 w-4" />Exit preview</Button>
+      </div>
     </div>
     <div className="ef-preview-content">
       {error ? <div className="min-h-screen grid place-items-center text-destructive" role="alert">{error}</div>
         : !profile ? <div className="min-h-screen grid place-items-center">Loading user preview…</div>
-        : !allowed.includes(location.pathname) ? <div className="min-h-screen grid place-items-center">This page is unavailable in user preview.</div>
+        : !canPreviewPage(location.pathname, profile.is_admin) ? <div className="min-h-screen grid place-items-center">This page is unavailable in user preview.</div>
         : children}
     </div>
   </>;

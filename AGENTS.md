@@ -15,3 +15,4 @@
 - Newsletter signup records are read through admin-only RLS while public submission remains insert-only, because newsletter names and emails are private.
 - View-as-user runs in a separate tab with the real admin session unchanged; every protected material request independently validates the caller's admin role and the target's current grants, and preview routes suppress writes, activity, and emails because preview must never impersonate credentials or inflate user history.
 - Video service-worker credentials are scoped to the requesting browser client rather than shared between tabs, because admin preview and normal playback must remain isolated.
+- Admin preview exposes the unchanged dashboard only for a server-validated target admin; a preview-scoped request allowlist blocks all application mutations and emails while keeping catalogs, filters, and navigation available.

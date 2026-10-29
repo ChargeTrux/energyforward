@@ -5,7 +5,8 @@ import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react
 import { activityInRange, userAccessStatus, type ActivityPreset } from "@/lib/admin-activity";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { usePortalUser as useAuth } from "@/components/admin/UserPreviewBoundary";
+import { exitUserPreview, isUserPreview } from "@/lib/admin-preview";
 import "./AdminDashboard.css";
 import { ProfileItemPicker } from "@/components/admin/ProfileItemPicker";
 import { DriveSelectTree, type Selection } from "@/components/admin/DriveSelectTree";
@@ -332,7 +333,7 @@ export default function AdminDashboard() {
   }, []);
 
   const load = async () => {
-    if (!namesSynced) {
+    if (!namesSynced && !isUserPreview) {
       namesSynced = true;
       // Pull current Drive folder names into the portal, then refresh.
       void supabase.functions.invoke("investor-drive", { body: { action: "sync_names" } })
@@ -712,6 +713,7 @@ export default function AdminDashboard() {
 
   const [selectedInvitees, setSelectedInvitees] = useState<string[]>([]);
   const callAdmin = async (action: string, payload: Record<string, unknown>) => {
+    if (isUserPreview) { toast({ title: "Read-only preview", description: "Exit preview to make changes." }); return null; }
     setBusy(true);
     const { data, error } = await supabase.functions.invoke("admin-users", {
       body: { action, ...payload },
@@ -1355,11 +1357,12 @@ export default function AdminDashboard() {
             size="sm"
             className="ef-ghost-btn"
             onClick={async () => {
+              if (isUserPreview) { exitUserPreview(); return; }
               await supabase.auth.signOut();
               navigate("/");
             }}
           >
-            <LogOut className="w-3.5 h-3.5 mr-1" /> Sign Out
+            <LogOut className="w-3.5 h-3.5 mr-1" /> {isUserPreview ? "Exit preview" : "Sign Out"}
           </Button>
         </div>
       </div>

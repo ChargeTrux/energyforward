@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     const user = u?.user;
     if (ue || !user) { discard(); return json({ error: ue?.message ?? "Not signed in" }, 401); }
     let effective;
-    try { effective = await resolvePreviewUser(admin, user.id, url.searchParams.get("preview_user"), action, ["mine", "view"]); }
+    try { effective = await resolvePreviewUser(admin, user.id, url.searchParams.get("preview_user"), action, ["mine", "view", "catalog"]); }
     catch (e) { discard(); throw e; }
 
     const [roleResult, grantResult] = await Promise.all([
