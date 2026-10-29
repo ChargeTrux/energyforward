@@ -78,6 +78,7 @@ import {
   LogOut,
   Mail,
   ExternalLink,
+  Eye,
   Download,
 } from "lucide-react";
 
@@ -1603,6 +1604,9 @@ export default function AdminDashboard() {
                           <span className={`ef-user-status ef-user-status--${status.tone}`} title={status.tone === "active" ? `Activity recorded: ${formatCompact(recentActivity.get(u.user_id) ?? "")} (within five minutes)` : lastLogins.get(u.user_id) ? `Last successful sign-in: ${formatCompact(lastLogins.get(u.user_id) ?? "")}` : status.label}><i aria-hidden="true" />{status.label}</span>
                           <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`} />
                         </span>
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => window.open(`/investor/welcome?view_as=${encodeURIComponent(u.user_id)}`, "_blank", "noopener")}>
+                        <Eye className="mr-2 h-4 w-4" />View as user
                       </Button>
                     </div>
                     <div id={`access-${u.user_id}`} hidden={!expanded}>

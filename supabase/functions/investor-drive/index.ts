@@ -395,6 +395,6 @@ Deno.serve(async (req) => {
     return json({ error: "Unknown action" }, 400);
   } catch (e) {
     console.error("investor-drive error", e);
-    return json({ error: e instanceof Error ? e.message : "Unexpected error" }, 500);
+    return json({ error: e instanceof Error ? e.message : "Unexpected error" }, e instanceof PreviewError ? e.status : 500);
   }
 });

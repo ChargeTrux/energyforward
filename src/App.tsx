@@ -19,11 +19,14 @@ import SharePage from "./pages/SharePage";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { usePageTracking } from "@/hooks/usePageTracking";
 import { supabase } from "@/integrations/supabase/client";
+import { UserPreviewBoundary } from "@/components/admin/UserPreviewBoundary";
+import { exitUserPreview, isUserPreview } from "@/lib/admin-preview";
 
 const queryClient = new QueryClient();
 
 function SignOutRoute({ onLogout }: { onLogout: () => Promise<void> | void }) {
   useEffect(() => {
+    if (isUserPreview) { exitUserPreview(); return; }
     (async () => {
       await onLogout();
     })();
@@ -43,6 +46,7 @@ function AppContent() {
   const location = useLocation();
   usePageTracking();
   useEffect(() => {
+    if (isUserPreview) return;
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
     if (hashParams.get("type") === "recovery" && window.location.pathname !== "/reset-password") {
       navigate(`/reset-password${window.location.hash}`, { replace: true });
@@ -50,6 +54,7 @@ function AppContent() {
   }, [navigate]);
   // Auto-open login modal when arriving from email CTA: ?login=1&email=...
   useEffect(() => {
+    if (isUserPreview) return;
     if (loading) return;
     const params = new URLSearchParams(location.search);
     const linkEmail = params.get("email")?.trim().toLowerCase();
@@ -95,6 +100,7 @@ function AppContent() {
   const prevSession = useRef<boolean>(!!session);
   const initialised = useRef(false);
   useEffect(() => {
+    if (isUserPreview) return;
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
     const searchParams = new URLSearchParams(window.location.search);
     const isPublicSiteRequest = window.location.pathname === "/" && searchParams.get("public") === "1";
@@ -226,7 +232,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <AppContent />
+          <UserPreviewBoundary><AppContent /></UserPreviewBoundary>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
