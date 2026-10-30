@@ -189,7 +189,7 @@ const getRoleLabel = (
   if (user.is_video) parts.push("Video");
   if (user.is_customer) parts.push("Customer");
   if (parts.length) return parts.join(" + ");
-  return "No portal role";
+  return "No portal access";
 };
 
 type InvestorProfile = {
