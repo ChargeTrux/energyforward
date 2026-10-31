@@ -1,4 +1,5 @@
-import { ShareLinksPanel, ActivityAlertToggle } from "@/components/admin/ShareLinksPanel";
+import { ShareLinksPanel, ActivityAlertToggle, type LinkRow } from "@/components/admin/ShareLinksPanel";
+import { UserShareLinks } from "@/components/admin/UserShareLinks";
 import { ActivityMap } from "@/components/admin/ActivityMap";
 import type React from "react";
 import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react";
@@ -215,6 +216,7 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
+  const [shareLinks, setShareLinks] = useState<LinkRow[]>([]);
   const [signups, setSignups] = useState<SignupRow[]>([]);
   const [activity, setActivity] = useState<ActivityRow[]>([]);
   const [contacts, setContacts] = useState<ContactSubmissionRow[]>([]);
