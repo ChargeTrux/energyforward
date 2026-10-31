@@ -1,5 +1,6 @@
-import { ShareLinksPanel, ActivityAlertToggle, type LinkRow } from "@/components/admin/ShareLinksPanel";
+import { ShareLinksPanel, ActivityAlertToggle, callShareLink, KIND_LABEL, type Kind, type LinkRow } from "@/components/admin/ShareLinksPanel";
 import { UserShareLinks } from "@/components/admin/UserShareLinks";
+import { DocsTree } from "@/components/DocsTree";
 import { ActivityMap } from "@/components/admin/ActivityMap";
 import type React from "react";
 import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react";
@@ -224,9 +225,11 @@ export default function AdminDashboard() {
   const [recentLoginCount, setRecentLoginCount] = useState(0);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
-  const [linkFirst, setLinkFirst] = useState("");
-  const [linkLast, setLinkLast] = useState("");
-  const [linkEmail, setLinkEmail] = useState("");
+  const [inviteMode, setInviteMode] = useState<"portal" | "link">("portal");
+  const [linkKind, setLinkKind] = useState<Kind>("video");
+  const [linkItem, setLinkItem] = useState<{ id: string; name: string; profileId?: string } | null>(null);
+  const [linkPersonal, setLinkPersonal] = useState(true);
+  const [linkPassword, setLinkPassword] = useState("");
   const [useOwnPassword, setUseOwnPassword] = useState(false);
   const [ownPassword, setOwnPassword] = useState("");
   const [inviteInvestor, setInviteInvestor] = useState(false);
