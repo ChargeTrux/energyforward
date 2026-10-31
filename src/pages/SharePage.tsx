@@ -73,6 +73,17 @@ export default function SharePage() {
     setOpen(b);
   };
 
+  // Signed-in recipient of a personal link: open it straight away (the server still checks the email).
+  const [autoTried, setAutoTried] = useState(false);
+  useEffect(() => {
+    if (autoTried || open || !info?.personal || !sessionEmail) return;
+    setAutoTried(true);
+    setBusy(true);
+    fetch(`${base}?action=unlock`, { method: "POST", headers, body: JSON.stringify({ slug, email: sessionEmail }) })
+      .then(async (r) => { const b = await r.json().catch(() => ({})); if (r.ok) setOpen(b); })
+      .finally(() => setBusy(false));
+  }, [autoTried, open, info, sessionEmail, slug]);
+
   const viewable = blobType.startsWith("text/html") || blobType.includes("pdf") || blobType.startsWith("image/") || blobType.startsWith("text/");
 
   return (
