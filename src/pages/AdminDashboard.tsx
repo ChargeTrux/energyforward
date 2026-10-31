@@ -605,6 +605,7 @@ export default function AdminDashboard() {
 
   // People who only have a personal link (no portal account) — shown in the Access manager.
   const linkRecipients = useMemo(() => {
+    if (accessStatusFilter !== "all" && accessStatusFilter !== "links") return [];
     const accountEmails = new Set(profiles.map((p) => p.email.toLowerCase()));
     const byEmail = new Map<string, LinkRow[]>();
     for (const l of shareLinks) {
