@@ -47,6 +47,8 @@
     --admin-choice-selected: 158 55% 93%;
     --admin-choice-border: 158 65% 27%;
     --admin-choice-mark: 0 0% 100%;
+    --admin-page-background: 160 45% 95%;
+    --admin-muted-surface: 160 35% 92%;
 
     /* EnergyForward Color Palette */
     --background: 208 100% 97%; /* Very light blue #f0f8ff */
@@ -133,6 +135,8 @@
     --admin-choice-selected: 158 35% 19%;
     --admin-choice-border: 158 57% 60%;
     --admin-choice-mark: 220 50% 8%;
+    --admin-page-background: 160 25% 9%;
+    --admin-muted-surface: 160 22% 15%;
     /* Dark mode maintains the same energy theme with darker tones */
     --background: 220 50% 8%;
     --foreground: 208 100% 95%;
