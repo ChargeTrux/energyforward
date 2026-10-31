@@ -623,7 +623,7 @@ export default function AdminDashboard() {
       }))
       .filter((r) => `${r.name} ${r.email}`.toLowerCase().includes(search))
       .sort((a, b) => a.name.localeCompare(b.name) || a.email.localeCompare(b.email));
-  }, [shareLinks, profiles, accessSearch]);
+  }, [shareLinks, profiles, accessSearch, accessStatusFilter]);
 
   const filteredActivity = useMemo(() => {
     const search = activitySearch.trim().toLowerCase();
