@@ -20,9 +20,22 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { usePageTracking } from "@/hooks/usePageTracking";
 import { supabase } from "@/integrations/supabase/client";
 import { UserPreviewBoundary } from "@/components/admin/UserPreviewBoundary";
+import { fetchDirectLinks } from "@/components/PortalNav";
 import { exitUserPreview, isUserPreview } from "@/lib/admin-preview";
 
 const queryClient = new QueryClient();
+
+/** True when a person without a portal role still has individual materials or active direct links. */
+async function hasAnyMaterial(userId: string) {
+  const head = { count: 'exact' as const, head: true };
+  const [d, v, p, links] = await Promise.all([
+    supabase.from('investor_profile_access').select('id', head).eq('user_id', userId),
+    supabase.from('investor_video_access').select('id', head).eq('user_id', userId),
+    supabase.from('project_page_access').select('id', head).eq('user_id', userId),
+    fetchDirectLinks(null).catch(() => []),
+  ]);
+  return !!(d.count || v.count || p.count || links.length);
+}
 
 function SignOutRoute({ onLogout }: { onLogout: () => Promise<void> | void }) {
   useEffect(() => {
@@ -80,8 +93,7 @@ function AppContent() {
         else if (roles.has('video')) navigate(onVideos ? '/investor/videos' : '/investor/welcome', { replace: true });
         else if (roles.has('customer')) navigate('/customer', { replace: true });
         else {
-          const { count } = await supabase.from('investor_profile_access').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id);
-          if (count) navigate('/investor/welcome', { replace: true });
+          if (await hasAnyMaterial(session.user.id)) navigate('/investor/welcome', { replace: true });
           else await supabase.auth.signOut();
         } // no portal access: let them sign in with another account
       })();
@@ -154,8 +166,7 @@ function AppContent() {
         else if (roles.has('video')) navigate(window.location.pathname === '/investor/videos' ? currentVideoUrl : '/investor/welcome');
         else if (roles.has('customer')) navigate('/customer');
         else {
-          const { count } = await supabase.from('investor_profile_access').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id);
-          navigate(count ? '/investor/welcome' : '/');
+          navigate((await hasAnyMaterial(session.user.id)) ? '/investor/welcome' : '/');
         }
       })();
     }

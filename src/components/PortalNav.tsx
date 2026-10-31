@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { usePortalUser as useAuth } from "@/components/admin/UserPreviewBoundary";
 import { exitUserPreview, isUserPreview } from "@/lib/admin-preview";
 
+export type DirectLink = { slug: string; item_type: string; item_name: string; expires_at: string | null };
+
 export type PortalAccess = {
   admin: boolean;
   investor: boolean;
@@ -11,10 +13,22 @@ export type PortalAccess = {
   videos: boolean;
   project: boolean;
   documents: boolean;
+  links: DirectLink[];
   ready?: boolean;
 };
 
-const NONE: PortalAccess = { admin: false, investor: false, customer: false, videos: false, project: false, documents: false };
+const NONE: PortalAccess = { admin: false, investor: false, customer: false, videos: false, project: false, documents: false, links: [] };
+
+/** Active direct (share) links granted to this person; read-only lookup, safe in admin preview. */
+export async function fetchDirectLinks(userId: string | null): Promise<DirectLink[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (supabase.rpc as any)("my_direct_links", { _target: userId }, { get: true });
+  return ((data ?? []) as DirectLink[]).map((l) => ({ ...l, item_name: niceLinkName(l.item_name) }));
+}
+
+export function niceLinkName(name: string) {
+  return name.replace(/^\s*\d+[\s._-]*/, "").replace(/\.(html?|pdf|mp4|mov|xlsx?|docx?)$/i, "").trim() || name;
+}
 
 /** What sections this person may see. Only sections they were granted are shown. */
 let accessCache: { uid: string; a: PortalAccess } | null = null;
@@ -30,7 +44,8 @@ export function usePortalAccess() {
       supabase.from("investor_profile_access").select("profile_id").eq("user_id", user.id).limit(1),
       supabase.from("investor_video_access").select("file_id").eq("user_id", user.id).limit(1),
       supabase.from("project_page_access").select("file_id").eq("user_id", user.id).limit(1),
-    ]).then(([{ data: r }, { data: d }, { data: v }, { data: pp }]) => {
+      fetchDirectLinks(isUserPreview ? user.id : null).catch(() => [] as DirectLink[]),
+    ]).then(([{ data: r }, { data: d }, { data: v }, { data: pp }, links]) => {
       const roles = new Set((r ?? []).map((x) => x.role as string));
       const admin = roles.has("admin");
       setAccess({
@@ -40,6 +55,7 @@ export function usePortalAccess() {
         videos: admin || roles.has("video") || (v ?? []).length > 0,
         project: admin || roles.has("project") || (pp ?? []).length > 0,
         documents: admin || (d ?? []).length > 0,
+        links,
         ready: true,
       });
     });
@@ -47,7 +63,7 @@ export function usePortalAccess() {
   return access;
 }
 
-type Current = "home" | "videos" | "project" | "documents";
+type Current = "home" | "videos" | "project" | "documents" | "shared";
 const pearl = "#EEEAE2";
 const amber = "#E8B14A";
 const link = { color: pearl, opacity: 0.75, textDecoration: "none" };
@@ -60,7 +76,7 @@ export function PortalNav({ current }: { current: Current }) {
       : <Link key={key} to={to} style={link}>{label}</Link>;
   return (
     <nav style={{ display: "flex", gap: 28, fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end", marginLeft: "auto" }}>
-      {a.investor || !(a.project || a.videos || a.documents)
+      {a.investor || !(a.project || a.videos || a.documents || a.links.length)
         ? <a href="/?public=1" style={link}>Home</a>
         : current === "home" ? <span style={{ color: amber }}>Home</span> : <Link to="/investor/welcome" style={link}>Home</Link>}
       {a.investor && <Link to="/investor" style={link}>Investor portal</Link>}
@@ -68,6 +84,10 @@ export function PortalNav({ current }: { current: Current }) {
       {item("project", "/investor/project", "Project 3D Demo", a.project)}
       {item("videos", "/investor/videos", "Videos", a.videos)}
       {item("documents", "/investor/documents", "Documents (Data Room)", a.documents)}
+      {a.links.length > 0 && a.links.length <= 3 && a.links.map((l) => (
+        <Link key={l.slug} to={`/share/${l.slug}`} style={link} title="Shared directly with you">{l.item_name}</Link>
+      ))}
+      {a.links.length > 3 && <Link to="/investor/welcome#shared" style={link}>Shared with you ({a.links.length})</Link>}
       {a.admin && <Link to="/admin" style={link}>Admin</Link>}
       {isUserPreview ? <a href="/admin" style={link} onClick={(e) => { e.preventDefault(); exitUserPreview(); }}>Exit preview</a> : <Link to="/signout" style={link}>Sign out</Link>}
     </nav>

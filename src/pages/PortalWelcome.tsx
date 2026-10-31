@@ -29,7 +29,10 @@ export default function PortalWelcome() {
   if (!access.ready) return <div className="min-h-screen grid place-items-center">Loading…</div>;
   if (access.customer && !access.investor && !(access.project || access.videos || access.documents)) return <Navigate to="/customer" replace />;
   const shown = SECTIONS.filter((s) => access[s.key]);
-  if (!shown.length) return <NoAccessScreen />;
+  const links = access.links;
+  if (!shown.length && !links.length) return <NoAccessScreen />;
+  const typeLabel = (t: string) => t === "project" ? "Project 3D Demo" : t === "video" ? "Video" : "Document";
+  const fmt = (d: string | null) => d ? new Date(d).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" }) : null;
 
   return (
     <div style={{ height: "100vh", overflow: "hidden", background: teal, color: pearl, fontFamily: "'General Sans', Arial, sans-serif", display: "flex", flexDirection: "column" }}>
@@ -64,6 +67,24 @@ export default function PortalWelcome() {
                 </Link>
               ))}
             </div>
+            {links.length > 0 && (
+              <div id="shared" style={{ marginTop: shown.length ? "2.5vh" : 0 }}>
+                <div style={{ color: amber, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: "1.2vh" }}>Shared directly with you</div>
+                <div style={{ display: "grid", gap: "1.2vh" }}>
+                  {links.map((l) => (
+                    <Link key={l.slug} to={`/share/${l.slug}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, textDecoration: "none", color: pearl, border: "1px solid rgba(232,177,74,0.35)", borderRadius: 12, padding: "clamp(10px,1.8vh,16px) 22px", background: "rgba(232,177,74,0.05)" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.borderColor = amber)}
+                      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(232,177,74,0.35)")}>
+                      <span>
+                        <span style={{ display: "block", fontSize: "clamp(15px,2.1vh,18px)", fontWeight: 600 }}>{l.item_name}</span>
+                        <span style={{ fontSize: 12, opacity: 0.7 }}>{typeLabel(l.item_type)}{fmt(l.expires_at) ? ` · available until ${fmt(l.expires_at)}` : ""}</span>
+                      </span>
+                      <span style={{ color: amber, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", whiteSpace: "nowrap" }}>Open →</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
             {shown.length > 1 && (
               <p style={{ fontSize: "clamp(12px,1.6vh,14px)", lineHeight: 1.5, opacity: 0.7, marginTop: "2vh", marginBottom: 0 }}>
                 <strong style={{ color: amber, fontWeight: 600 }}>Suggested viewing order:</strong> we suggest working through your materials in the order listed above. Each item builds on the one before it.
