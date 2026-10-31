@@ -1,4 +1,4 @@
-import { ShareLinksPanel, ActivityAlertToggle, callShareLink, KIND_LABEL, type Kind, type LinkRow } from "@/components/admin/ShareLinksPanel";
+import { ActivityAlertToggle, callShareLink, KIND_LABEL, type Kind, type LinkRow } from "@/components/admin/ShareLinksPanel";
 import { UserShareLinks } from "@/components/admin/UserShareLinks";
 import { DocsTree } from "@/components/DocsTree";
 import { ActivityMap } from "@/components/admin/ActivityMap";
@@ -606,7 +606,7 @@ export default function AdminDashboard() {
   const linksForUser = (userId: string, email: string) =>
     shareLinks.filter((l) => l.user_id === userId || (l.recipient_email ?? "").toLowerCase() === email.toLowerCase());
 
-  // People who only have a personal link (no portal account) — shown in the Access manager.
+  // People who only have a personal link (no portal account) — shown in the Investor & user manager.
   const linkRecipients = useMemo(() => {
     if (accessStatusFilter !== "all" && accessStatusFilter !== "links") return [];
     const accountEmails = new Set(profiles.map((p) => p.email.toLowerCase()));
@@ -818,7 +818,7 @@ export default function AdminDashboard() {
       const list = rolesArr.length ? rolesArr.join(", ") : "no portal";
       toast(sendEmail
         ? { title: "Welcome email sent", description: `Invited ${email} (${list}).` }
-        : { title: "User created — no email sent", description: `${email} (${list}). Use "Send invite" in the Access manager when ready.` });
+        : { title: "User created — no email sent", description: `${email} (${list}). Use "Send invite" in the Investor & user manager when ready.` });
       setInviteEmail("");
       setInviteName("");
       setUseOwnPassword(false);
@@ -895,7 +895,7 @@ export default function AdminDashboard() {
       setImportResults(data.results ?? []);
       toast({
         title: "Import finished",
-        description: `${data.imported ?? 0} of ${data.total ?? importRows.length} people added. Assign access and invite them from the Access manager above.`,
+        description: `${data.imported ?? 0} of ${data.total ?? importRows.length} people added. Assign access and invite them from the Investor & user manager above.`,
       });
     }
   };
@@ -1484,7 +1484,7 @@ export default function AdminDashboard() {
       </div>
 
       <Collapse defaultOpen title={<>
-            <Users className="w-5 h-5" /> Access manager{" "}
+            <Users className="w-5 h-5" /> Investor & user manager{" "}
             <span className="text-sm font-normal text-muted-foreground">
               — who can see which portals, folders, videos and Project Run pages
             </span>
@@ -1492,7 +1492,7 @@ export default function AdminDashboard() {
         <CardContent className="ef-access-manager">
           <div className="ef-access-toolbar">
           <Input
-            aria-label="Search access manager"
+            aria-label="Search investor and user manager"
             placeholder="Search by name or email…"
             value={accessSearch}
             onChange={(e) => setAccessSearch(e.target.value)}
@@ -1684,11 +1684,16 @@ export default function AdminDashboard() {
                       </Button>
                     </div>
                     <div id={`access-${u.user_id}`} hidden={!expanded}>
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <section className="ef-user-section ef-section--activity">
+                      <h3 className="ef-subsection-title">1 · Admin notifications</h3>
+                      <ActivityAlertToggle userId={u.user_id} />
+                    </section>
+                    <section className="ef-user-section ef-section--people">
+                    <h3 className="ef-subsection-title">2 · Account management</h3>
+                    <div className="flex flex-wrap items-center gap-2">
                       {u.is_active === false && (
                         <span className="ef-badge ef-badge--off">Suspended</span>
                       )}
-                      <div className="w-full"><ActivityAlertToggle userId={u.user_id} /></div>
                       <Button
                         size="sm"
                         variant="outline"
@@ -1743,7 +1748,9 @@ export default function AdminDashboard() {
                         Remove user
                       </Button>
                     </div>
-                    <div className="ef-access-permissions mt-3 text-sm">
+                    </section>
+                    <section className="ef-user-section ef-section--access ef-access-permissions text-sm">
+                      <h3 className="ef-subsection-title">3 · Portal &amp; material access</h3>
                       <div className="flex flex-wrap gap-6 pb-3 mb-3 border-b">
                         <label className="flex items-center gap-2 font-semibold">
                           <input
@@ -1781,7 +1788,8 @@ export default function AdminDashboard() {
                         </label>
                       </div>
                       <div className="grid gap-4 md:grid-cols-3">
-                      <div>
+                      <fieldset className="ef-permission-group ef-section--invite">
+                        <legend className="ef-subsection-title">3A · Project 3D Demo</legend>
                         <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
                           <input type="checkbox" checked={Boolean(u.is_project)} onChange={async (e) => { await callAdmin("set_project", { user_id: u.user_id, make_project: e.target.checked }); if (e.target.checked && projectCatalog.length) await supabase.from("project_page_access").upsert(projectCatalog.map((pg) => ({ user_id: u.user_id, file_id: pg.id })), { onConflict: "user_id,file_id" }); await loadProject(); }} />
                           Project 3D Demo
@@ -1800,8 +1808,9 @@ export default function AdminDashboard() {
                             <span className="min-w-0 break-words">{pg.name}</span>
                           </label>
                         ))}
-                      </div>
-                      <div>
+                      </fieldset>
+                      <fieldset className="ef-permission-group ef-section--materials">
+                        <legend className="ef-subsection-title">3B · Videos</legend>
                         <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
                           <input type="checkbox" checked={Boolean(u.is_video)} onChange={async (e) => { await callAdmin("set_video", { user_id: u.user_id, make_video: e.target.checked }); if (e.target.checked && videoCatalog.length) await supabase.from("investor_video_access").upsert(videoCatalog.map((v) => ({ user_id: u.user_id, file_id: v.id })), { onConflict: "user_id,file_id" }); await loadVideos(); }} />
                           Videos
@@ -1820,8 +1829,9 @@ export default function AdminDashboard() {
                             <span className="min-w-0 break-words">{v.name.replace(/\.[^.]+$/, "")}</span>
                           </label>
                         ))}
-                      </div>
-                      <div>
+                      </fieldset>
+                      <fieldset className="ef-permission-group ef-section--people">
+                        <legend className="ef-subsection-title">3C · Documents</legend>
                         {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up</span>}
                         {investorProfiles.map((p) => (
                           <div key={p.id}>
@@ -1843,9 +1853,9 @@ export default function AdminDashboard() {
                             )}
                           </div>
                         ))}
+                      </fieldset>
                       </div>
-                      </div>
-                    </div>
+                    </section>
                     <div className="mt-3">
                       <UserShareLinks
                         videos={videoCatalog}
@@ -1942,7 +1952,7 @@ export default function AdminDashboard() {
               />
             </div>
             <fieldset className="md:col-span-12 ef-form-group text-sm">
-              <legend>Access type</legend>
+              <legend>1 · Access type</legend>
               <div className="ef-choice-row">
               <label className="flex items-center gap-2 font-semibold">
                 <input type="radio" name="invite-mode" checked={inviteMode === "portal"} onChange={() => setInviteMode("portal")} />
@@ -1975,6 +1985,7 @@ export default function AdminDashboard() {
             )}
             {inviteMode === "portal" && (
             <div className="md:col-span-12 ef-access-permissions text-sm">
+              <h3 className="ef-subsection-title">2 · Portal &amp; material access</h3>
               <div className="flex flex-wrap gap-6 pb-3 mb-3 border-b">
                 <label className="flex items-center gap-2 font-semibold">
                   <input type="checkbox" checked={inviteAdmin} onChange={(e) => setInviteAdmin(e.target.checked)} />
@@ -1993,7 +2004,8 @@ export default function AdminDashboard() {
                 </label>
               </div>
               <div className="grid gap-4 md:grid-cols-3">
-                <div>
+                <fieldset className="ef-permission-group ef-section--invite">
+                  <legend className="ef-subsection-title">2A · Project 3D Demo</legend>
                   <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
                     <input type="checkbox" checked={inviteProject} onChange={(e) => { setInviteProject(e.target.checked); setSelectedProjectIds(e.target.checked ? projectCatalog.map((pg) => pg.id) : []); }} />
                     Project 3D Demo
@@ -2013,8 +2025,9 @@ export default function AdminDashboard() {
                       <span className="min-w-0 break-words">{pg.name}</span>
                     </label>
                   ))}
-                </div>
-                <div>
+                </fieldset>
+                <fieldset className="ef-permission-group ef-section--materials">
+                  <legend className="ef-subsection-title">2B · Videos</legend>
                   <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
                     <input type="checkbox" checked={inviteVideo} onChange={(e) => { setInviteVideo(e.target.checked); setSelectedVideoIds(e.target.checked ? videoCatalog.map((v) => v.id) : []); }} />
                     Videos
@@ -2034,8 +2047,9 @@ export default function AdminDashboard() {
                       <span className="min-w-0 break-words">{v.name.replace(/\.[^.]+$/, "")}</span>
                     </label>
                   ))}
-                </div>
-                <div>
+                </fieldset>
+                <fieldset className="ef-permission-group ef-section--people">
+                  <legend className="ef-subsection-title">2C · Documents</legend>
                   {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up</span>}
                   {investorProfiles.map((p) => (
                     <div key={p.id}>
@@ -2048,19 +2062,20 @@ export default function AdminDashboard() {
                         Documents (Data Room)
                       </label>
                       <p className="text-xs text-muted-foreground ml-5">
-                        Gives the whole folder. To share only certain subfolders or files, use "Choose contents" on this person in the Access manager after creating them.
+                        Gives the whole folder. To share only certain subfolders or files, use "Choose contents" on this person in the Investor & user manager after creating them.
                       </p>
                     </div>
                   ))}
-                </div>
+                </fieldset>
               </div>
             </div>
             )}
             {inviteMode === "link" && (
             <div className="md:col-span-12 ef-access-permissions text-sm space-y-3">
+              <h3 className="ef-subsection-title">2A · Choose material type</h3>
               <div className="flex flex-wrap gap-4">
                 {(["project", "video", "document"] as Kind[]).map((k) => (
-                  <label key={k} className="flex items-center gap-2 font-semibold">
+                  <label key={k} className={`ef-material-choice ef-material-choice--${k} flex items-center gap-2 font-semibold`}>
                     <input type="radio" name="invite-link-kind" checked={linkKind === k} onChange={() => { setLinkKind(k); setLinkItem(null); }} />
                     {KIND_LABEL[k]}
                   </label>
@@ -2082,6 +2097,7 @@ export default function AdminDashboard() {
                 </div>
               )}
               <p>Selected: <strong>{linkItem ? linkItem.name : "nothing yet"}</strong></p>
+              <h3 className="ef-subsection-title">2B · Choose link access</h3>
               <div className="flex flex-wrap gap-4">
                 <label className="flex items-center gap-2 font-semibold"><input type="radio" name="invite-link-mode" checked={linkPersonal} onChange={() => setLinkPersonal(true)} />Personal link <span className="font-normal text-xs text-muted-foreground">(no password — they type their email; expires in 2 weeks)</span></label>
                 <label className="flex items-center gap-2 font-semibold"><input type="radio" name="invite-link-mode" checked={!linkPersonal} onChange={() => setLinkPersonal(false)} />Link with password</label>
@@ -2092,7 +2108,7 @@ export default function AdminDashboard() {
                   <Input id="invite-link-pw" value={linkPassword} onChange={(e) => setLinkPassword(e.target.value)} placeholder="At least 6 characters" autoComplete="off" />
                 </div>
               )}
-              <p className="text-xs text-muted-foreground">No account is created and no email is sent unless you click "Create link &amp; send email". The person appears in the Access manager under "Link access".</p>
+              <p className="text-xs text-muted-foreground">No account is created and no email is sent unless you click "Create link &amp; send email". The person appears in the Investor & user manager under "Link access".</p>
             </div>
             )}
             <div className="md:col-span-12 flex justify-end">
@@ -2145,7 +2161,7 @@ export default function AdminDashboard() {
           <p className="text-sm text-muted-foreground">
             Upload a list of people to create their accounts all at once. No emails are sent during
             import — afterwards, assign each person's access and send their invite individually from
-            the Access manager above.
+            the Investor & user manager above.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <Button type="button" variant="outline" onClick={downloadImportTemplate}>
@@ -2227,12 +2243,6 @@ export default function AdminDashboard() {
         </CardContent>
         </TabsContent>
         </Tabs>
-      </Collapse>
-
-      <Collapse tone="share" defaultOpen title={<><ExternalLink className="w-5 h-5" /> Share links — password &amp; personal</>}>
-        <CardContent>
-          <ShareLinksPanel videos={videoCatalog} pages={projectCatalog} />
-        </CardContent>
       </Collapse>
 
 <Collapse tone="materials" title={<><FolderOpen className="w-5 h-5" /> Material config</>}><div className="px-6 pb-6 space-y-4"><Collapse nested title={<>Documents — profile folders
@@ -2365,7 +2375,7 @@ export default function AdminDashboard() {
 </>}>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-3">
-            Edit each video's description or copy a secure direct link. Who can watch which video is managed in the Access manager above. Recipients must sign in before viewing.
+            Edit each video's description or copy a secure direct link. Who can watch which video is managed in the Investor & user manager above. Recipients must sign in before viewing.
           </p>
           {videoCatalog.length === 0 ? (
             <p className="text-sm text-muted-foreground">{videoCatalogMsg}</p>
@@ -2411,7 +2421,7 @@ export default function AdminDashboard() {
 <Collapse nested title={<>Project 3D Demo — descriptions</>}>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-3">
-            HTML files in the "Project Run" Google Drive folder. Start a file name with a number (e.g. "1 - Overview.html") to set the order; the number isn't shown. Choose who can open each page in the Access manager.
+            HTML files in the "Project Run" Google Drive folder. Start a file name with a number (e.g. "1 - Overview.html") to set the order; the number isn't shown. Choose who can open each page in the Investor & user manager.
           </p>
           {projectCatalog.length === 0 ? (
             <p className="text-sm text-muted-foreground">{projectCatalogMsg}</p>

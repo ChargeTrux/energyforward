@@ -403,6 +403,28 @@
 }
 .ef-admin label:has(input:disabled) input { cursor: not-allowed; }
 .ef-admin .ef-access-permissions label { margin-bottom: 6px; }
+.ef-admin .ef-subsection-title { display: block; margin: 0 0 12px; font-size: 14px; font-weight: 700; line-height: 1.5; color: hsl(var(--section-tone, var(--foreground))); }
+.ef-admin .ef-user-section { padding: 16px 0; margin-top: 16px; border-top: 2px solid hsl(var(--section-tone) / 0.4); }
+.ef-admin .ef-permission-group { min-width: 0; padding: 14px; border: 0; border-top: 4px solid hsl(var(--section-tone)); background: hsl(var(--section-tone) / 0.08); }
+.ef-admin .ef-permission-group legend { float: left; width: 100%; margin-bottom: 12px; }
+.ef-admin .ef-permission-group legend + * { clear: both; }
+.ef-admin .ef-permission-group label { background: hsl(var(--admin-choice-background)); }
+.ef-admin .ef-permission-group label:has(input:checked) { background: hsl(var(--admin-choice-selected)); }
+.ef-admin .ef-permission-group label:has(input:disabled) { background: hsl(var(--admin-disabled-field)); }
+.ef-admin .ef-admin-notifications { display: grid; grid-template-columns: minmax(230px, auto) minmax(240px, 420px) minmax(160px, 1fr); align-items: end; gap: 12px; }
+.ef-admin .ef-notification-toggle { min-height: 42px !important; margin: 0; }
+.ef-admin .ef-notification-recipients { min-width: 0; }
+.ef-admin .ef-notification-note { align-self: end; padding-bottom: 8px; }
+.ef-admin .ef-admin-notifications input:disabled { background: hsl(var(--admin-disabled-field)) !important; }
+.ef-admin .ef-material-choice--project { --choice-tone: var(--admin-section-invite); }
+.ef-admin .ef-material-choice--video { --choice-tone: var(--admin-section-materials); }
+.ef-admin .ef-material-choice--document { --choice-tone: var(--admin-section-people); }
+.ef-admin label.ef-material-choice:has(input[type="radio"]) { border-top: 4px solid hsl(var(--choice-tone)); background: hsl(var(--choice-tone) / 0.08); }
+.ef-admin label.ef-material-choice:has(input:checked) { background: hsl(var(--admin-choice-selected)); }
+.ef-admin .ef-collapse--nested > summary { background: hsl(var(--section-tone) / 0.08); }
+.ef-admin [role="tab"]:nth-child(2) { border-bottom: 3px solid hsl(var(--admin-section-materials)); }
+@media (max-width: 1100px) { .ef-admin .ef-admin-notifications { grid-template-columns: minmax(230px, auto) minmax(240px, 1fr); } .ef-admin .ef-notification-note { grid-column: 1 / -1; padding: 0; } }
+@media (max-width: 640px) { .ef-admin .ef-admin-notifications { grid-template-columns: 1fr; } }
 .ef-admin .ef-choice-row > label { flex: 1 1 210px; }
 .ef-admin .ef-recipient-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .ef-admin .ef-recipient-fields > div { min-width: 0; }

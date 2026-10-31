@@ -49,6 +49,7 @@
     --admin-choice-mark: 0 0% 100%;
     --admin-page-background: 160 45% 95%;
     --admin-muted-surface: 160 35% 92%;
+    --admin-disabled-field: 215 15% 91%;
 
     /* EnergyForward Color Palette */
     --background: 208 100% 97%; /* Very light blue #f0f8ff */
@@ -137,6 +138,7 @@
     --admin-choice-mark: 220 50% 8%;
     --admin-page-background: 160 25% 9%;
     --admin-muted-surface: 160 22% 15%;
+    --admin-disabled-field: 215 12% 20%;
     /* Dark mode maintains the same energy theme with darker tones */
     --background: 220 50% 8%;
     --foreground: 208 100% 95%;

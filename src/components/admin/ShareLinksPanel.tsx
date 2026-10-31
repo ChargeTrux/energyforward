@@ -230,22 +230,22 @@ export function ActivityAlertToggle({ userId }: { userId: string }) {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2 text-sm">
-      <label className="flex items-center gap-2 font-semibold">
+    <div className="ef-admin-notifications text-sm">
+      <label className="ef-notification-toggle flex items-center gap-2 font-semibold">
         <input type="checkbox" checked={enabled} onChange={(e) => {
           if (e.target.checked && !email.trim()) { setEnabled(true); toast({ title: "Now type the email address(es) to notify" }); return; }
           if (!e.target.checked && !saved) { setEnabled(false); return; }
           void save(e.target.checked, email);
         }} />
-        Email notification
+        Email notification for admin
       </label>
-      <div onClick={() => { if (!enabled) toast({ title: "Enable Email notification first", description: "Tick the Email notification box, then type the emails." }); }}>
-        <Label htmlFor={fieldId}>Notification recipients</Label>
-        <Input id={fieldId} className="w-full max-w-md disabled:pointer-events-none" type="text" placeholder="a@x.com, b@y.com" value={email} disabled={!enabled}
+      <div className="ef-notification-recipients" onClick={() => { if (!enabled) toast({ title: "Enable Email notification for admin first", description: "Tick the box, then type the recipient emails." }); }}>
+        <Label htmlFor={fieldId}>Admin notification recipients</Label>
+        <Input id={fieldId} className="w-full disabled:pointer-events-none" type="text" placeholder={enabled ? "a@x.com, b@y.com" : "Enable admin notifications first"} value={email} disabled={!enabled}
           onChange={(e) => setEmail(e.target.value)}
           onBlur={() => { if (enabled && email.trim() && email.trim().toLowerCase() !== saved) void save(true, email); }} />
       </div>
-      <span className="text-xs text-muted-foreground">Sign-ins and each video, document or 3D page they open.</span>
+      <span className="ef-notification-note text-xs text-muted-foreground">Sign-ins and each video, document or 3D page they open.</span>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 # Architecture rules
 
-- Keep admin presentation scoped to the dashboard with global semantic color tokens, explicit section tones, labelled writing surfaces, and native selection controls grouped by fieldsets; visual changes must not alter authorization or share-link operations.
+- Keep admin presentation scoped to the dashboard with global semantic color tokens, explicit section tones, numbered user-management headings, aligned notification controls, labelled writing surfaces, and native selection controls grouped by fieldsets; keep per-person sharing in user management and invitations without a duplicate standalone panel, because one clear workflow avoids confusion; visual changes must not alter authorization or share-link operations.
 
 - Keep full investor-portal authorization and video-portal authorization as separate `user_roles` values because administrators must grant either experience independently.
 - Stream investor videos only through the authenticated `investor-videos` Edge Function because Google Drive identifiers and files must never be exposed directly.
