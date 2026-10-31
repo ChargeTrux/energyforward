@@ -22,6 +22,7 @@
     --admin-status-success: 158 57% 60%;
     --admin-status-active: 211 100% 70%;
     --admin-status-pending: 40 91% 62%;
+    --admin-status-warning: 25 85% 50%;
     --admin-status-neutral: 217 16% 64%;
     --admin-status-issue: 0 88% 74%;
     --admin-access-surface: 220 40% 12%;

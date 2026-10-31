@@ -1726,13 +1726,14 @@ export default function AdminDashboard() {
                     </section>
                     <section className="ef-user-section ef-section--people">
                     <h3 className="ef-subsection-title">2 · Account management</h3>
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="ef-account-actions flex flex-wrap items-center gap-2">
                       {u.is_active === false && (
                         <span className="ef-badge ef-badge--off">Suspended</span>
                       )}
                       <Button
                         size="sm"
                         variant="outline"
+                        className="ef-action-btn"
                         onClick={async () => {
                           const name = window.prompt("Full name", u.full_name || "");
                           if (name === null) return;
@@ -1747,31 +1748,19 @@ export default function AdminDashboard() {
                       <Button
                         size="sm"
                         onClick={() => {
-                          if (!window.confirm(`Send a first-time invite to ${u.email}? A new temporary password will be emailed.`)) return;
+                          if (!window.confirm(`Send the welcome invite to ${u.email}? A new temporary password will be emailed.`)) return;
                           callAdmin("send_welcome", { user_ids: [u.user_id], app_origin: window.location.origin });
                         }}
                       >
-                        Send invite
+                        Send welcome invite with temporary password
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          const pwd = window.prompt(`Password to send to ${u.email} (at least 8 characters). They won't be asked to change it.`);
-                          if (pwd === null) return;
-                          if (pwd.trim().length < 8) { toast({ title: "Password too short", variant: "destructive" }); return; }
-                          if (!window.confirm(`Email ${u.email} a welcome invite with the password you typed?`)) return;
-                          callAdmin("send_welcome", { user_ids: [u.user_id], app_origin: window.location.origin, custom_password: pwd.trim() });
-                        }}
-                      >
-                        Send invite with my password
-                      </Button>
-                      <Button size="sm" variant="outline" disabled={resetPending === u.email} onClick={() => void sendReset(u.email)}>
+                      <Button size="sm" variant="outline" className="ef-action-btn" disabled={resetPending === u.email} onClick={() => void sendReset(u.email)}>
                         {resetPending === u.email ? "Sending…" : "Send reset password link"}
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
+                        className="ef-btn-warn"
                         onClick={() => {
                           const suspend = u.is_active !== false;
                           if (suspend && !window.confirm(`Suspend ${u.email}? They won't be able to sign in until you restore access.`)) return;
