@@ -224,6 +224,9 @@ export default function AdminDashboard() {
   const [recentLoginCount, setRecentLoginCount] = useState(0);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
+  const [linkFirst, setLinkFirst] = useState("");
+  const [linkLast, setLinkLast] = useState("");
+  const [linkEmail, setLinkEmail] = useState("");
   const [useOwnPassword, setUseOwnPassword] = useState(false);
   const [ownPassword, setOwnPassword] = useState("");
   const [inviteInvestor, setInviteInvestor] = useState(false);
@@ -1873,6 +1876,7 @@ export default function AdminDashboard() {
         <Tabs defaultValue="invite" className="px-6 pt-1">
           <TabsList>
             <TabsTrigger value="invite">Invite one person</TabsTrigger>
+            <TabsTrigger value="link">Share a direct link</TabsTrigger>
             <TabsTrigger value="import">Import a list</TabsTrigger>
           </TabsList>
         <TabsContent value="invite">
