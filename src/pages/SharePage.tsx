@@ -79,21 +79,34 @@ export default function SharePage() {
       </section>
       <main style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 clamp(12px,3vw,40px) 24px" }}>
         {!open ? (
-          <form onSubmit={unlock} style={{ width: "100%", maxWidth: 380, border: "1px solid rgba(238,234,226,0.16)", borderRadius: 12, padding: 22, background: "rgba(238,234,226,0.03)" }}>
-            {info && <p style={{ margin: "0 0 12px", fontSize: 15 }}>Shared with you: <strong style={{ color: amber }}>{info.name}</strong></p>}
+          <form onSubmit={unlock} style={{ width: "100%", maxWidth: 420, border: "1px solid rgba(238,234,226,0.16)", borderRadius: 16, padding: "30px 28px", background: "rgba(238,234,226,0.03)", textAlign: "center" }}>
+            {info && (
+              <>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: amber, marginBottom: 10 }}>
+                  {info.personal ? "Shared personally with you" : "Shared with you"}
+                </div>
+                <div style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: 22, lineHeight: 1.25, color: pearl, marginBottom: 18 }}>{info.name}</div>
+              </>
+            )}
             {(info || !error) && (
               <>
-                {info?.personal && <p style={{ margin: "0 0 12px", fontSize: 14 }}>{info.first_name ? `Hi ${info.first_name}, please` : "Please"} type the email address this link was sent to.</p>}
-                <label style={{ display: "block", fontSize: 13, marginBottom: 6 }} htmlFor="share-pw">{info?.personal ? "Your email" : "Password"}</label>
+                {info?.personal && (
+                  <p style={{ margin: "0 0 20px", fontSize: 14.5, lineHeight: 1.55, opacity: 0.85 }}>
+                    {info.first_name ? `Welcome, ${info.first_name} — this link was made just for you. ` : "This link was made just for you. "}
+                    Enter the email address it was sent to, and your material will open right away.
+                  </p>
+                )}
+                <label style={{ display: "block", fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.7, marginBottom: 8, textAlign: "left" }} htmlFor="share-pw">{info?.personal ? "Your email address" : "Password"}</label>
                 <input id="share-pw" type={info?.personal ? "email" : "password"} autoComplete={info?.personal ? "email" : "off"} value={password} onChange={(e) => setPassword(e.target.value)} required autoFocus
-                  style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(238,234,226,0.3)", background: "rgba(0,0,0,0.2)", color: pearl, fontSize: 15 }} />
+                  placeholder={info?.personal ? "you@example.com" : ""}
+                  style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid rgba(238,234,226,0.3)", background: "rgba(0,0,0,0.2)", color: pearl, fontSize: 15 }} />
                 <button type="submit" disabled={busy || !info}
-                  style={{ marginTop: 14, width: "100%", padding: "10px 12px", borderRadius: 8, border: "none", background: amber, color: teal, fontWeight: 700, cursor: "pointer" }}>
-                  {busy ? "Checking…" : "Open"}
+                  style={{ marginTop: 16, width: "100%", padding: "12px 14px", borderRadius: 10, border: "none", background: amber, color: teal, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
+                  {busy ? "Checking…" : info?.personal ? "Open my material" : "Open"}
                 </button>
               </>
             )}
-            {error && <p style={{ color: "#f4b5a3", marginTop: 12, fontSize: 14 }}>{error}</p>}
+            {error && <p style={{ color: "#f4b5a3", marginTop: 14, marginBottom: 0, fontSize: 14 }}>{error}</p>}
           </form>
         ) : (
           <div style={{ width: "100%", maxWidth: 1400, flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
