@@ -7,15 +7,15 @@ import { useToast } from "@/hooks/use-toast";
 import { DocsTree } from "@/components/DocsTree";
 
 type Item = { id: string; name: string };
-type Kind = "project" | "video" | "document";
-type LinkRow = { id: string; slug: string; item_type: Kind; item_name: string; active: boolean; expires_at: string | null; created_at: string; no_password: boolean; recipient_first_name: string | null; recipient_last_name: string | null; recipient_email: string | null; email_sent_at: string | null };
+export type Kind = "project" | "video" | "document";
+export type LinkRow = { id: string; slug: string; item_type: Kind; item_name: string; active: boolean; expires_at: string | null; created_at: string; no_password: boolean; recipient_first_name: string | null; recipient_last_name: string | null; recipient_email: string | null; email_sent_at: string | null; user_id?: string | null };
 
 const FN = "share-link";
 const SITE = "https://energyforward.com";
-const KIND_LABEL: Record<Kind, string> = { project: "Project 3D Demo", video: "Video", document: "Document" };
-const linkUrl = (slug: string) => `${SITE}/share/${slug}`;
+export const KIND_LABEL: Record<Kind, string> = { project: "Project 3D Demo", video: "Video", document: "Document" };
+export const linkUrl = (slug: string) => `${SITE}/share/${slug}`;
 
-async function call(action: string, body: object) {
+export async function callShareLink(action: string, body: object) {
   const { data, error } = await supabase.functions.invoke(`${FN}?action=${action}`, { body });
   if (error) {
     const ctx = (error as { context?: Response }).context;
