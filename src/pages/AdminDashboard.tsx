@@ -972,8 +972,9 @@ export default function AdminDashboard() {
   };
 
   const handleDelete = async (user_id: string, email: string) => {
-    if (!window.confirm(`Permanently delete ${email}? This cannot be undone.`)) return;
+    if (!window.confirm(`Permanently delete ${email}? This removes their account, all portal access, and any direct links made for them. This cannot be undone.`)) return;
     await callAdmin("delete_user", { user_id });
+    await load();
   };
 
   const openEditName = (row: UserListRow) => {
