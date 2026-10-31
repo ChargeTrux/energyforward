@@ -59,7 +59,7 @@ export function toggleItem(
 }
 
 export function DriveSelectTree({
-  profileId, selection, onChange, disabled, disabledHint, allCovered,
+  profileId, selection, onChange, disabled, disabledHint, allCovered, filesOnly,
 }: {
   /** Whole folder shared (no item picks): show everything ticked. */
   allCovered?: boolean;
@@ -68,6 +68,8 @@ export function DriveSelectTree({
   onChange: (next: Selection) => void;
   disabled?: boolean;
   disabledHint?: string;
+  /** Folders only expand/collapse (no checkbox) — for pickers that link single files. */
+  filesOnly?: boolean;
 }) {
   const [tree, setTree] = useState<Record<string, DriveItem[]>>({});
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
