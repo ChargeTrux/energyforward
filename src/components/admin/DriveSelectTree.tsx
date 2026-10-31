@@ -112,6 +112,10 @@ export function DriveSelectTree({
       const isFolder = it.mimeType === FOLDER_MIME;
       const isOpen = expanded.has(it.id);
       const checked = covered || selection.has(it.id);
+      const toggleOpen = () => {
+        setExpanded((s) => { const n = new Set(s); if (n.has(it.id)) n.delete(it.id); else n.add(it.id); return n; });
+        if (!tree[it.id]) void load(it.id);
+      };
       return (
         <div key={it.id}>
           <div className="flex items-center gap-1" style={{ paddingLeft: depth * 14 }}>
@@ -119,15 +123,17 @@ export function DriveSelectTree({
               <button
                 type="button"
                 className="w-4 text-xs text-muted-foreground"
-                onClick={() => {
-                  setExpanded((s) => { const n = new Set(s); if (n.has(it.id)) n.delete(it.id); else n.add(it.id); return n; });
-                  if (!tree[it.id]) void load(it.id);
-                }}
+                onClick={toggleOpen}
                 aria-label={isOpen ? "Collapse folder" : "Expand folder"}
               >
                 {isOpen ? "▾" : "▸"}
               </button>
             ) : <span className="w-4" />}
+            {isFolder && filesOnly ? (
+              <button type="button" className="flex items-center gap-2 min-w-0 font-medium text-left" onClick={toggleOpen}>
+                <span className="break-words">📁 {niceName(it.name)}</span>
+              </button>
+            ) : (
             <label className={`flex items-center gap-2 min-w-0 ${disabled ? "opacity-50 cursor-not-allowed" : ""}`} title={disabled ? disabledHint : undefined}>
               <input
                 type="checkbox"
@@ -143,6 +149,7 @@ export function DriveSelectTree({
               />
               <span className={`break-words ${isFolder ? "font-medium" : ""}`}>{isFolder ? "📁 " : "📄 "}{niceName(it.name)}</span>
             </label>
+            )}
           </div>
           {isFolder && isOpen && (
             <div>
