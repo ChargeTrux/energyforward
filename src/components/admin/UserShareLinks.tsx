@@ -58,24 +58,33 @@ export function UserShareLinks({
   const status = (l: LinkRow) => !l.active ? "Turned off" : l.expires_at && new Date(l.expires_at) <= new Date() ? "Expired" : "Active";
 
   const create = async (send: boolean) => {
-    if (!item) { toast({ title: "Pick an item first", variant: "destructive" }); return; }
+    const picks: (Item & { profileId?: string })[] = kind === "document" ? docPicks : item ? [item] : [];
+    if (!picks.length) { toast({ title: "Pick an item first", variant: "destructive" }); return; }
     if (personal) {
       if (!first.trim()) { toast({ title: "Enter a first name", variant: "destructive" }); return; }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr.trim())) { toast({ title: "Enter a valid email address", variant: "destructive" }); return; }
     } else if (password.trim().length < 6) { toast({ title: "Password needs at least 6 characters", variant: "destructive" }); return; }
     setBusy(true);
     try {
-      const r = await callShareLink("create", personal
-        ? { item_type: kind, item_id: item.id, item_name: item.name, profile_id: item.profileId, no_password: true, first_name: first.trim(), last_name: last.trim(), email: addr.trim(), user_id: userId }
-        : { item_type: kind, item_id: item.id, item_name: item.name, profile_id: item.profileId, password: password.trim(), user_id: userId });
-      copy(r.slug);
-      if (send && personal) {
-        try { await callShareLink("send_email", { id: r.id }); toast({ title: "Email sent", description: `Sent to ${addr.trim()}` }); }
-        catch (e) { toast({ title: "Link created, but the email failed", description: (e as Error).message, variant: "destructive" }); }
-      } else {
-        toast({ title: "Link created — no email sent", description: "Copy it into your own email, or use Send email later." });
+      const created: { id: string; slug: string }[] = [];
+      for (const p of picks) {
+        const r = await callShareLink("create", personal
+          ? { item_type: kind, item_id: p.id, item_name: p.name, profile_id: p.profileId, no_password: true, first_name: first.trim(), last_name: last.trim(), email: addr.trim(), user_id: userId }
+          : { item_type: kind, item_id: p.id, item_name: p.name, profile_id: p.profileId, password: password.trim(), user_id: userId });
+        created.push(r);
       }
-      setItem(null); setPassword(""); setShowForm(false);
+      void navigator.clipboard.writeText(created.map((r) => linkUrl(r.slug)).join("\n"));
+      if (send && personal) {
+        let sent = 0;
+        for (const r of created) {
+          try { await callShareLink("send_email", { id: r.id }); sent++; }
+          catch (e) { toast({ title: "One email failed", description: (e as Error).message, variant: "destructive" }); }
+        }
+        toast({ title: `Sent ${sent} of ${created.length} email${created.length > 1 ? "s" : ""}`, description: `To ${addr.trim()} — one email per link.` });
+      } else {
+        toast({ title: `${created.length} link${created.length > 1 ? "s" : ""} created — no email sent`, description: "Copied to your clipboard, one per line. Use Send email later if needed." });
+      }
+      setItem(null); setDocSel({}); setPassword(""); setShowForm(false);
       await onChanged();
     } catch (e) { toast({ title: "Could not create link", description: (e as Error).message, variant: "destructive" }); }
     setBusy(false);
