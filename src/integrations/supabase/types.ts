@@ -677,6 +677,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      my_direct_links: {
+        Args: { _target?: string }
+        Returns: {
+          expires_at: string
+          item_name: string
+          item_type: string
+          no_password: boolean
+          slug: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "user" | "investor" | "customer" | "video" | "project"
