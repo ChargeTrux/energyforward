@@ -33,7 +33,7 @@ export function UserShareLinks({
   onChanged: () => void | Promise<void>;
 }) {
   const { toast } = useToast();
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(true);
   const [kind, setKind] = useState<Kind>("video");
   const [item, setItem] = useState<(Item & { profileId?: string }) | null>(null);
   const [personal, setPersonal] = useState(true);
@@ -93,10 +93,10 @@ export function UserShareLinks({
   const list = kind === "video" ? videos : kind === "project" ? pages : [];
 
   return (
-    <div className="rounded border p-3 space-y-2 text-sm">
+    <div className="ef-user-links space-y-4 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <strong>Direct links{links.length > 0 ? ` (${links.length})` : ""}</strong>
-        <Button size="sm" variant="outline" onClick={() => setShowForm((s) => !s)}>{showForm ? "Close" : "Share a direct link"}</Button>
+        <strong className="text-base">Share a direct link</strong>
+        <Button size="sm" variant="outline" aria-expanded={showForm} onClick={() => setShowForm((s) => !s)}>{showForm ? "Hide sharing options" : "Show sharing options"}</Button>
       </div>
       {links.length === 0 && !showForm && <p className="text-xs text-muted-foreground">No direct links for this person yet.</p>}
       {links.map((l) => (
