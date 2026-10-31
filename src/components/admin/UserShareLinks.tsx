@@ -125,15 +125,27 @@ export function UserShareLinks({
             <div className="ef-choice-row">
             {(["project", "video", "document"] as Kind[]).map((k) => (
               <label key={k} className={`ef-material-choice ef-material-choice--${k} flex items-center gap-2 font-semibold`}>
-                <input type="radio" name={`usk-${userId ?? email}`} checked={kind === k} onChange={() => { setKind(k); setItem(null); }} />
+                <input type="radio" name={`usk-${userId ?? email}`} checked={kind === k} onChange={() => { setKind(k); setItem(null); setDocSel({}); }} />
                 {KIND_LABEL[k]}
               </label>
             ))}
             </div>
           </fieldset>
           {kind === "document" ? (
-            <div className="ef-document-picker rounded p-2 max-h-72 overflow-y-auto">
-              <DocsTree onOpenFile={(profileId, f) => setItem({ id: f.id, name: f.name, profileId })} activeFileId={item?.id ?? null} />
+            <div className="ef-document-picker rounded p-2 max-h-72 overflow-y-auto space-y-3">
+              {profiles.length === 0 && <span className="text-muted-foreground">No document folder set up.</span>}
+              {profiles.map((p) => (
+                <div key={p.id}>
+                  {profiles.length > 1 && <div className="text-xs font-semibold uppercase mb-1">{p.name}</div>}
+                  <DriveSelectTree
+                    profileId={p.id}
+                    selection={docSel[p.id] ?? new Map()}
+                    onChange={(next) => setDocSel((s) => ({ ...s, [p.id]: next }))}
+                    filesOnly
+                  />
+                </div>
+              ))}
+              <p className="text-xs text-muted-foreground">Tick as many files as you like — each one gets its own link. Open a folder to pick files inside it.</p>
             </div>
           ) : (
             <div className="rounded border p-2 max-h-56 overflow-y-auto">
@@ -146,7 +158,7 @@ export function UserShareLinks({
               ))}
             </div>
           )}
-          <p>Selected: <strong>{item ? item.name : "nothing yet"}</strong></p>
+          <p>Selected: <strong>{kind === "document" ? (docPicks.length ? `${docPicks.length} file${docPicks.length > 1 ? "s" : ""}` : "nothing yet") : item ? item.name : "nothing yet"}</strong></p>
           <fieldset className="ef-form-group">
             <legend>4B · Choose link access</legend>
             <div className="ef-choice-row">
