@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 const teal = "#0A2A2E";
 const amber = "#E8B14A";
 const pearl = "#EEEAE2";
 const base = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/share-link`;
 const headers = { "Content-Type": "application/json", apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string };
+const navLink = { color: pearl, opacity: 0.75, textDecoration: "none" };
 
 type Unlocked = { ticket: string; name: string; type: "project" | "video" | "document" };
 
