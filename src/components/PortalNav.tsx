@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { usePortalUser as useAuth } from "@/components/admin/UserPreviewBoundary";
 import { exitUserPreview, isUserPreview } from "@/lib/admin-preview";
 
+export type DirectLink = { slug: string; item_type: string; item_name: string; expires_at: string | null };
+
 export type PortalAccess = {
   admin: boolean;
   investor: boolean;
@@ -11,10 +13,22 @@ export type PortalAccess = {
   videos: boolean;
   project: boolean;
   documents: boolean;
+  links: DirectLink[];
   ready?: boolean;
 };
 
-const NONE: PortalAccess = { admin: false, investor: false, customer: false, videos: false, project: false, documents: false };
+const NONE: PortalAccess = { admin: false, investor: false, customer: false, videos: false, project: false, documents: false, links: [] };
+
+/** Active direct (share) links granted to this person; read-only lookup, safe in admin preview. */
+export async function fetchDirectLinks(userId: string | null): Promise<DirectLink[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (supabase.rpc as any)("my_direct_links", { _target: userId }, { get: true });
+  return ((data ?? []) as DirectLink[]).map((l) => ({ ...l, item_name: niceLinkName(l.item_name) }));
+}
+
+export function niceLinkName(name: string) {
+  return name.replace(/^\s*\d+[\s._-]*/, "").replace(/\.(html?|pdf|mp4|mov|xlsx?|docx?)$/i, "").trim() || name;
+}
 
 /** What sections this person may see. Only sections they were granted are shown. */
 let accessCache: { uid: string; a: PortalAccess } | null = null;
@@ -30,7 +44,8 @@ export function usePortalAccess() {
       supabase.from("investor_profile_access").select("profile_id").eq("user_id", user.id).limit(1),
       supabase.from("investor_video_access").select("file_id").eq("user_id", user.id).limit(1),
       supabase.from("project_page_access").select("file_id").eq("user_id", user.id).limit(1),
-    ]).then(([{ data: r }, { data: d }, { data: v }, { data: pp }]) => {
+      fetchDirectLinks(isUserPreview ? user.id : null).catch(() => [] as DirectLink[]),
+    ]).then(([{ data: r }, { data: d }, { data: v }, { data: pp }, links]) => {
       const roles = new Set((r ?? []).map((x) => x.role as string));
       const admin = roles.has("admin");
       setAccess({
@@ -40,6 +55,7 @@ export function usePortalAccess() {
         videos: admin || roles.has("video") || (v ?? []).length > 0,
         project: admin || roles.has("project") || (pp ?? []).length > 0,
         documents: admin || (d ?? []).length > 0,
+        links,
         ready: true,
       });
     });
