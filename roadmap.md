@@ -46,3 +46,7 @@
 
 - [ ] Unify share links into Access manager: list personal-link recipients, three-way access type (portal / password link / personal link), convert in place, no emails on access changes, link options in the add-user section (plan approved 2026-10-31).
 - [ ] Guarantee no existing access breaks: additive-only DB change (nullable share_links.user_id), no permission/policy changes, existing links keep working.
+- [x] Unify share links into Access manager: personal-link recipients listed as "Link access", per-user direct-link block with convert (personal↔password, same URL), invite-to-portal for link recipients, "Share a direct link" tab in Add users, no emails on create/convert (build OK, 7 tests passed).
+- [x] Keep existing access intact: additive-only DB change (nullable share_links.user_id), no policy/permission changes.
+- [ ] Publish so the unified Access manager reaches energyforward.com.
+- [ ] Verify link recipients and convert flow while signed in as admin (blocked: authenticated checks unavailable for external Supabase).
