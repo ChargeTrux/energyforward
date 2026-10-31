@@ -1806,11 +1806,63 @@ export default function AdminDashboard() {
                       </div>
                       </div>
                     </div>
+                    <div className="mt-3">
+                      <UserShareLinks
+                        videos={videoCatalog}
+                        pages={projectCatalog}
+                        links={userLinks}
+                        userId={u.user_id}
+                        firstName={(u.full_name ?? "").split(" ")[0] ?? ""}
+                        lastName={(u.full_name ?? "").split(" ").slice(1).join(" ")}
+                        email={u.email}
+                        onChanged={load}
+                      />
+                    </div>
                     </div>
                   </div>
                 );
               })}
-            {visibleAccessProfiles.length === 0 && <p className="py-8 text-center text-muted-foreground">No users match your search or filters.</p>}
+            {linkRecipients.map((r) => (
+              <div key={`link-${r.email}`} className="ef-access-user ef-access-user--neutral">
+                <div className="ef-access-summary">
+                  <span className="ef-access-identity">
+                    <span className="block font-semibold">{r.name || "—"}</span>
+                    <span className="block text-xs text-muted-foreground">{r.email}</span>
+                    <span className="block mt-1 text-xs text-muted-foreground">Link access — no portal account · {r.links.length} direct link{r.links.length > 1 ? "s" : ""}</span>
+                  </span>
+                  <span className="ef-access-indicator">
+                    <span className="ef-user-status ef-user-status--neutral" title="This person opens shared links without signing in"><i aria-hidden="true" />Link access</span>
+                  </span>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      if (!window.confirm(`Create a portal account for ${r.email} and send the welcome email? Their existing link keeps working.`)) return;
+                      const data = (await callAdmin("invite", { email: r.email, full_name: r.name, roles: [], app_origin: window.location.origin })) as { temp_password?: string } | null;
+                      if (data) {
+                        toast({ title: "Welcome email sent", description: `Invited ${r.email}. Assign portal access in their row above.` });
+                        await load();
+                      }
+                    }}
+                  >
+                    Invite to portal
+                  </Button>
+                </div>
+                <div className="mt-3">
+                  <UserShareLinks
+                    videos={videoCatalog}
+                    pages={projectCatalog}
+                    links={r.links}
+                    firstName={r.links[0]?.recipient_first_name ?? ""}
+                    lastName={r.links[0]?.recipient_last_name ?? ""}
+                    email={r.email}
+                    onChanged={load}
+                  />
+                </div>
+              </div>
+            ))}
+            {visibleAccessProfiles.length === 0 && linkRecipients.length === 0 && <p className="py-8 text-center text-muted-foreground">No users match your search or filters.</p>}
           </div>
         </CardContent>
       </Collapse>
