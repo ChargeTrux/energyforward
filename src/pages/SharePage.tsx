@@ -73,10 +73,15 @@ export default function SharePage() {
 
   return (
     <div style={{ minHeight: "100vh", background: teal, color: pearl, fontFamily: "'General Sans', Arial, sans-serif", display: "flex", flexDirection: "column" }}>
-      <header style={{ padding: "20px clamp(16px,4vw,56px)", borderBottom: "1px solid rgba(238,234,226,0.12)" }}>
+      <header style={{ padding: "20px clamp(16px,4vw,56px)", borderBottom: "1px solid rgba(238,234,226,0.12)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
         <span style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: 18 }}>
           energyforward<span style={{ color: amber }}>.</span>
         </span>
+        <nav style={{ display: "flex", gap: 28, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", alignItems: "center" }}>
+          <a href="/?public=1" style={navLink}>Home</a>
+          {signedIn && <Link to="/investor/welcome" style={navLink}>My portal</Link>}
+          {signedIn && <Link to="/signout" style={navLink}>Sign out</Link>}
+        </nav>
       </header>
       <section style={{ textAlign: "center", padding: "28px clamp(16px,4vw,56px) 18px", maxWidth: 760, margin: "0 auto" }}>
         <h1 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(24px,4vh,38px)", margin: "0 0 10px", color: pearl }}>
