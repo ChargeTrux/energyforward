@@ -1519,7 +1519,7 @@ export default function AdminDashboard() {
         <Button size="sm" variant="outline" className="ef-ghost-btn" onClick={() => document.querySelectorAll<HTMLDetailsElement>("details.ef-collapse").forEach((d) => { d.open = false; })}>Collapse all sections</Button>
       </div>
 
-      <Collapse defaultOpen title={<>
+      <Collapse title={<>
             <Users className="w-5 h-5" /> Investor & user manager{" "}
             <span className="text-sm font-normal text-muted-foreground">
               — who can see which portals, folders, videos and Project Run pages
@@ -2845,11 +2845,11 @@ export default function AdminDashboard() {
         </CardContent>
       </Collapse></div></Collapse>
 
-<Collapse tone="activity" defaultOpen title={<>
+<Collapse tone="activity" title={<>
             <Activity className="w-5 h-5" /> Login Activity & Time Spent
 </>}>
         <CardContent className="space-y-4">
-          <Collapse nested defaultOpen title={<>Activity map (where people opened content)</>}>
+          <Collapse nested title={<>Activity map (where people opened content)</>}>
             <div className="px-1 pb-2"><ActivityMap /></div>
           </Collapse>
           <div className="flex flex-wrap items-center justify-between gap-3">
