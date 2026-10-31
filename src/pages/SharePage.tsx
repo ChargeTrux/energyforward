@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 const teal = "#0A2A2E";
 const amber = "#E8B14A";
 const pearl = "#EEEAE2";
 const base = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/share-link`;
 const headers = { "Content-Type": "application/json", apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string };
+const navLink = { color: pearl, opacity: 0.75, textDecoration: "none" };
 
 type Unlocked = { ticket: string; name: string; type: "project" | "video" | "document" };
 
@@ -20,6 +22,13 @@ export default function SharePage() {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [blobType, setBlobType] = useState("");
   const [loading, setLoading] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSignedIn(!!data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSignedIn(!!s));
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     fetch(`${base}?action=info`, { method: "POST", headers, body: JSON.stringify({ slug }) })
@@ -64,10 +73,15 @@ export default function SharePage() {
 
   return (
     <div style={{ minHeight: "100vh", background: teal, color: pearl, fontFamily: "'General Sans', Arial, sans-serif", display: "flex", flexDirection: "column" }}>
-      <header style={{ padding: "20px clamp(16px,4vw,56px)", borderBottom: "1px solid rgba(238,234,226,0.12)" }}>
+      <header style={{ padding: "20px clamp(16px,4vw,56px)", borderBottom: "1px solid rgba(238,234,226,0.12)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
         <span style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: 18 }}>
           energyforward<span style={{ color: amber }}>.</span>
         </span>
+        <nav style={{ display: "flex", gap: 28, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", alignItems: "center" }}>
+          <a href="/?public=1" style={navLink}>Home</a>
+          {signedIn && <Link to="/investor/welcome" style={navLink}>My portal</Link>}
+          {signedIn && <Link to="/signout" style={navLink}>Sign out</Link>}
+        </nav>
       </header>
       <section style={{ textAlign: "center", padding: "28px clamp(16px,4vw,56px) 18px", maxWidth: 760, margin: "0 auto" }}>
         <h1 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(24px,4vh,38px)", margin: "0 0 10px", color: pearl }}>
