@@ -419,7 +419,7 @@
 .ef-admin .ef-material-choice--project { --choice-tone: var(--admin-section-invite); }
 .ef-admin .ef-material-choice--video { --choice-tone: var(--admin-section-materials); }
 .ef-admin .ef-material-choice--document { --choice-tone: var(--admin-section-people); }
-.ef-admin label.ef-material-choice { border-top: 4px solid hsl(var(--choice-tone)); background: hsl(var(--choice-tone) / 0.08); }
+.ef-admin label.ef-material-choice:has(input[type="radio"]) { border-top: 4px solid hsl(var(--choice-tone)); background: hsl(var(--choice-tone) / 0.08); }
 .ef-admin label.ef-material-choice:has(input:checked) { background: hsl(var(--admin-choice-selected)); }
 .ef-admin .ef-collapse--nested > summary { background: hsl(var(--section-tone) / 0.08); }
 .ef-admin [role="tab"]:nth-child(2) { border-bottom: 3px solid hsl(var(--admin-section-materials)); }
