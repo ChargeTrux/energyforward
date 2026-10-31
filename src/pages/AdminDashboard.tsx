@@ -357,6 +357,7 @@ export default function AdminDashboard() {
       { data: invProfileRows },
       { data: invAccessRows },
       { data: shareLinkRows },
+      { count: loginTotal },
     ] =
       await Promise.all([
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
