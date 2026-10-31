@@ -293,3 +293,120 @@
 .ef-admin .ef-badge--off { color: hsl(var(--admin-status-issue)); border-color: hsl(var(--admin-status-issue) / 0.4); background: hsl(var(--admin-status-issue) / 0.08); }
 .ef-admin thead th { color: hsl(var(--foreground)) !important; letter-spacing: 0; }
 @media (prefers-reduced-motion: reduce) { .ef-admin .ef-pulse { animation: none; } }
+
+/* Field titles sit above contrasting writing surfaces, never inside them. */
+.ef-admin label:not(:has(input[type="checkbox"], input[type="radio"])) {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.ef-admin input:not([type="checkbox"]):not([type="radio"]),
+.ef-admin textarea, .ef-admin select,
+.ef-admin [role="combobox"] {
+  background: hsl(var(--admin-field-background)) !important;
+  color: hsl(var(--admin-field-text)) !important;
+  border: 1px solid hsl(var(--admin-field-border)) !important;
+  border-radius: 6px;
+  min-height: 42px;
+  font-size: 14px;
+  font-weight: 400;
+}
+.ef-admin input::placeholder, .ef-admin textarea::placeholder {
+  color: hsl(var(--admin-field-placeholder));
+  opacity: 1;
+}
+.ef-admin input:focus-visible, .ef-admin textarea:focus-visible,
+.ef-admin select:focus-visible, .ef-admin [role="combobox"]:focus-visible {
+  outline: 2px solid hsl(var(--primary)) !important;
+  outline-offset: 2px;
+  box-shadow: none !important;
+}
+.ef-admin input:disabled, .ef-admin textarea:disabled,
+.ef-admin [role="combobox"]:disabled {
+  background: hsl(var(--muted)) !important;
+  color: hsl(var(--muted-foreground)) !important;
+  border-style: dashed !important;
+  opacity: 1;
+  cursor: not-allowed;
+}
+.ef-admin .ef-form-group { min-width: 0; border: 0; padding: 16px 0 0; margin: 4px 0 0; border-top: 1px solid hsl(var(--border)); }
+.ef-admin .ef-form-group legend { padding: 0 8px 0 0; font-size: 14px; font-weight: 700; color: hsl(var(--section-tone, var(--foreground))); }
+.ef-admin .ef-form-group > .ef-choice-row { margin-top: 4px; }
+.ef-admin .ef-choice-row { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* A visible check/dot and outline distinguish state without relying on color. */
+.ef-admin input[type="checkbox"], .ef-admin input[type="radio"] {
+  appearance: none;
+  display: inline-grid;
+  place-content: center;
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px;
+  padding: 0;
+  margin: 0;
+  border: 2px solid hsl(var(--admin-field-border)) !important;
+  border-radius: 4px;
+  background: hsl(var(--admin-choice-background)) !important;
+  cursor: pointer;
+}
+.ef-admin input[type="radio"] { border-radius: 50%; }
+.ef-admin input[type="checkbox"]::before {
+  content: "";
+  width: 5px;
+  height: 10px;
+  border: solid hsl(var(--admin-choice-mark));
+  border-width: 0 2px 2px 0;
+  transform: translateY(-1px) rotate(45deg);
+  visibility: hidden;
+}
+.ef-admin input[type="radio"]::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: hsl(var(--admin-choice-mark));
+  visibility: hidden;
+}
+.ef-admin input:is([type="checkbox"], [type="radio"]):checked {
+  background: hsl(var(--admin-choice-border)) !important;
+  border-color: hsl(var(--admin-choice-border)) !important;
+}
+.ef-admin input:is([type="checkbox"], [type="radio"]):checked::before { visibility: visible; }
+.ef-admin label:has(input[type="checkbox"], input[type="radio"]) {
+  padding: 9px 10px;
+  min-height: 40px;
+  border: 1px solid hsl(var(--admin-field-border) / 0.5);
+  border-radius: 6px;
+  background: hsl(var(--admin-choice-background));
+  align-items: center;
+  gap: 10px;
+  line-height: 1.5;
+  font-weight: 500;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.ef-admin label:has(input:checked) {
+  background: hsl(var(--admin-choice-selected));
+  border-color: hsl(var(--admin-choice-border));
+  box-shadow: inset 3px 0 0 hsl(var(--admin-choice-border));
+}
+.ef-admin label:has(input:focus-visible) { outline: 2px solid hsl(var(--primary)); outline-offset: 2px; }
+.ef-admin label:has(input:disabled) {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground)) !important;
+  border-style: dashed;
+  opacity: 1;
+  cursor: not-allowed;
+}
+.ef-admin label:has(input:disabled) input { cursor: not-allowed; }
+.ef-admin .ef-access-permissions label { margin-bottom: 6px; }
+.ef-admin .ef-choice-row > label { flex: 1 1 210px; }
+.ef-admin .ef-recipient-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.ef-admin .ef-recipient-fields > div { min-width: 0; }
+.ef-admin .ef-form-actions { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 12px; }
+@media (max-width: 640px) {
+  .ef-admin .ef-recipient-fields { grid-template-columns: 1fr; }
+  .ef-admin label:has(input) { flex-wrap: wrap; }
+  .ef-admin label:has(input) > span { min-width: 0; flex: 1; }
+}

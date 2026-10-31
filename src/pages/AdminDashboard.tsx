@@ -1919,7 +1919,7 @@ export default function AdminDashboard() {
         <CardContent className="px-0">
           <form
             onSubmit={handleInvite}
-            className="grid md:grid-cols-12 gap-3 items-end"
+            className="grid md:grid-cols-12 gap-x-5 gap-y-5 items-end"
           >
             <div className="md:col-span-5">
               <Label htmlFor="iname">Full Name</Label>
@@ -1941,7 +1941,9 @@ export default function AdminDashboard() {
                 placeholder="user@example.com"
               />
             </div>
-            <div className="md:col-span-12 flex flex-wrap gap-6 text-sm">
+            <fieldset className="md:col-span-12 ef-form-group text-sm">
+              <legend>Access type</legend>
+              <div className="ef-choice-row">
               <label className="flex items-center gap-2 font-semibold">
                 <input type="radio" name="invite-mode" checked={inviteMode === "portal"} onChange={() => setInviteMode("portal")} />
                 Portal access <span className="font-normal text-xs text-muted-foreground">(they sign in with an account)</span>
@@ -1950,7 +1952,8 @@ export default function AdminDashboard() {
                 <input type="radio" name="invite-mode" checked={inviteMode === "link"} onChange={() => setInviteMode("link")} />
                 Direct link <span className="font-normal text-xs text-muted-foreground">(one file, video or 3D page — no account)</span>
               </label>
-            </div>
+              </div>
+            </fieldset>
             {inviteMode === "portal" && (
             <div className="md:col-span-12 flex flex-wrap items-center gap-3 text-sm">
               <label className="flex items-center gap-2 font-semibold">
@@ -2064,7 +2067,7 @@ export default function AdminDashboard() {
                 ))}
               </div>
               {linkKind === "document" ? (
-                <div className="rounded p-2 max-h-72 overflow-y-auto" style={{ background: "#0A2A2E" }}>
+                <div className="ef-document-picker rounded p-2 max-h-72 overflow-y-auto">
                   <DocsTree onOpenFile={(profileId, f) => setLinkItem({ id: f.id, name: f.name, profileId })} activeFileId={linkItem?.id ?? null} />
                 </div>
               ) : (
@@ -2250,8 +2253,9 @@ export default function AdminDashboard() {
                 <div key={p.id} className="rounded-lg border border-border p-4">
                   <div className="grid gap-3 md:grid-cols-12">
                     <div className="md:col-span-3">
-                      <Label>Profile name</Label>
+                      <Label htmlFor={`profile-name-${p.id}`}>Profile name</Label>
                       <Input
+                        id={`profile-name-${p.id}`}
                         value={draft.name}
                         onChange={(e) =>
                           setProfileDrafts((d) => ({ ...d, [p.id]: { ...draft, name: e.target.value } }))
@@ -2259,8 +2263,9 @@ export default function AdminDashboard() {
                       />
                     </div>
                     <div className="md:col-span-4">
-                      <Label>Description</Label>
+                      <Label htmlFor={`profile-description-${p.id}`}>Description</Label>
                       <Input
+                        id={`profile-description-${p.id}`}
                         value={draft.description}
                         onChange={(e) =>
                           setProfileDrafts((d) => ({ ...d, [p.id]: { ...draft, description: e.target.value } }))
@@ -2268,8 +2273,9 @@ export default function AdminDashboard() {
                       />
                     </div>
                     <div className="md:col-span-4">
-                      <Label>Shared folder link (Google Drive)</Label>
+                      <Label htmlFor={`profile-folder-${p.id}`}>Shared folder link (Google Drive)</Label>
                       <Input
+                        id={`profile-folder-${p.id}`}
                         value={draft.drive_url}
                         placeholder="https://drive.google.com/drive/folders/..."
                         onChange={(e) =>
@@ -2378,12 +2384,14 @@ export default function AdminDashboard() {
                       <Copy className="w-4 h-4" />
                     </Button>
                   </div>
+                  <Label htmlFor={`video-description-${video.id}`} className="mt-4">Video description</Label>
                   <Textarea
+                    id={`video-description-${video.id}`}
                     value={videoDescriptionDrafts[video.id] ?? ""}
                     onChange={(event) => setVideoDescriptionDrafts((current) => ({ ...current, [video.id]: event.target.value }))}
                     disabled={video.descriptionSource === "document"}
                     placeholder="Enter a concise description for this video"
-                    className="mt-3 min-h-[108px] resize-y"
+                    className="min-h-[108px] resize-y"
                     maxLength={12000}
                   />
                   <div className="ef-video-description-actions mt-3">
@@ -2415,11 +2423,13 @@ export default function AdminDashboard() {
                     <h3 className="text-sm font-semibold">{pg.name}</h3>
                     <span className="text-xs text-muted-foreground">{projectAccess.filter((a) => a.file_id === pg.id).length} people</span>
                   </div>
+                  <Label htmlFor={`project-description-${pg.id}`} className="mt-4">3D demo description</Label>
                   <Textarea
+                    id={`project-description-${pg.id}`}
                     value={projectDescriptionDrafts[pg.id] ?? ""}
                     onChange={(event) => setProjectDescriptionDrafts((current) => ({ ...current, [pg.id]: event.target.value }))}
                     placeholder="Paste the text shown above this 3D demo"
-                    className="mt-3 min-h-[108px] resize-y"
+                    className="min-h-[108px] resize-y"
                     maxLength={12000}
                   />
                   <div className="ef-video-description-actions mt-3">

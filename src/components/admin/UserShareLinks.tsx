@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +33,7 @@ export function UserShareLinks({
   onChanged: () => void | Promise<void>;
 }) {
   const { toast } = useToast();
+  const fieldId = useId();
   const [showForm, setShowForm] = useState(true);
   const [kind, setKind] = useState<Kind>("video");
   const [item, setItem] = useState<(Item & { profileId?: string }) | null>(null);
@@ -100,14 +101,17 @@ export function UserShareLinks({
       </div>
       {showForm && (
         <div className="ef-share-create space-y-3">
-          <div className="flex flex-wrap gap-4">
+          <fieldset className="ef-form-group">
+            <legend>Material type</legend>
+            <div className="ef-choice-row">
             {(["project", "video", "document"] as Kind[]).map((k) => (
               <label key={k} className="flex items-center gap-2 font-semibold">
                 <input type="radio" name={`usk-${userId ?? email}`} checked={kind === k} onChange={() => { setKind(k); setItem(null); }} />
                 {KIND_LABEL[k]}
               </label>
             ))}
-          </div>
+            </div>
+          </fieldset>
           {kind === "document" ? (
             <div className="ef-document-picker rounded p-2 max-h-72 overflow-y-auto">
               <DocsTree onOpenFile={(profileId, f) => setItem({ id: f.id, name: f.name, profileId })} activeFileId={item?.id ?? null} />
@@ -124,21 +128,28 @@ export function UserShareLinks({
             </div>
           )}
           <p>Selected: <strong>{item ? item.name : "nothing yet"}</strong></p>
-          <div className="flex flex-wrap gap-4">
+          <fieldset className="ef-form-group">
+            <legend>Link access</legend>
+            <div className="ef-choice-row">
             <label className="flex items-center gap-2 font-semibold"><input type="radio" name={`usm-${userId ?? email}`} checked={personal} onChange={() => setPersonal(true)} />Personal link (no password, expires in 2 weeks)</label>
             <label className="flex items-center gap-2 font-semibold"><input type="radio" name={`usm-${userId ?? email}`} checked={!personal} onChange={() => setPersonal(false)} />Link with password</label>
-          </div>
+            </div>
+          </fieldset>
           {personal ? (
-            <div className="flex flex-wrap items-end gap-3">
-              <div><Label>First name</Label><Input value={first} onChange={(e) => setFirst(e.target.value)} maxLength={100} /></div>
-              <div><Label>Last name</Label><Input value={last} onChange={(e) => setLast(e.target.value)} maxLength={100} /></div>
-              <div><Label>Email</Label><Input type="email" value={addr} onChange={(e) => setAddr(e.target.value)} maxLength={255} /></div>
+            <div>
+              <div className="ef-recipient-fields">
+              <div><Label htmlFor={`${fieldId}-first`}>First name</Label><Input id={`${fieldId}-first`} value={first} onChange={(e) => setFirst(e.target.value)} maxLength={100} /></div>
+              <div><Label htmlFor={`${fieldId}-last`}>Last name</Label><Input id={`${fieldId}-last`} value={last} onChange={(e) => setLast(e.target.value)} maxLength={100} /></div>
+              <div><Label htmlFor={`${fieldId}-email`}>Email</Label><Input id={`${fieldId}-email`} type="email" value={addr} onChange={(e) => setAddr(e.target.value)} maxLength={255} /></div>
+              </div>
+              <div className="ef-form-actions">
               <Button type="button" variant="outline" onClick={() => create(false)} disabled={busy}>{busy ? "Working…" : "Create link (no email)"}</Button>
               <Button type="button" onClick={() => create(true)} disabled={busy}>{busy ? "Working…" : "Create link & send email"}</Button>
+              </div>
             </div>
           ) : (
             <div className="flex flex-wrap items-end gap-3">
-              <div><Label>Password</Label><Input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" autoComplete="off" /></div>
+              <div><Label htmlFor={`${fieldId}-password`}>Password</Label><Input id={`${fieldId}-password`} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" autoComplete="off" /></div>
               <Button type="button" onClick={() => create(false)} disabled={busy}>{busy ? "Working…" : "Create link (no email)"}</Button>
             </div>
           )}
