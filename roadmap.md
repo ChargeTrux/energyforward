@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Distinguish admin field titles, editable fields, and checked/unchecked/disabled selections without changing access behavior.
+
 - [x] Reorder per-person direct-link sharing above existing links and improve admin section/tab readability without changing access; sample-data desktop/mobile checks and 7 regression tests passed, build clean. Real-account checks remain unavailable with external authentication; publication pending.
 
 - [x] Clear the stale blocking newsletter-read finding after live policy verification and a fresh scan confirmed admin-only reads and no error-level findings; no user file, folder, or portal permissions changed.
