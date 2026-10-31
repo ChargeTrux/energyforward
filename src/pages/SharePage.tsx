@@ -79,7 +79,6 @@ export default function SharePage() {
         </span>
         <nav style={{ display: "flex", gap: 28, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", alignItems: "center" }}>
           <a href="/?public=1" style={navLink}>Home</a>
-          {signedIn && <Link to="/investor/welcome" style={navLink}>My portal</Link>}
           {signedIn && <Link to="/signout" style={navLink}>Sign out</Link>}
         </nav>
       </header>
