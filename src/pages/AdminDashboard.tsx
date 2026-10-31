@@ -575,7 +575,10 @@ export default function AdminDashboard() {
     const statusRank: Record<string, number> = { active: 0, success: 1, pending: 2, neutral: 3, issue: 4 };
     const rows = profiles
       .filter((u) => `${u.full_name ?? ""} ${u.email}`.toLowerCase().includes(search))
-      .filter((u) => accessStatusFilter === "all" || accessStatuses.get(u.user_id)?.tone === accessStatusFilter);
+      .filter((u) => accessStatusFilter === "all"
+        || (accessStatusFilter === "links"
+          ? shareLinks.some((l) => l.user_id === u.user_id || (l.recipient_email ?? "").toLowerCase() === u.email.toLowerCase())
+          : accessStatuses.get(u.user_id)?.tone === accessStatusFilter));
     rows.sort((a, b) => {
       const byName = (a.full_name ?? "").localeCompare(b.full_name ?? "") || a.email.localeCompare(b.email);
       if (accessSort === "activity") {
