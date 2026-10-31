@@ -7,15 +7,15 @@ import { useToast } from "@/hooks/use-toast";
 import { DocsTree } from "@/components/DocsTree";
 
 type Item = { id: string; name: string };
-type Kind = "project" | "video" | "document";
-type LinkRow = { id: string; slug: string; item_type: Kind; item_name: string; active: boolean; expires_at: string | null; created_at: string; no_password: boolean; recipient_first_name: string | null; recipient_last_name: string | null; recipient_email: string | null; email_sent_at: string | null };
+export type Kind = "project" | "video" | "document";
+export type LinkRow = { id: string; slug: string; item_type: Kind; item_name: string; active: boolean; expires_at: string | null; created_at: string; no_password: boolean; recipient_first_name: string | null; recipient_last_name: string | null; recipient_email: string | null; email_sent_at: string | null; user_id?: string | null };
 
 const FN = "share-link";
 const SITE = "https://energyforward.com";
-const KIND_LABEL: Record<Kind, string> = { project: "Project 3D Demo", video: "Video", document: "Document" };
-const linkUrl = (slug: string) => `${SITE}/share/${slug}`;
+export const KIND_LABEL: Record<Kind, string> = { project: "Project 3D Demo", video: "Video", document: "Document" };
+export const linkUrl = (slug: string) => `${SITE}/share/${slug}`;
 
-async function call(action: string, body: object) {
+export async function callShareLink(action: string, body: object) {
   const { data, error } = await supabase.functions.invoke(`${FN}?action=${action}`, { body });
   if (error) {
     const ctx = (error as { context?: Response }).context;
@@ -47,7 +47,7 @@ export function ShareLinksPanel({ videos, pages }: { videos: Item[]; pages: Item
     setLoadError(null);
     try {
     const [{ data: l, error: linkError }, { data: v, error: viewError }] = await Promise.all([
-      supabase.from("share_links").select("id,slug,item_type,item_name,active,expires_at,created_at,no_password,recipient_first_name,recipient_last_name,recipient_email,email_sent_at").order("created_at", { ascending: false }),
+      supabase.from("share_links").select("id,slug,item_type,item_name,active,expires_at,created_at,no_password,recipient_first_name,recipient_last_name,recipient_email,email_sent_at,user_id").order("created_at", { ascending: false }),
       supabase.from("share_link_views").select("link_id,viewed_at").order("viewed_at", { ascending: false }).limit(1000),
     ]);
     if (linkError) throw linkError;
@@ -74,12 +74,12 @@ export function ShareLinksPanel({ videos, pages }: { videos: Item[]; pages: Item
     } else if (password.trim().length < 6) { toast({ title: "Password needs at least 6 characters", variant: "destructive" }); return; }
     setBusy(true);
     try {
-      const r = await call("create", personal
+      const r = await callShareLink("create", personal
         ? { item_type: kind, item_id: item.id, item_name: item.name, profile_id: item.profileId, no_password: true, first_name: first.trim(), last_name: last.trim(), email: email.trim() }
         : { item_type: kind, item_id: item.id, item_name: item.name, profile_id: item.profileId, password: password.trim(), expires_at: expires ? new Date(expires).toISOString() : null });
       copy(r.slug);
       if (send) {
-        try { await call("send_email", { id: r.id }); toast({ title: "Email sent", description: `Sent to ${email.trim()}` }); }
+        try { await callShareLink("send_email", { id: r.id }); toast({ title: "Email sent", description: `Sent to ${email.trim()}` }); }
         catch (e) { toast({ title: "Link created, but the email failed", description: (e as Error).message, variant: "destructive" }); }
       }
       setPassword(""); setExpires(""); setItem(null); setFirst(""); setLast(""); setEmail("");
@@ -90,12 +90,12 @@ export function ShareLinksPanel({ videos, pages }: { videos: Item[]; pages: Item
 
   const sendEmail = async (l: LinkRow) => {
     if (!window.confirm(`Send the email with this link to ${l.recipient_email}?`)) return;
-    try { await call("send_email", { id: l.id }); await load(); toast({ title: "Email sent", description: `Sent to ${l.recipient_email}` }); }
+    try { await callShareLink("send_email", { id: l.id }); await load(); toast({ title: "Email sent", description: `Sent to ${l.recipient_email}` }); }
     catch (e) { toast({ title: "Could not send", description: (e as Error).message, variant: "destructive" }); }
   };
 
   const update = async (id: string, patch: object) => {
-    try { await call("update", { id, ...patch }); await load(); toast({ title: "Link updated" }); }
+    try { await callShareLink("update", { id, ...patch }); await load(); toast({ title: "Link updated" }); }
     catch (e) { toast({ title: "Could not update", description: (e as Error).message, variant: "destructive" }); }
   };
 
@@ -191,7 +191,7 @@ export function ShareLinksPanel({ videos, pages }: { videos: Item[]; pages: Item
                   <Button size="sm" variant={l.active ? "destructive" : "default"} onClick={() => update(l.id, { active: !l.active })}>{l.active ? "Turn off" : "Turn on"}</Button>
                   <Button size="sm" variant="destructive" onClick={async () => {
                     if (!window.confirm(`Delete this link to "${l.item_name}"? Anyone using it will no longer be able to open it. This can't be undone.`)) return;
-                    try { await call("delete", { id: l.id }); await load(); toast({ title: "Link deleted" }); }
+                    try { await callShareLink("delete", { id: l.id }); await load(); toast({ title: "Link deleted" }); }
                     catch (e) { toast({ title: "Could not delete", description: (e as Error).message, variant: "destructive" }); }
                   }}>Delete</Button>
                 </div>

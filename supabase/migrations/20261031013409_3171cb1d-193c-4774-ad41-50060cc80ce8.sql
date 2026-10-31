@@ -1,0 +1,1 @@
+ALTER TABLE public.share_links ADD COLUMN IF NOT EXISTS user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL; CREATE INDEX IF NOT EXISTS share_links_user_id_idx ON public.share_links (user_id);

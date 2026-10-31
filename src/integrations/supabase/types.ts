@@ -600,6 +600,7 @@ export type Database = {
           recipient_last_name: string | null
           slug: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           active?: boolean
@@ -619,6 +620,7 @@ export type Database = {
           recipient_last_name?: string | null
           slug: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           active?: boolean
@@ -638,6 +640,7 @@ export type Database = {
           recipient_last_name?: string | null
           slug?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }

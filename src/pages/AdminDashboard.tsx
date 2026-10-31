@@ -1,4 +1,5 @@
-import { ShareLinksPanel, ActivityAlertToggle } from "@/components/admin/ShareLinksPanel";
+import { ShareLinksPanel, ActivityAlertToggle, type LinkRow } from "@/components/admin/ShareLinksPanel";
+import { UserShareLinks } from "@/components/admin/UserShareLinks";
 import { ActivityMap } from "@/components/admin/ActivityMap";
 import type React from "react";
 import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react";
@@ -215,6 +216,7 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
+  const [shareLinks, setShareLinks] = useState<LinkRow[]>([]);
   const [signups, setSignups] = useState<SignupRow[]>([]);
   const [activity, setActivity] = useState<ActivityRow[]>([]);
   const [contacts, setContacts] = useState<ContactSubmissionRow[]>([]);
@@ -222,6 +224,9 @@ export default function AdminDashboard() {
   const [recentLoginCount, setRecentLoginCount] = useState(0);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
+  const [linkFirst, setLinkFirst] = useState("");
+  const [linkLast, setLinkLast] = useState("");
+  const [linkEmail, setLinkEmail] = useState("");
   const [useOwnPassword, setUseOwnPassword] = useState(false);
   const [ownPassword, setOwnPassword] = useState("");
   const [inviteInvestor, setInviteInvestor] = useState(false);
@@ -348,6 +353,7 @@ export default function AdminDashboard() {
       { data: contactRows },
       { data: invProfileRows },
       { data: invAccessRows },
+      { data: shareLinkRows },
     ] =
       await Promise.all([
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
@@ -362,11 +368,13 @@ export default function AdminDashboard() {
         supabase.from("contact_submissions").select("*").order("created_at", { ascending: false }),
         supabase.from("investor_profiles").select("*").order("sort_order"),
         supabase.from("investor_profile_access").select("user_id, profile_id"),
+        supabase.from("share_links").select("id,slug,item_type,item_name,active,expires_at,created_at,no_password,recipient_first_name,recipient_last_name,recipient_email,email_sent_at,user_id").order("created_at", { ascending: false }),
       ]);
 
     const invProfiles = (invProfileRows ?? []) as InvestorProfile[];
     setInvestorProfiles(invProfiles);
     setInvestorAccess((invAccessRows ?? []) as InvestorAccessRow[]);
+    setShareLinks((shareLinkRows ?? []) as LinkRow[]);
     setProfileDrafts(
       Object.fromEntries(
         invProfiles.map((p) => [
@@ -587,6 +595,31 @@ export default function AdminDashboard() {
     });
     return rows;
   }, [profiles, accessSearch, accessStatusFilter, accessStatuses, accessSort, lastLogins, recentActivity]);
+
+  // Direct links that belong to a portal user (by account or by recipient email).
+  const linksForUser = (userId: string, email: string) =>
+    shareLinks.filter((l) => l.user_id === userId || (l.recipient_email ?? "").toLowerCase() === email.toLowerCase());
+
+  // People who only have a personal link (no portal account) — shown in the Access manager.
+  const linkRecipients = useMemo(() => {
+    const accountEmails = new Set(profiles.map((p) => p.email.toLowerCase()));
+    const byEmail = new Map<string, LinkRow[]>();
+    for (const l of shareLinks) {
+      if (!l.no_password || !l.recipient_email) continue;
+      const em = l.recipient_email.toLowerCase();
+      if (accountEmails.has(em)) continue;
+      byEmail.set(em, [...(byEmail.get(em) ?? []), l]);
+    }
+    const search = accessSearch.trim().toLowerCase();
+    return [...byEmail.entries()]
+      .map(([em, ls]) => ({
+        email: em,
+        links: ls,
+        name: [ls[0].recipient_first_name, ls[0].recipient_last_name].filter(Boolean).join(" "),
+      }))
+      .filter((r) => `${r.name} ${r.email}`.toLowerCase().includes(search))
+      .sort((a, b) => a.name.localeCompare(b.name) || a.email.localeCompare(b.email));
+  }, [shareLinks, profiles, accessSearch]);
 
   const filteredActivity = useMemo(() => {
     const search = activitySearch.trim().toLowerCase();
@@ -1589,6 +1622,7 @@ export default function AdminDashboard() {
                 const projPages = projectCatalog.filter((pg) =>
                   projectAccess.some((a) => a.user_id === u.user_id && a.file_id === pg.id),
                 );
+                const userLinks = linksForUser(u.user_id, u.email);
                 return (
                   <div key={u.user_id} className={`ef-access-user ef-access-user--${status.tone}`}>
                     <div className="ef-access-summary">
@@ -1601,7 +1635,7 @@ export default function AdminDashboard() {
                         <span className="ef-access-identity">
                           <span className="block font-semibold">{u.full_name || "—"}</span>
                           <span className="block text-xs text-muted-foreground">{u.email}</span>
-                          <span className="block mt-1 text-xs text-muted-foreground">{getRoleLabel(u)} · {folders.length} folders · {vids.length} videos{u.is_project ? ` · Project Run (${projPages.length})` : ""}</span>
+                          <span className="block mt-1 text-xs text-muted-foreground">{getRoleLabel(u)} · {folders.length} folders · {vids.length} videos{u.is_project ? ` · Project Run (${projPages.length})` : ""}{userLinks.length > 0 ? ` · ${userLinks.length} direct link${userLinks.length > 1 ? "s" : ""}` : ""}</span>
                         </span>
                         <span className="ef-access-indicator">
                           <span className={`ef-user-status ef-user-status--${status.tone}`} title={status.tone === "active" ? `Activity recorded: ${formatCompact(recentActivity.get(u.user_id) ?? "")} (within five minutes)` : lastLogins.get(u.user_id) ? `Last successful sign-in: ${formatCompact(lastLogins.get(u.user_id) ?? "")}` : status.label}><i aria-hidden="true" />{status.label}</span>
@@ -1775,11 +1809,63 @@ export default function AdminDashboard() {
                       </div>
                       </div>
                     </div>
+                    <div className="mt-3">
+                      <UserShareLinks
+                        videos={videoCatalog}
+                        pages={projectCatalog}
+                        links={userLinks}
+                        userId={u.user_id}
+                        firstName={(u.full_name ?? "").split(" ")[0] ?? ""}
+                        lastName={(u.full_name ?? "").split(" ").slice(1).join(" ")}
+                        email={u.email}
+                        onChanged={load}
+                      />
+                    </div>
                     </div>
                   </div>
                 );
               })}
-            {visibleAccessProfiles.length === 0 && <p className="py-8 text-center text-muted-foreground">No users match your search or filters.</p>}
+            {linkRecipients.map((r) => (
+              <div key={`link-${r.email}`} className="ef-access-user ef-access-user--neutral">
+                <div className="ef-access-summary">
+                  <span className="ef-access-identity">
+                    <span className="block font-semibold">{r.name || "—"}</span>
+                    <span className="block text-xs text-muted-foreground">{r.email}</span>
+                    <span className="block mt-1 text-xs text-muted-foreground">Link access — no portal account · {r.links.length} direct link{r.links.length > 1 ? "s" : ""}</span>
+                  </span>
+                  <span className="ef-access-indicator">
+                    <span className="ef-user-status ef-user-status--neutral" title="This person opens shared links without signing in"><i aria-hidden="true" />Link access</span>
+                  </span>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      if (!window.confirm(`Create a portal account for ${r.email} and send the welcome email? Their existing link keeps working.`)) return;
+                      const data = (await callAdmin("invite", { email: r.email, full_name: r.name, roles: [], app_origin: window.location.origin })) as { temp_password?: string } | null;
+                      if (data) {
+                        toast({ title: "Welcome email sent", description: `Invited ${r.email}. Assign portal access in their row above.` });
+                        await load();
+                      }
+                    }}
+                  >
+                    Invite to portal
+                  </Button>
+                </div>
+                <div className="mt-3">
+                  <UserShareLinks
+                    videos={videoCatalog}
+                    pages={projectCatalog}
+                    links={r.links}
+                    firstName={r.links[0]?.recipient_first_name ?? ""}
+                    lastName={r.links[0]?.recipient_last_name ?? ""}
+                    email={r.email}
+                    onChanged={load}
+                  />
+                </div>
+              </div>
+            ))}
+            {visibleAccessProfiles.length === 0 && linkRecipients.length === 0 && <p className="py-8 text-center text-muted-foreground">No users match your search or filters.</p>}
           </div>
         </CardContent>
       </Collapse>
@@ -1790,6 +1876,7 @@ export default function AdminDashboard() {
         <Tabs defaultValue="invite" className="px-6 pt-1">
           <TabsList>
             <TabsTrigger value="invite">Invite one person</TabsTrigger>
+            <TabsTrigger value="link">Share a direct link</TabsTrigger>
             <TabsTrigger value="import">Import a list</TabsTrigger>
           </TabsList>
         <TabsContent value="invite">
@@ -1944,6 +2031,28 @@ export default function AdminDashboard() {
             A temporary password will be generated and the user will be required to
             change it on first sign-in, unless you tick "Use my own password".
           </p>
+        </CardContent>
+        </TabsContent>
+        <TabsContent value="link">
+        <CardContent className="px-0 space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Share one file, video or 3D page without creating a portal account. The person appears in the Access manager under "Link access", and you can convert the link between personal (no password) and password at any time. No email is sent unless you click "Create link &amp; send email".
+          </p>
+          <div className="flex flex-wrap items-end gap-3">
+            <div><Label htmlFor="link-first">First name</Label><Input id="link-first" value={linkFirst} onChange={(e) => setLinkFirst(e.target.value)} maxLength={100} /></div>
+            <div><Label htmlFor="link-last">Last name</Label><Input id="link-last" value={linkLast} onChange={(e) => setLinkLast(e.target.value)} maxLength={100} /></div>
+            <div><Label htmlFor="link-email">Email</Label><Input id="link-email" type="email" value={linkEmail} onChange={(e) => setLinkEmail(e.target.value)} maxLength={255} /></div>
+          </div>
+          <UserShareLinks
+            key={linkEmail.trim().toLowerCase()}
+            videos={videoCatalog}
+            pages={projectCatalog}
+            links={linkEmail.trim() ? shareLinks.filter((l) => (l.recipient_email ?? "").toLowerCase() === linkEmail.trim().toLowerCase()) : []}
+            firstName={linkFirst}
+            lastName={linkLast}
+            email={linkEmail}
+            onChanged={load}
+          />
         </CardContent>
         </TabsContent>
         <TabsContent value="import">
