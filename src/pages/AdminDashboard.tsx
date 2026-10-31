@@ -2033,6 +2033,28 @@ export default function AdminDashboard() {
           </p>
         </CardContent>
         </TabsContent>
+        <TabsContent value="link">
+        <CardContent className="px-0 space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Share one file, video or 3D page without creating a portal account. The person appears in the Access manager under "Link access", and you can convert the link between personal (no password) and password at any time. No email is sent unless you click "Create link &amp; send email".
+          </p>
+          <div className="flex flex-wrap items-end gap-3">
+            <div><Label htmlFor="link-first">First name</Label><Input id="link-first" value={linkFirst} onChange={(e) => setLinkFirst(e.target.value)} maxLength={100} /></div>
+            <div><Label htmlFor="link-last">Last name</Label><Input id="link-last" value={linkLast} onChange={(e) => setLinkLast(e.target.value)} maxLength={100} /></div>
+            <div><Label htmlFor="link-email">Email</Label><Input id="link-email" type="email" value={linkEmail} onChange={(e) => setLinkEmail(e.target.value)} maxLength={255} /></div>
+          </div>
+          <UserShareLinks
+            key={linkEmail.trim().toLowerCase()}
+            videos={videoCatalog}
+            pages={projectCatalog}
+            links={linkEmail.trim() ? shareLinks.filter((l) => (l.recipient_email ?? "").toLowerCase() === linkEmail.trim().toLowerCase()) : []}
+            firstName={linkFirst}
+            lastName={linkLast}
+            email={linkEmail}
+            onChanged={load}
+          />
+        </CardContent>
+        </TabsContent>
         <TabsContent value="import">
         <CardContent className="space-y-4 px-0">
           <p className="text-sm text-muted-foreground">
