@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Align admin notification controls, number and distinguish expanded user sections, rename existing-user management, and remove only the duplicate standalone sharing section.
+
 - [x] Distinguish admin field titles, editable fields, and checked/unchecked/disabled selections without changing access behavior; sample-data desktop/mobile interaction checks and 7 regression tests passed. Real-account checks remain blocked by external authentication; publication pending.
 
 - [x] Reorder per-person direct-link sharing above existing links and improve admin section/tab readability without changing access; sample-data desktop/mobile checks and 7 regression tests passed, build clean. Real-account checks remain unavailable with external authentication; publication pending.
