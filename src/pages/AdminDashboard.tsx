@@ -2052,7 +2052,60 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
+            )}
+            {inviteMode === "link" && (
+            <div className="md:col-span-12 ef-access-permissions text-sm space-y-3">
+              <div className="flex flex-wrap gap-4">
+                {(["project", "video", "document"] as Kind[]).map((k) => (
+                  <label key={k} className="flex items-center gap-2 font-semibold">
+                    <input type="radio" name="invite-link-kind" checked={linkKind === k} onChange={() => { setLinkKind(k); setLinkItem(null); }} />
+                    {KIND_LABEL[k]}
+                  </label>
+                ))}
+              </div>
+              {linkKind === "document" ? (
+                <div className="rounded p-2 max-h-72 overflow-y-auto" style={{ background: "#0A2A2E" }}>
+                  <DocsTree onOpenFile={(profileId, f) => setLinkItem({ id: f.id, name: f.name, profileId })} activeFileId={linkItem?.id ?? null} />
+                </div>
+              ) : (
+                <div className="rounded border p-2 max-h-56 overflow-y-auto">
+                  {(linkKind === "video" ? videoCatalog : projectCatalog).length === 0 && <span className="text-muted-foreground">Nothing to pick yet.</span>}
+                  {(linkKind === "video" ? videoCatalog : projectCatalog).map((it) => (
+                    <label key={it.id} className="flex items-center gap-2 py-0.5">
+                      <input type="radio" name="invite-link-item" checked={linkItem?.id === it.id} onChange={() => setLinkItem(it)} />
+                      {it.name.replace(/\.[^.]+$/, "")}
+                    </label>
+                  ))}
+                </div>
+              )}
+              <p>Selected: <strong>{linkItem ? linkItem.name : "nothing yet"}</strong></p>
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="invite-link-mode" checked={linkPersonal} onChange={() => setLinkPersonal(true)} />Personal link <span className="font-normal text-xs text-muted-foreground">(no password — they type their email; expires in 2 weeks)</span></label>
+                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="invite-link-mode" checked={!linkPersonal} onChange={() => setLinkPersonal(false)} />Link with password</label>
+              </div>
+              {!linkPersonal && (
+                <div className="max-w-xs">
+                  <Label htmlFor="invite-link-pw">Password</Label>
+                  <Input id="invite-link-pw" value={linkPassword} onChange={(e) => setLinkPassword(e.target.value)} placeholder="At least 6 characters" autoComplete="off" />
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">No account is created and no email is sent unless you click "Create link &amp; send email". The person appears in the Access manager under "Link access".</p>
+            </div>
+            )}
             <div className="md:col-span-12 flex justify-end">
+              {inviteMode === "link" ? (
+                <>
+                  <Button type="submit" variant="outline" disabled={busy || !inviteEmail} className="mr-3">
+                    Create link (no email)
+                  </Button>
+                  {linkPersonal && (
+                    <Button type="button" disabled={busy || !inviteEmail} className="ef-cta px-8" onClick={() => void createLinkFromInvite(true)}>
+                      Create link &amp; send email
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <>
               <Button
                 type="button"
                 variant="outline"
