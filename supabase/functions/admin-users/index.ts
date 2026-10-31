@@ -268,6 +268,39 @@ Deno.serve(async (req) => {
           grantedProfiles = (profRows ?? []) as typeof grantedProfiles;
         }
       }
+      // Per-file/folder document picks refine a granted profile folder.
+      // Only items under a profile granted in this invite are accepted.
+      if (Array.isArray(body.investor_document_items)) {
+        const allowed = new Set(
+          (Array.isArray(investor_profile_ids) ? investor_profile_ids : []).filter(
+            (v): v is string => typeof v === "string",
+          ),
+        );
+        const items = (body.investor_document_items as unknown[])
+          .filter(
+            (v): v is { profile_id: string; item_id: string; item_name?: unknown; is_folder?: unknown } =>
+              !!v &&
+              typeof v === "object" &&
+              typeof (v as Record<string, unknown>).profile_id === "string" &&
+              allowed.has((v as Record<string, unknown>).profile_id as string) &&
+              typeof (v as Record<string, unknown>).item_id === "string" &&
+              ((v as Record<string, unknown>).item_id as string).length > 0 &&
+              ((v as Record<string, unknown>).item_id as string).length <= 200,
+          )
+          .slice(0, 500);
+        for (const it of items) {
+          await admin.from("investor_document_access").upsert(
+            {
+              user_id: newUserId,
+              profile_id: it.profile_id,
+              item_id: it.item_id,
+              item_name: String(it.item_name ?? "").slice(0, 300),
+              is_folder: it.is_folder === true,
+            },
+            { onConflict: "user_id,profile_id,item_id" },
+          );
+        }
+      }
       grantedProfiles = await grantedDocFolders(admin, newUserId!);
 
       // Send branded welcome email with credentials.

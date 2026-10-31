@@ -3,10 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { DocsTree } from "@/components/DocsTree";
+import { DriveSelectTree, type Selection } from "@/components/admin/DriveSelectTree";
 import { callShareLink, KIND_LABEL, linkUrl, type Kind, type LinkRow } from "@/components/admin/ShareLinksPanel";
 
 type Item = { id: string; name: string };
+type Profile = { id: string; name: string };
 
 /**
  * Per-person direct links inside the Access manager / Add users.
@@ -21,6 +22,7 @@ export function UserShareLinks({
   firstName = "",
   lastName = "",
   email = "",
+  profiles = [],
   onChanged,
 }: {
   videos: Item[];
@@ -30,6 +32,8 @@ export function UserShareLinks({
   firstName?: string;
   lastName?: string;
   email?: string;
+  /** Document folders (Drive profiles) for the document picker. */
+  profiles?: Profile[];
   onChanged: () => void | Promise<void>;
 }) {
   const { toast } = useToast();
@@ -37,6 +41,7 @@ export function UserShareLinks({
   const [showForm, setShowForm] = useState(true);
   const [kind, setKind] = useState<Kind>("video");
   const [item, setItem] = useState<(Item & { profileId?: string }) | null>(null);
+  const [docSel, setDocSel] = useState<Record<string, Selection>>({});
   const [personal, setPersonal] = useState(true);
   const [first, setFirst] = useState(firstName);
   const [last, setLast] = useState(lastName);
@@ -44,28 +49,42 @@ export function UserShareLinks({
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Document picks across all folders — one link is created per ticked file.
+  const docPicks = profiles.flatMap((p) =>
+    [...(docSel[p.id] ?? new Map())].map(([id, picked]) => ({ id, name: picked.name, profileId: p.id })),
+  );
+
   const copy = (slug: string) => { void navigator.clipboard.writeText(linkUrl(slug)); toast({ title: "Link copied", description: linkUrl(slug) }); };
   const status = (l: LinkRow) => !l.active ? "Turned off" : l.expires_at && new Date(l.expires_at) <= new Date() ? "Expired" : "Active";
 
   const create = async (send: boolean) => {
-    if (!item) { toast({ title: "Pick an item first", variant: "destructive" }); return; }
+    const picks: (Item & { profileId?: string })[] = kind === "document" ? docPicks : item ? [item] : [];
+    if (!picks.length) { toast({ title: "Pick an item first", variant: "destructive" }); return; }
     if (personal) {
       if (!first.trim()) { toast({ title: "Enter a first name", variant: "destructive" }); return; }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr.trim())) { toast({ title: "Enter a valid email address", variant: "destructive" }); return; }
     } else if (password.trim().length < 6) { toast({ title: "Password needs at least 6 characters", variant: "destructive" }); return; }
     setBusy(true);
     try {
-      const r = await callShareLink("create", personal
-        ? { item_type: kind, item_id: item.id, item_name: item.name, profile_id: item.profileId, no_password: true, first_name: first.trim(), last_name: last.trim(), email: addr.trim(), user_id: userId }
-        : { item_type: kind, item_id: item.id, item_name: item.name, profile_id: item.profileId, password: password.trim(), user_id: userId });
-      copy(r.slug);
-      if (send && personal) {
-        try { await callShareLink("send_email", { id: r.id }); toast({ title: "Email sent", description: `Sent to ${addr.trim()}` }); }
-        catch (e) { toast({ title: "Link created, but the email failed", description: (e as Error).message, variant: "destructive" }); }
-      } else {
-        toast({ title: "Link created — no email sent", description: "Copy it into your own email, or use Send email later." });
+      const created: { id: string; slug: string }[] = [];
+      for (const p of picks) {
+        const r = await callShareLink("create", personal
+          ? { item_type: kind, item_id: p.id, item_name: p.name, profile_id: p.profileId, no_password: true, first_name: first.trim(), last_name: last.trim(), email: addr.trim(), user_id: userId }
+          : { item_type: kind, item_id: p.id, item_name: p.name, profile_id: p.profileId, password: password.trim(), user_id: userId });
+        created.push(r);
       }
-      setItem(null); setPassword(""); setShowForm(false);
+      void navigator.clipboard.writeText(created.map((r) => linkUrl(r.slug)).join("\n"));
+      if (send && personal) {
+        let sent = 0;
+        for (const r of created) {
+          try { await callShareLink("send_email", { id: r.id }); sent++; }
+          catch (e) { toast({ title: "One email failed", description: (e as Error).message, variant: "destructive" }); }
+        }
+        toast({ title: `Sent ${sent} of ${created.length} email${created.length > 1 ? "s" : ""}`, description: `To ${addr.trim()} — one email per link.` });
+      } else {
+        toast({ title: `${created.length} link${created.length > 1 ? "s" : ""} created — no email sent`, description: "Copied to your clipboard, one per line. Use Send email later if needed." });
+      }
+      setItem(null); setDocSel({}); setPassword(""); setShowForm(false);
       await onChanged();
     } catch (e) { toast({ title: "Could not create link", description: (e as Error).message, variant: "destructive" }); }
     setBusy(false);
@@ -106,15 +125,27 @@ export function UserShareLinks({
             <div className="ef-choice-row">
             {(["project", "video", "document"] as Kind[]).map((k) => (
               <label key={k} className={`ef-material-choice ef-material-choice--${k} flex items-center gap-2 font-semibold`}>
-                <input type="radio" name={`usk-${userId ?? email}`} checked={kind === k} onChange={() => { setKind(k); setItem(null); }} />
+                <input type="radio" name={`usk-${userId ?? email}`} checked={kind === k} onChange={() => { setKind(k); setItem(null); setDocSel({}); }} />
                 {KIND_LABEL[k]}
               </label>
             ))}
             </div>
           </fieldset>
           {kind === "document" ? (
-            <div className="ef-document-picker rounded p-2 max-h-72 overflow-y-auto">
-              <DocsTree onOpenFile={(profileId, f) => setItem({ id: f.id, name: f.name, profileId })} activeFileId={item?.id ?? null} />
+            <div className="ef-document-picker rounded p-2 max-h-72 overflow-y-auto space-y-3">
+              {profiles.length === 0 && <span className="text-muted-foreground">No document folder set up.</span>}
+              {profiles.map((p) => (
+                <div key={p.id}>
+                  {profiles.length > 1 && <div className="text-xs font-semibold uppercase mb-1">{p.name}</div>}
+                  <DriveSelectTree
+                    profileId={p.id}
+                    selection={docSel[p.id] ?? new Map()}
+                    onChange={(next) => setDocSel((s) => ({ ...s, [p.id]: next }))}
+                    filesOnly
+                  />
+                </div>
+              ))}
+              <p className="text-xs text-muted-foreground">Tick as many files as you like — each one gets its own link. Open a folder to pick files inside it.</p>
             </div>
           ) : (
             <div className="rounded border p-2 max-h-56 overflow-y-auto">
@@ -127,7 +158,7 @@ export function UserShareLinks({
               ))}
             </div>
           )}
-          <p>Selected: <strong>{item ? item.name : "nothing yet"}</strong></p>
+          <p>Selected: <strong>{kind === "document" ? (docPicks.length ? `${docPicks.length} file${docPicks.length > 1 ? "s" : ""}` : "nothing yet") : item ? item.name : "nothing yet"}</strong></p>
           <fieldset className="ef-form-group">
             <legend>4B · Choose link access</legend>
             <div className="ef-choice-row">

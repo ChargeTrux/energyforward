@@ -1,6 +1,5 @@
 import { ActivityAlertToggle, callShareLink, KIND_LABEL, type Kind, type LinkRow } from "@/components/admin/ShareLinksPanel";
 import { UserShareLinks } from "@/components/admin/UserShareLinks";
-import { DocsTree } from "@/components/DocsTree";
 import { ActivityMap } from "@/components/admin/ActivityMap";
 import type React from "react";
 import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react";
@@ -228,7 +227,10 @@ export default function AdminDashboard() {
   const [inviteMode, setInviteMode] = useState<"portal" | "link">("portal");
   const [linkKind, setLinkKind] = useState<Kind>("video");
   const [linkItem, setLinkItem] = useState<{ id: string; name: string; profileId?: string } | null>(null);
+  const [linkDocSel, setLinkDocSel] = useState<Record<string, Selection>>({});
   const [linkPersonal, setLinkPersonal] = useState(true);
+  // Invite form: per-folder document picks (empty = whole folder).
+  const [inviteDocItems, setInviteDocItems] = useState<Record<string, Selection>>({});
   const [linkPassword, setLinkPassword] = useState("");
   const [useOwnPassword, setUseOwnPassword] = useState(false);
   const [ownPassword, setOwnPassword] = useState("");
@@ -826,6 +828,10 @@ export default function AdminDashboard() {
       app_origin: window.location.origin,
       replace_access: true,
       investor_profile_ids: selectedProfileIds,
+      // Per-file/folder picks refine a ticked folder; empty = whole folder.
+      investor_document_items: selectedProfileIds.flatMap((pid) =>
+        [...(inviteDocItems[pid] ?? new Map())].map(([id, p]) => ({ profile_id: pid, item_id: id, item_name: p.name, is_folder: p.isFolder })),
+      ),
       // A ticked heading means everything under it, even if the list loaded late.
       investor_video_ids: rolesArr.includes("video") ? (selectedVideoIds.length ? selectedVideoIds : videoCatalog.map((v) => v.id)) : [],
       project_page_ids: rolesArr.includes("project") ? (selectedProjectIds.length ? selectedProjectIds : projectCatalog.map((pg) => pg.id)) : [],
@@ -846,6 +852,7 @@ export default function AdminDashboard() {
       setSelectedProjectIds([]);
       setInviteAdmin(false);
       setSelectedProfileIds([]);
+      setInviteDocItems({});
       setSelectedVideoIds([]);
     }
   };
@@ -917,28 +924,41 @@ export default function AdminDashboard() {
   };
 
   // Create a direct link from the Add users form. Never emails unless send=true.
+  // Documents allow multiple ticked files — one link is created per file.
+  const linkDocPicks = investorProfiles.flatMap((p) =>
+    [...(linkDocSel[p.id] ?? new Map())].map(([id, picked]) => ({ id, name: picked.name, profileId: p.id })),
+  );
   const createLinkFromInvite = async (send: boolean) => {
     if (!inviteEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail.trim())) {
       toast({ title: "Enter a valid email address", variant: "destructive" });
       return;
     }
-    if (!linkItem) { toast({ title: "Pick a file, video or 3D page first", variant: "destructive" }); return; }
+    const picks = linkKind === "document" ? linkDocPicks : linkItem ? [linkItem] : [];
+    if (!picks.length) { toast({ title: "Pick a file, video or 3D page first", variant: "destructive" }); return; }
     const first = (inviteName.trim().split(" ")[0] ?? "").trim();
     const last = inviteName.trim().split(" ").slice(1).join(" ");
     if (linkPersonal && !first) { toast({ title: "Enter at least a first name", variant: "destructive" }); return; }
     if (!linkPersonal && linkPassword.trim().length < 6) { toast({ title: "Password needs at least 6 characters", variant: "destructive" }); return; }
     try {
-      const r = await callShareLink("create", linkPersonal
-        ? { item_type: linkKind, item_id: linkItem.id, item_name: linkItem.name, profile_id: linkItem.profileId, no_password: true, first_name: first, last_name: last, email: inviteEmail.trim() }
-        : { item_type: linkKind, item_id: linkItem.id, item_name: linkItem.name, profile_id: linkItem.profileId, password: linkPassword.trim() });
-      void navigator.clipboard.writeText(`https://energyforward.com/share/${r.slug}`);
-      if (send && linkPersonal) {
-        try { await callShareLink("send_email", { id: r.id }); toast({ title: "Email sent", description: `Sent to ${inviteEmail.trim()}` }); }
-        catch (e) { toast({ title: "Link created, but the email failed", description: (e as Error).message, variant: "destructive" }); }
-      } else {
-        toast({ title: "Link copied — no email sent", description: "Paste it into your own email when you're ready." });
+      const created: { id: string; slug: string }[] = [];
+      for (const p of picks) {
+        const r = await callShareLink("create", linkPersonal
+          ? { item_type: linkKind, item_id: p.id, item_name: p.name, profile_id: p.profileId, no_password: true, first_name: first, last_name: last, email: inviteEmail.trim() }
+          : { item_type: linkKind, item_id: p.id, item_name: p.name, profile_id: p.profileId, password: linkPassword.trim() });
+        created.push(r);
       }
-      setInviteEmail(""); setInviteName(""); setLinkItem(null); setLinkPassword("");
+      void navigator.clipboard.writeText(created.map((r) => `https://energyforward.com/share/${r.slug}`).join("\n"));
+      if (send && linkPersonal) {
+        let sent = 0;
+        for (const r of created) {
+          try { await callShareLink("send_email", { id: r.id }); sent++; }
+          catch (e) { toast({ title: "One email failed", description: (e as Error).message, variant: "destructive" }); }
+        }
+        toast({ title: `Sent ${sent} of ${created.length} email${created.length > 1 ? "s" : ""}`, description: `To ${inviteEmail.trim()} — one email per link.` });
+      } else {
+        toast({ title: `${created.length} link${created.length > 1 ? "s" : ""} copied — no email sent`, description: "Paste into your own email when you're ready (one link per line)." });
+      }
+      setInviteEmail(""); setInviteName(""); setLinkItem(null); setLinkDocSel({}); setLinkPassword("");
       await load();
     } catch (e) { toast({ title: "Could not create link", description: (e as Error).message, variant: "destructive" }); }
   };
@@ -1881,6 +1901,7 @@ export default function AdminDashboard() {
                         firstName={(u.full_name ?? "").split(" ")[0] ?? ""}
                         lastName={(u.full_name ?? "").split(" ").slice(1).join(" ")}
                         email={u.email}
+                        profiles={investorProfiles}
                         onChanged={load}
                       />
                     </div>
@@ -1923,6 +1944,7 @@ export default function AdminDashboard() {
                     firstName={r.links[0]?.recipient_first_name ?? ""}
                     lastName={r.links[0]?.recipient_last_name ?? ""}
                     email={r.email}
+                    profiles={investorProfiles}
                     onChanged={load}
                   />
                 </div>
@@ -2067,21 +2089,35 @@ export default function AdminDashboard() {
                 <fieldset className="ef-permission-group ef-section--people">
                   <legend className="ef-subsection-title">2C · Documents</legend>
                   {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up</span>}
-                  {investorProfiles.map((p) => (
+                  {investorProfiles.map((p) => {
+                    const on = selectedProfileIds.includes(p.id);
+                    const sel = inviteDocItems[p.id] ?? new Map();
+                    return (
                     <div key={p.id}>
                       <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
                         <input
                           type="checkbox"
-                          checked={selectedProfileIds.includes(p.id)}
-                          onChange={(e) => setSelectedProfileIds((prev) => e.target.checked ? [...prev, p.id] : prev.filter((id) => id !== p.id))}
+                          checked={on}
+                          onChange={(e) => {
+                            setSelectedProfileIds((prev) => e.target.checked ? [...prev, p.id] : prev.filter((id) => id !== p.id));
+                            if (!e.target.checked) setInviteDocItems((s) => ({ ...s, [p.id]: new Map() }));
+                          }}
                         />
-                        Documents (Data Room)
+                        Documents (Data Room){on && !sel.size ? " — whole folder" : ""}
                       </label>
-                      <p className="text-xs text-muted-foreground ml-5">
-                        Gives the whole folder. To share only certain subfolders or files, use "Choose contents" on this person in the Investor & user manager after creating them.
-                      </p>
+                      <div className="ml-5 rounded border p-2 max-h-72 overflow-y-auto">
+                        <p className="text-xs text-muted-foreground mb-1">Ticking a folder ticks everything inside it; untick single files to leave them out. Nothing ticked = the whole folder.</p>
+                        <DriveSelectTree
+                          profileId={p.id}
+                          selection={on ? sel : new Map()}
+                          onChange={(next) => setInviteDocItems((s) => ({ ...s, [p.id]: next }))}
+                          disabled={!on}
+                          disabledHint="Tick Documents (Data Room) first"
+                        />
+                      </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </fieldset>
               </div>
             </div>
@@ -2098,8 +2134,20 @@ export default function AdminDashboard() {
                 ))}
               </div>
               {linkKind === "document" ? (
-                <div className="ef-document-picker rounded p-2 max-h-72 overflow-y-auto">
-                  <DocsTree onOpenFile={(profileId, f) => setLinkItem({ id: f.id, name: f.name, profileId })} activeFileId={linkItem?.id ?? null} />
+                <div className="ef-document-picker rounded p-2 max-h-72 overflow-y-auto space-y-3">
+                  {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up.</span>}
+                  {investorProfiles.map((p) => (
+                    <div key={p.id}>
+                      {investorProfiles.length > 1 && <div className="text-xs font-semibold uppercase mb-1">{p.name}</div>}
+                      <DriveSelectTree
+                        profileId={p.id}
+                        selection={linkDocSel[p.id] ?? new Map()}
+                        onChange={(next) => setLinkDocSel((s) => ({ ...s, [p.id]: next }))}
+                        filesOnly
+                      />
+                    </div>
+                  ))}
+                  <p className="text-xs text-muted-foreground">Tick as many files as you like — each one gets its own link. Open a folder to pick files inside it.</p>
                 </div>
               ) : (
                 <div className="rounded border p-2 max-h-56 overflow-y-auto">
@@ -2112,7 +2160,7 @@ export default function AdminDashboard() {
                   ))}
                 </div>
               )}
-              <p>Selected: <strong>{linkItem ? linkItem.name : "nothing yet"}</strong></p>
+              <p>Selected: <strong>{linkKind === "document" ? (linkDocPicks.length ? `${linkDocPicks.length} file${linkDocPicks.length > 1 ? "s" : ""}` : "nothing yet") : linkItem ? linkItem.name : "nothing yet"}</strong></p>
               <h3 className="ef-subsection-title">2B · Choose link access</h3>
               <div className="flex flex-wrap gap-4">
                 <label className="flex items-center gap-2 font-semibold"><input type="radio" name="invite-link-mode" checked={linkPersonal} onChange={() => setLinkPersonal(true)} />Personal link <span className="font-normal text-xs text-muted-foreground">(no password — they type their email; expires in 2 weeks)</span></label>
