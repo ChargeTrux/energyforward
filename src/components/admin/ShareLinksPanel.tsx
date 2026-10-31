@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -205,6 +205,7 @@ export function ShareLinksPanel({ videos, pages }: { videos: Item[]; pages: Item
 /** Per-person activity alert: emails only the address typed here. */
 export function ActivityAlertToggle({ userId }: { userId: string }) {
   const { toast } = useToast();
+  const fieldId = useId();
   const [enabled, setEnabled] = useState(false);
   const [email, setEmail] = useState("");
   const [saved, setSaved] = useState("");
@@ -239,7 +240,8 @@ export function ActivityAlertToggle({ userId }: { userId: string }) {
         Email notification
       </label>
       <div onClick={() => { if (!enabled) toast({ title: "Enable Email notification first", description: "Tick the Email notification box, then type the emails." }); }}>
-        <Input className="h-8 min-w-[16rem] max-w-md disabled:pointer-events-none" type="text" placeholder="a@x.com, b@y.com" value={email} disabled={!enabled}
+        <Label htmlFor={fieldId}>Notification recipients</Label>
+        <Input id={fieldId} className="w-full max-w-md disabled:pointer-events-none" type="text" placeholder="a@x.com, b@y.com" value={email} disabled={!enabled}
           onChange={(e) => setEmail(e.target.value)}
           onBlur={() => { if (enabled && email.trim() && email.trim().toLowerCase() !== saved) void save(true, email); }} />
       </div>

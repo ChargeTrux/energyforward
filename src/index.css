@@ -39,6 +39,14 @@
     --admin-pending-readable: 35 90% 30%;
     --admin-neutral-readable: 217 16% 40%;
     --admin-issue-readable: 0 70% 40%;
+    --admin-field-background: 0 0% 100%;
+    --admin-field-text: 220 60% 16%;
+    --admin-field-border: 211 28% 52%;
+    --admin-field-placeholder: 215 15% 43%;
+    --admin-choice-background: 0 0% 100%;
+    --admin-choice-selected: 158 55% 93%;
+    --admin-choice-border: 158 65% 27%;
+    --admin-choice-mark: 0 0% 100%;
 
     /* EnergyForward Color Palette */
     --background: 208 100% 97%; /* Very light blue #f0f8ff */
@@ -117,6 +125,14 @@
     --admin-pending-readable: 40 91% 62%;
     --admin-neutral-readable: 217 16% 64%;
     --admin-issue-readable: 0 88% 74%;
+    --admin-field-background: 220 30% 18%;
+    --admin-field-text: 208 100% 95%;
+    --admin-field-border: 211 28% 55%;
+    --admin-field-placeholder: 215 20% 72%;
+    --admin-choice-background: 220 30% 18%;
+    --admin-choice-selected: 158 35% 19%;
+    --admin-choice-border: 158 57% 60%;
+    --admin-choice-mark: 220 50% 8%;
     /* Dark mode maintains the same energy theme with darker tones */
     --background: 220 50% 8%;
     --foreground: 208 100% 95%;
