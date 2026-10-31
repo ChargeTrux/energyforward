@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { PortalNav } from "@/components/PortalNav";
 
 const teal = "#0A2A2E";
 const amber = "#E8B14A";
@@ -23,10 +24,13 @@ export default function SharePage() {
   const [blobType, setBlobType] = useState("");
   const [loading, setLoading] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
+  const [sessionEmail, setSessionEmail] = useState("");
+  // Signed-in recipients: prefill their email so the link opens with one click.
+  useEffect(() => { if (info?.personal && sessionEmail) setPassword((p) => p || sessionEmail); }, [info, sessionEmail]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSignedIn(!!data.session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSignedIn(!!s));
+    supabase.auth.getSession().then(({ data }) => { setSignedIn(!!data.session); setSessionEmail(data.session?.user.email ?? ""); });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => { setSignedIn(!!s); setSessionEmail(s?.user.email ?? ""); });
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -78,9 +82,9 @@ export default function SharePage() {
           energyforward<span style={{ color: amber }}>.</span>
         </span>
         <nav style={{ display: "flex", gap: 28, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", alignItems: "center" }}>
-          <a href="/?public=1" style={navLink}>Home</a>
-          {signedIn && <Link to="/signout" style={navLink}>Sign out</Link>}
+          {!signedIn && <a href="/?public=1" style={navLink}>Home</a>}
         </nav>
+        {signedIn && <PortalNav current="shared" />}
       </header>
       <section style={{ textAlign: "center", padding: "28px clamp(16px,4vw,56px) 18px", maxWidth: 760, margin: "0 auto" }}>
         <h1 style={{ fontFamily: "'Cabinet Grotesk', Arial, sans-serif", fontWeight: 500, fontSize: "clamp(24px,4vh,38px)", margin: "0 0 10px", color: pearl }}>

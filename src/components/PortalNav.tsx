@@ -63,7 +63,7 @@ export function usePortalAccess() {
   return access;
 }
 
-type Current = "home" | "videos" | "project" | "documents";
+type Current = "home" | "videos" | "project" | "documents" | "shared";
 const pearl = "#EEEAE2";
 const amber = "#E8B14A";
 const link = { color: pearl, opacity: 0.75, textDecoration: "none" };
