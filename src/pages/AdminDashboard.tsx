@@ -900,9 +900,37 @@ export default function AdminDashboard() {
     }
   };
 
+  // Create a direct link from the Add users form. Never emails unless send=true.
+  const createLinkFromInvite = async (send: boolean) => {
+    if (!inviteEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail.trim())) {
+      toast({ title: "Enter a valid email address", variant: "destructive" });
+      return;
+    }
+    if (!linkItem) { toast({ title: "Pick a file, video or 3D page first", variant: "destructive" }); return; }
+    const first = (inviteName.trim().split(" ")[0] ?? "").trim();
+    const last = inviteName.trim().split(" ").slice(1).join(" ");
+    if (linkPersonal && !first) { toast({ title: "Enter at least a first name", variant: "destructive" }); return; }
+    if (!linkPersonal && linkPassword.trim().length < 6) { toast({ title: "Password needs at least 6 characters", variant: "destructive" }); return; }
+    try {
+      const r = await callShareLink("create", linkPersonal
+        ? { item_type: linkKind, item_id: linkItem.id, item_name: linkItem.name, profile_id: linkItem.profileId, no_password: true, first_name: first, last_name: last, email: inviteEmail.trim() }
+        : { item_type: linkKind, item_id: linkItem.id, item_name: linkItem.name, profile_id: linkItem.profileId, password: linkPassword.trim() });
+      void navigator.clipboard.writeText(`https://energyforward.com/share/${r.slug}`);
+      if (send && linkPersonal) {
+        try { await callShareLink("send_email", { id: r.id }); toast({ title: "Email sent", description: `Sent to ${inviteEmail.trim()}` }); }
+        catch (e) { toast({ title: "Link created, but the email failed", description: (e as Error).message, variant: "destructive" }); }
+      } else {
+        toast({ title: "Link copied — no email sent", description: "Paste it into your own email when you're ready." });
+      }
+      setInviteEmail(""); setInviteName(""); setLinkItem(null); setLinkPassword("");
+      await load();
+    } catch (e) { toast({ title: "Could not create link", description: (e as Error).message, variant: "destructive" }); }
+  };
+
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail) return;
+    if (inviteMode === "link") { await createLinkFromInvite(false); return; }
     if (inviteAdmin) {
       setConfirmAdminInvite(true);
       return;
