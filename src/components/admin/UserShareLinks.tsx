@@ -3,10 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { DocsTree } from "@/components/DocsTree";
+import { DriveSelectTree, type Selection } from "@/components/admin/DriveSelectTree";
 import { callShareLink, KIND_LABEL, linkUrl, type Kind, type LinkRow } from "@/components/admin/ShareLinksPanel";
 
 type Item = { id: string; name: string };
+type Profile = { id: string; name: string };
 
 /**
  * Per-person direct links inside the Access manager / Add users.
