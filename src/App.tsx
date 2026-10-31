@@ -20,9 +20,22 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { usePageTracking } from "@/hooks/usePageTracking";
 import { supabase } from "@/integrations/supabase/client";
 import { UserPreviewBoundary } from "@/components/admin/UserPreviewBoundary";
+import { fetchDirectLinks } from "@/components/PortalNav";
 import { exitUserPreview, isUserPreview } from "@/lib/admin-preview";
 
 const queryClient = new QueryClient();
+
+/** True when a person without a portal role still has individual materials or active direct links. */
+async function hasAnyMaterial(userId: string) {
+  const head = { count: 'exact' as const, head: true };
+  const [d, v, p, links] = await Promise.all([
+    supabase.from('investor_profile_access').select('id', head).eq('user_id', userId),
+    supabase.from('investor_video_access').select('id', head).eq('user_id', userId),
+    supabase.from('project_page_access').select('id', head).eq('user_id', userId),
+    fetchDirectLinks(null).catch(() => []),
+  ]);
+  return !!(d.count || v.count || p.count || links.length);
+}
 
 function SignOutRoute({ onLogout }: { onLogout: () => Promise<void> | void }) {
   useEffect(() => {
