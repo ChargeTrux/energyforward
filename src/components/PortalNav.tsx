@@ -80,24 +80,14 @@ const link = { color: pearl, opacity: 0.75, textDecoration: "none" };
 
 export function PortalNav({ current }: { current: Current }) {
   const a = usePortalAccess();
-  const item = (key: Current, to: string, label: string, show: boolean) =>
-    !show ? null : key === current
+  // A section tab shows when the section is granted, or when a direct link of that kind exists.
+  const item = (key: Current, to: string, label: string, show: boolean, kind: "project" | "video" | "document") => {
+    const target = show ? to : sectionLinkTarget(a.links, kind);
+    if (!target) return null;
+    return key === current
       ? <span key={key} style={{ color: amber }}>{label}</span>
-      : <Link key={key} to={to} style={link}>{label}</Link>;
-  return (
-    <nav style={{ display: "flex", gap: 28, fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end", marginLeft: "auto" }}>
-      {a.investor || !(a.project || a.videos || a.documents || a.links.length)
-        ? <a href="/?public=1" style={link}>Home</a>
-        : current === "home" ? <span style={{ color: amber }}>Home</span> : <Link to="/investor/welcome" style={link}>Home</Link>}
-      {a.investor && <Link to="/investor" style={link}>Investor portal</Link>}
-      {a.investor && a.customer && <Link to="/customer" style={link}>Customer portal</Link>}
-      {item("project", "/investor/project", "Project 3D Demo", a.project)}
-      {item("videos", "/investor/videos", "Videos", a.videos)}
-      {item("documents", "/investor/documents", "Documents (Data Room)", a.documents)}
-      {a.links.length > 0 && a.links.length <= 3 && a.links.map((l) => (
-        <Link key={l.slug} to={`/share/${l.slug}`} style={link} title="Shared directly with you">{l.item_name}</Link>
-      ))}
-      {a.links.length > 3 && <Link to="/investor/welcome#shared" style={link}>Shared with you ({a.links.length})</Link>}
+      : <Link key={key} to={target} style={link}>{label}</Link>;
+  };
       {a.admin && <Link to="/admin" style={link}>Admin</Link>}
       {isUserPreview ? <a href="/admin" style={link} onClick={(e) => { e.preventDefault(); exitUserPreview(); }}>Exit preview</a> : <Link to="/signout" style={link}>Sign out</Link>}
     </nav>
