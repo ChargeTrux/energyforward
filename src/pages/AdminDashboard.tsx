@@ -597,7 +597,7 @@ export default function AdminDashboard() {
       return byName;
     });
     return rows;
-  }, [profiles, accessSearch, accessStatusFilter, accessStatuses, accessSort, lastLogins, recentActivity]);
+  }, [profiles, shareLinks, accessSearch, accessStatusFilter, accessStatuses, accessSort, lastLogins, recentActivity]);
 
   // Direct links that belong to a portal user (by account or by recipient email).
   const linksForUser = (userId: string, email: string) =>
@@ -1476,6 +1476,7 @@ export default function AdminDashboard() {
               <SelectItem value="pending">Invite pending</SelectItem>
               <SelectItem value="neutral">Not invited</SelectItem>
               <SelectItem value="issue">Blocked / needs access</SelectItem>
+              <SelectItem value="links">Has direct links</SelectItem>
             </SelectContent>
           </Select>
           <Select value={accessSort} onValueChange={(v) => setAccessSort(v as typeof accessSort)}>
