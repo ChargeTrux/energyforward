@@ -21,9 +21,19 @@ const NONE: PortalAccess = { admin: false, investor: false, customer: false, vid
 
 /** Active direct (share) links granted to this person; read-only lookup, safe in admin preview. */
 export async function fetchDirectLinks(userId: string | null): Promise<DirectLink[]> {
+  // Omit _target for the signed-in person: a GET request would send the text "null", which is not a valid id.
+  const args = userId ? { _target: userId } : {};
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data } = await (supabase.rpc as any)("my_direct_links", { _target: userId }, { get: true });
+  const { data, error } = await (supabase.rpc as any)("my_direct_links", args, { get: true });
+  if (error) throw error;
   return ((data ?? []) as DirectLink[]).map((l) => ({ ...l, item_name: niceLinkName(l.item_name) }));
+}
+
+/** Where a section tab should go when the person only has direct links of that kind. */
+export function sectionLinkTarget(links: DirectLink[], kind: "project" | "video" | "document"): string | null {
+  const mine = links.filter((l) => l.item_type === kind);
+  if (!mine.length) return null;
+  return mine.length === 1 ? `/share/${mine[0].slug}` : `/investor/welcome#shared`;
 }
 
 export function niceLinkName(name: string) {
