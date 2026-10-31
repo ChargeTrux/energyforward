@@ -226,3 +226,70 @@
 }
 .ef-admin .ef-panel-controls { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
 .ef-admin .ef-access-user .ef-access-toggle { min-height: 0; padding-top: 4px; padding-bottom: 4px; }
+
+/* Readable admin surfaces and distinct section identities. */
+.ef-admin {
+  --ef-navy: hsl(var(--background));
+  --ef-surface: hsl(var(--card));
+  --ef-surface-2: hsl(var(--muted));
+  --ef-border: hsl(var(--border));
+  --ef-pearl: hsl(var(--foreground));
+  --ef-text: hsl(var(--foreground));
+  --ef-muted: hsl(var(--muted-foreground));
+  --ef-teal: hsl(var(--admin-section-invite));
+  --ef-amber: hsl(var(--admin-section-materials));
+  --admin-status-success: var(--admin-success-readable);
+  --admin-status-active: var(--admin-active-readable);
+  --admin-status-pending: var(--admin-pending-readable);
+  --admin-status-neutral: var(--admin-neutral-readable);
+  --admin-status-issue: var(--admin-issue-readable);
+  --admin-access-surface: var(--card);
+  --admin-access-border: var(--border);
+  --admin-scroll-track: var(--muted);
+  --admin-scroll-thumb: var(--admin-section-access);
+  font-family: Arial, Helvetica, sans-serif;
+}
+.ef-admin h1, .ef-admin h2, .ef-admin h3, .ef-admin h4,
+.ef-admin .ef-brand, .ef-admin .ef-display, .ef-admin .ef-stat {
+  font-family: Arial, Helvetica, sans-serif;
+  color: hsl(var(--foreground));
+  letter-spacing: 0;
+}
+.ef-admin .ef-topbar { background: hsl(var(--card)); flex-wrap: wrap; gap: 12px; }
+.ef-admin .ef-topbar nav a { color: hsl(var(--foreground)) !important; }
+.ef-admin label { color: hsl(var(--foreground)) !important; font-size: 14px; letter-spacing: 0; text-transform: none; }
+.ef-admin input[type="radio"], .ef-admin input[type="checkbox"] { accent-color: hsl(var(--primary)); flex-shrink: 0; }
+.ef-admin input:focus { border-color: hsl(var(--ring)) !important; box-shadow: 0 0 0 3px hsl(var(--ring) / 0.18) !important; }
+.ef-admin .ef-section--access { --section-tone: var(--admin-section-access); }
+.ef-admin .ef-section--invite { --section-tone: var(--admin-section-invite); }
+.ef-admin .ef-section--share { --section-tone: var(--admin-section-share); }
+.ef-admin .ef-section--materials { --section-tone: var(--admin-section-materials); }
+.ef-admin .ef-section--people { --section-tone: var(--admin-section-people); }
+.ef-admin .ef-section--activity { --section-tone: var(--admin-section-activity); }
+.ef-admin .ef-collapse { border-color: hsl(var(--section-tone) / 0.35); overflow: hidden; box-shadow: none; }
+.ef-admin .ef-collapse > summary {
+  background: hsl(var(--section-tone) / 0.1);
+  color: hsl(var(--foreground));
+  border-left: 5px solid hsl(var(--section-tone));
+  letter-spacing: 0;
+}
+.ef-admin .ef-collapse > summary svg { color: hsl(var(--section-tone)); }
+.ef-admin .ef-collapse > summary:hover { background: hsl(var(--section-tone) / 0.16); }
+.ef-admin .ef-collapse[open] > summary { border-bottom: 1px solid hsl(var(--section-tone) / 0.25); margin-bottom: 16px; }
+.ef-admin .ef-collapse > summary:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: -3px; }
+.ef-admin .ef-collapse--nested > summary { border-left-width: 3px; background: hsl(var(--muted)); }
+.ef-admin [role="tablist"] { background: hsl(var(--muted)); border: 1px solid hsl(var(--border)); gap: 6px; height: auto; flex-wrap: wrap; }
+.ef-admin [role="tab"] { color: hsl(var(--foreground)); min-height: 40px; border: 1px solid transparent; }
+.ef-admin [role="tab"][data-state="active"] { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border-color: hsl(var(--primary)); }
+.ef-admin .ef-user-links { padding-top: 18px; border-top: 2px solid hsl(var(--admin-section-share) / 0.4); }
+.ef-admin .ef-share-create { padding: 16px; background: hsl(var(--admin-section-share) / 0.06); border-left: 4px solid hsl(var(--admin-section-share)); }
+.ef-admin .ef-existing-links { padding-top: 18px; border-top: 2px solid hsl(var(--admin-section-invite) / 0.4); }
+.ef-admin .ef-shared-item { background: hsl(var(--card)); border-color: hsl(var(--admin-section-invite) / 0.35); border-left: 4px solid hsl(var(--admin-section-invite)); }
+.ef-admin .ef-document-picker { background: hsl(var(--muted)); }
+.ef-admin button { max-width: 100%; }
+.ef-admin .ef-user-links button { height: auto; min-height: 36px; white-space: normal; text-align: center; }
+.ef-admin .ef-access-summary { flex-wrap: wrap; }
+.ef-admin .ef-badge--customer { color: hsl(var(--admin-section-access)); border-color: hsl(var(--admin-section-access) / 0.4); background: hsl(var(--admin-section-access) / 0.08); }
+.ef-admin .ef-badge--off { color: hsl(var(--admin-status-issue)); border-color: hsl(var(--admin-status-issue) / 0.4); background: hsl(var(--admin-status-issue) / 0.08); }
+.ef-admin thead th { color: hsl(var(--foreground)) !important; letter-spacing: 0; }
+@media (prefers-reduced-motion: reduce) { .ef-admin .ef-pulse { animation: none; } }

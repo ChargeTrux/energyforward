@@ -28,6 +28,17 @@
     --admin-access-border: 218 30% 29%;
     --admin-scroll-track: 220 38% 16%;
     --admin-scroll-thumb: 172 37% 57%;
+    --admin-section-access: 211 75% 35%;
+    --admin-section-invite: 165 65% 27%;
+    --admin-section-share: 190 80% 28%;
+    --admin-section-materials: 35 90% 30%;
+    --admin-section-people: 335 60% 36%;
+    --admin-section-activity: 160 65% 28%;
+    --admin-success-readable: 158 65% 27%;
+    --admin-active-readable: 211 80% 35%;
+    --admin-pending-readable: 35 90% 30%;
+    --admin-neutral-readable: 217 16% 40%;
+    --admin-issue-readable: 0 70% 40%;
 
     /* EnergyForward Color Palette */
     --background: 208 100% 97%; /* Very light blue #f0f8ff */
@@ -95,6 +106,17 @@
   }
 
   .dark {
+    --admin-section-access: 211 100% 75%;
+    --admin-section-invite: 165 65% 70%;
+    --admin-section-share: 190 80% 70%;
+    --admin-section-materials: 35 90% 70%;
+    --admin-section-people: 335 60% 78%;
+    --admin-section-activity: 160 65% 70%;
+    --admin-success-readable: 158 57% 60%;
+    --admin-active-readable: 211 100% 70%;
+    --admin-pending-readable: 40 91% 62%;
+    --admin-neutral-readable: 217 16% 64%;
+    --admin-issue-readable: 0 88% 74%;
     /* Dark mode maintains the same energy theme with darker tones */
     --background: 220 50% 8%;
     --foreground: 208 100% 95%;
