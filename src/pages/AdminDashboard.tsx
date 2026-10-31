@@ -788,6 +788,20 @@ export default function AdminDashboard() {
     return data;
   };
 
+  // Reset-password emails take a few seconds; give instant feedback and block
+  // repeat clicks so one press never sends two emails.
+  const [resetPending, setResetPending] = useState<string | null>(null);
+  const sendReset = async (email: string) => {
+    if (resetPending) return;
+    setResetPending(email);
+    toast({ title: "Sending reset email…", description: email });
+    try {
+      await callAdmin("send_reset", { email });
+    } finally {
+      setResetPending(null);
+    }
+  };
+
   const createInvite = async (
     rolesArr: PortalRole[],
     email = inviteEmail,
