@@ -22,6 +22,13 @@ export default function SharePage() {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [blobType, setBlobType] = useState("");
   const [loading, setLoading] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSignedIn(!!data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSignedIn(!!s));
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     fetch(`${base}?action=info`, { method: "POST", headers, body: JSON.stringify({ slug }) })
