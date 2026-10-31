@@ -593,6 +593,31 @@ export default function AdminDashboard() {
     return rows;
   }, [profiles, accessSearch, accessStatusFilter, accessStatuses, accessSort, lastLogins, recentActivity]);
 
+  // Direct links that belong to a portal user (by account or by recipient email).
+  const linksForUser = (userId: string, email: string) =>
+    shareLinks.filter((l) => l.user_id === userId || (l.recipient_email ?? "").toLowerCase() === email.toLowerCase());
+
+  // People who only have a personal link (no portal account) — shown in the Access manager.
+  const linkRecipients = useMemo(() => {
+    const accountEmails = new Set(profiles.map((p) => p.email.toLowerCase()));
+    const byEmail = new Map<string, LinkRow[]>();
+    for (const l of shareLinks) {
+      if (!l.no_password || !l.recipient_email) continue;
+      const em = l.recipient_email.toLowerCase();
+      if (accountEmails.has(em)) continue;
+      byEmail.set(em, [...(byEmail.get(em) ?? []), l]);
+    }
+    const search = accessSearch.trim().toLowerCase();
+    return [...byEmail.entries()]
+      .map(([em, ls]) => ({
+        email: em,
+        links: ls,
+        name: [ls[0].recipient_first_name, ls[0].recipient_last_name].filter(Boolean).join(" "),
+      }))
+      .filter((r) => `${r.name} ${r.email}`.toLowerCase().includes(search))
+      .sort((a, b) => a.name.localeCompare(b.name) || a.email.localeCompare(b.email));
+  }, [shareLinks, profiles, accessSearch]);
+
   const filteredActivity = useMemo(() => {
     const search = activitySearch.trim().toLowerCase();
     return activity.filter((row) => {
