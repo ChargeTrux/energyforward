@@ -1941,6 +1941,17 @@ export default function AdminDashboard() {
                 placeholder="user@example.com"
               />
             </div>
+            <div className="md:col-span-12 flex flex-wrap gap-6 text-sm">
+              <label className="flex items-center gap-2 font-semibold">
+                <input type="radio" name="invite-mode" checked={inviteMode === "portal"} onChange={() => setInviteMode("portal")} />
+                Portal access <span className="font-normal text-xs text-muted-foreground">(they sign in with an account)</span>
+              </label>
+              <label className="flex items-center gap-2 font-semibold">
+                <input type="radio" name="invite-mode" checked={inviteMode === "link"} onChange={() => setInviteMode("link")} />
+                Direct link <span className="font-normal text-xs text-muted-foreground">(one file, video or 3D page — no account)</span>
+              </label>
+            </div>
+            {inviteMode === "portal" && (
             <div className="md:col-span-12 flex flex-wrap items-center gap-3 text-sm">
               <label className="flex items-center gap-2 font-semibold">
                 <input type="checkbox" checked={useOwnPassword} onChange={(e) => setUseOwnPassword(e.target.checked)} />
