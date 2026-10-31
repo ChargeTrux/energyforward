@@ -1619,6 +1619,7 @@ export default function AdminDashboard() {
                 const projPages = projectCatalog.filter((pg) =>
                   projectAccess.some((a) => a.user_id === u.user_id && a.file_id === pg.id),
                 );
+                const userLinks = linksForUser(u.user_id, u.email);
                 return (
                   <div key={u.user_id} className={`ef-access-user ef-access-user--${status.tone}`}>
                     <div className="ef-access-summary">
@@ -1631,7 +1632,7 @@ export default function AdminDashboard() {
                         <span className="ef-access-identity">
                           <span className="block font-semibold">{u.full_name || "—"}</span>
                           <span className="block text-xs text-muted-foreground">{u.email}</span>
-                          <span className="block mt-1 text-xs text-muted-foreground">{getRoleLabel(u)} · {folders.length} folders · {vids.length} videos{u.is_project ? ` · Project Run (${projPages.length})` : ""}</span>
+                          <span className="block mt-1 text-xs text-muted-foreground">{getRoleLabel(u)} · {folders.length} folders · {vids.length} videos{u.is_project ? ` · Project Run (${projPages.length})` : ""}{userLinks.length > 0 ? ` · ${userLinks.length} direct link${userLinks.length > 1 ? "s" : ""}` : ""}</span>
                         </span>
                         <span className="ef-access-indicator">
                           <span className={`ef-user-status ef-user-status--${status.tone}`} title={status.tone === "active" ? `Activity recorded: ${formatCompact(recentActivity.get(u.user_id) ?? "")} (within five minutes)` : lastLogins.get(u.user_id) ? `Last successful sign-in: ${formatCompact(lastLogins.get(u.user_id) ?? "")}` : status.label}><i aria-hidden="true" />{status.label}</span>
