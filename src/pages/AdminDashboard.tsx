@@ -260,7 +260,7 @@ export default function AdminDashboard() {
   >({});
   const [busy, setBusy] = useState(false);
   const [accessSearch, setAccessSearch] = useState("");
-  const [accessStatusFilter, setAccessStatusFilter] = useState<"all" | "active" | "success" | "pending" | "neutral" | "issue">("all");
+  const [accessStatusFilter, setAccessStatusFilter] = useState<"all" | "active" | "success" | "pending" | "neutral" | "issue" | "links">("all");
   const [accessSort, setAccessSort] = useState<"name" | "activity" | "status" | "added">("activity");
   const accessListRef = useRef<HTMLDivElement>(null);
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());

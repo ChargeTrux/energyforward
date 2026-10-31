@@ -651,6 +651,20 @@ Deno.serve(async (req) => {
       }
       const { data: target } = await admin.auth.admin.getUserById(user_id);
       const targetEmail = target?.user?.email;
+      // Removing a user also removes their direct share links (by account or
+      // recipient email). Deleting a single link stays a separate action.
+      const linkIds = new Set<string>();
+      const { data: linksByUser } = await admin.from("share_links").select("id").eq("user_id", user_id);
+      for (const l of linksByUser ?? []) linkIds.add(l.id as string);
+      if (targetEmail) {
+        const { data: linksByEmail } = await admin.from("share_links").select("id").ilike("recipient_email", targetEmail);
+        for (const l of linksByEmail ?? []) linkIds.add(l.id as string);
+      }
+      for (const id of linkIds) {
+        await admin.from("activity_locations").update({ share_link_id: null }).eq("share_link_id", id);
+        await admin.from("share_link_views").delete().eq("link_id", id);
+        await admin.from("share_links").delete().eq("id", id);
+      }
       const { error } = await admin.auth.admin.deleteUser(user_id);
       if (error && !/not.?found/i.test(error.message)) return json({ error: error.message }, 400);
       if (targetEmail) {
