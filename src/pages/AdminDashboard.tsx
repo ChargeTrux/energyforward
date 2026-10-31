@@ -373,6 +373,7 @@ export default function AdminDashboard() {
         supabase.from("investor_profiles").select("*").order("sort_order"),
         supabase.from("investor_profile_access").select("user_id, profile_id"),
         supabase.from("share_links").select("id,slug,item_type,item_name,active,expires_at,created_at,no_password,recipient_first_name,recipient_last_name,recipient_email,email_sent_at,user_id").order("created_at", { ascending: false }),
+        supabase.from("login_sessions").select("id", { count: "exact", head: true }),
       ]);
 
     const invProfiles = (invProfileRows ?? []) as InvestorProfile[];
