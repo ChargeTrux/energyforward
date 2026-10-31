@@ -840,7 +840,7 @@ export default function AdminDashboard() {
       const list = rolesArr.length ? rolesArr.join(", ") : "no portal";
       toast(sendEmail
         ? { title: "Welcome email sent", description: `Invited ${email} (${list}).` }
-        : { title: "User created — no email sent", description: `${email} (${list}). Use "Send invite" in the Investor & user manager when ready.` });
+        : { title: "User created — no email sent", description: `${email} (${list}). Use "Send welcome invite with temporary password" in the Investor & user manager when ready.` });
       setInviteEmail("");
       setInviteName("");
       setUseOwnPassword(false);
