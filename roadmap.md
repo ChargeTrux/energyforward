@@ -43,3 +43,6 @@
 - [x] Password-protected single-item share links (no sign-in)
 - [x] Per-user activity email alerts to admin-chosen address (sign-in once, each material open)
 - [x] Share links: optional expiration date
+
+- [ ] Unify share links into Access manager: list personal-link recipients, three-way access type (portal / password link / personal link), convert in place, no emails on access changes, link options in the add-user section (plan approved 2026-10-31).
+- [ ] Guarantee no existing access breaks: additive-only DB change (nullable share_links.user_id), no permission/policy changes, existing links keep working.
