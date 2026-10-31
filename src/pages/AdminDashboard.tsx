@@ -417,7 +417,7 @@ export default function AdminDashboard() {
     setProfiles(enrichedProfiles);
     setSignups((signupRows ?? []) as SignupRow[]);
     setContacts((contactRows ?? []) as ContactSubmissionRow[]);
-    setRecentLoginCount((sess ?? []).length);
+    setRecentLoginCount(loginTotal ?? (sess ?? []).length);
 
     const viewsBySession = new Map<string, PageViewRow[]>();
     (views ?? []).forEach((v) => {
