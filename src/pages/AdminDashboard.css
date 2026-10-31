@@ -229,6 +229,8 @@
 
 /* Readable admin surfaces and distinct section identities. */
 .ef-admin {
+  --background: var(--admin-page-background);
+  --muted: var(--admin-muted-surface);
   --ef-navy: hsl(var(--background));
   --ef-surface: hsl(var(--card));
   --ef-surface-2: hsl(var(--muted));
