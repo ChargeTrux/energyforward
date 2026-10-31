@@ -76,7 +76,7 @@ const tagOf = (hash: string) => hash.slice(-10);
 const slugify = () => b64u(crypto.getRandomValues(new Uint8Array(9)));
 const isLive = (l: { active: boolean; expires_at: string | null }) => l.active && (!l.expires_at || new Date(l.expires_at).getTime() > Date.now());
 
-type Link = { id: string; slug: string; item_type: string; item_id: string; item_name: string; password_hash: string; active: boolean; expires_at: string | null; no_password?: boolean; recipient_first_name?: string | null; recipient_last_name?: string | null; recipient_email?: string | null };
+type Link = { id: string; slug: string; item_type: string; item_id: string; item_name: string; password_hash: string; active: boolean; expires_at: string | null; no_password?: boolean; recipient_first_name?: string | null; recipient_last_name?: string | null; recipient_email?: string | null; user_id?: string | null };
 
 // Alert the admin who created a personal link when it is opened from a new IP.
 // deno-lint-ignore no-explicit-any
@@ -179,7 +179,7 @@ Deno.serve(async (req) => {
     if (!isAdmin) return json({ error: "Admins only" }, 403);
 
     if (action === "create") {
-      const { item_type, item_id, item_name, password, expires_at, profile_id, no_password, first_name, last_name, email } = body;
+      const { item_type, item_id, item_name, password, expires_at, profile_id, no_password, first_name, last_name, email, user_id } = body;
       if (!TYPES.has(item_type) || typeof item_id !== "string" || !item_id || item_id.length > 200) return json({ error: "Pick a file, video or page" }, 400);
       const personal = no_password === true;
       if (personal) {
@@ -189,6 +189,7 @@ Deno.serve(async (req) => {
       } else if (typeof password !== "string" || password.trim().length < 6 || password.length > 100) return json({ error: "Password must be at least 6 characters" }, 400);
       const exp = expires_at ? new Date(expires_at) : null;
       if (exp && (isNaN(exp.getTime()) || exp.getTime() <= Date.now())) return json({ error: "Expiration must be in the future" }, 400);
+      const linkUserId = typeof user_id === "string" && /^[0-9a-f-]{36}$/i.test(user_id) ? user_id : null;
       const { data, error } = await db.from("share_links").insert({
         slug: slugify(), item_type, item_id, item_name: String(item_name ?? "").slice(0, 300),
         profile_id: typeof profile_id === "string" ? profile_id : null,
@@ -198,9 +199,46 @@ Deno.serve(async (req) => {
         recipient_first_name: personal ? first_name.trim() : null,
         recipient_last_name: personal ? last_name.trim() || null : null,
         recipient_email: personal ? email.trim().toLowerCase() : null,
+        user_id: linkUserId,
       }).select("id,slug").single();
       if (error) return json({ error: error.message }, 400);
       return json({ ok: true, ...data });
+    }
+    // Convert a link between personal (no password) and password modes in place —
+    // the URL stays the same. Never sends an email.
+    if (action === "convert") {
+      const { id, mode, password, first_name, last_name, email } = body;
+      if (typeof id !== "string") return json({ error: "Missing link" }, 400);
+      const { data: link } = await db.from("share_links").select("*").eq("id", id).maybeSingle<Link>();
+      if (!link) return json({ error: "Link not found" }, 404);
+      if (mode === "personal") {
+        if (typeof first_name !== "string" || !first_name.trim() || first_name.length > 100) return json({ error: "Enter a first name" }, 400);
+        if (typeof email !== "string" || !EMAIL_RE.test(email.trim()) || email.length > 255) return json({ error: "Enter a valid email address" }, 400);
+        const exp = link.expires_at && new Date(link.expires_at).getTime() > Date.now() ? link.expires_at : new Date(Date.now() + 14 * 86400_000).toISOString();
+        const { error } = await db.from("share_links").update({
+          no_password: true,
+          password_hash: `nopw$${b64u(crypto.getRandomValues(new Uint8Array(16)))}`,
+          recipient_first_name: first_name.trim(),
+          recipient_last_name: typeof last_name === "string" && last_name.trim() ? last_name.trim() : null,
+          recipient_email: email.trim().toLowerCase(),
+          expires_at: exp,
+        }).eq("id", id);
+        if (error) return json({ error: error.message }, 400);
+        return json({ ok: true });
+      }
+      if (mode === "password") {
+        if (typeof password !== "string" || password.trim().length < 6 || password.length > 100) return json({ error: "Password must be at least 6 characters" }, 400);
+        const { error } = await db.from("share_links").update({
+          no_password: false,
+          password_hash: await hashPassword(password.trim()),
+          recipient_first_name: null,
+          recipient_last_name: null,
+          recipient_email: null,
+        }).eq("id", id);
+        if (error) return json({ error: error.message }, 400);
+        return json({ ok: true });
+      }
+      return json({ error: "Unknown mode" }, 400);
     }
     if (action === "update") {
       const { id, password, expires_at, active } = body;
