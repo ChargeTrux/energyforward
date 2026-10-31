@@ -33,7 +33,7 @@ export function UserShareLinks({
   onChanged: () => void | Promise<void>;
 }) {
   const { toast } = useToast();
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(true);
   const [kind, setKind] = useState<Kind>("video");
   const [item, setItem] = useState<(Item & { profileId?: string }) | null>(null);
   const [personal, setPersonal] = useState(true);
@@ -93,44 +93,13 @@ export function UserShareLinks({
   const list = kind === "video" ? videos : kind === "project" ? pages : [];
 
   return (
-    <div className="rounded border p-3 space-y-2 text-sm">
+    <div className="ef-user-links space-y-4 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <strong>Direct links{links.length > 0 ? ` (${links.length})` : ""}</strong>
-        <Button size="sm" variant="outline" onClick={() => setShowForm((s) => !s)}>{showForm ? "Close" : "Share a direct link"}</Button>
+        <strong className="text-base">Share a direct link</strong>
+        <Button size="sm" variant="outline" aria-expanded={showForm} onClick={() => setShowForm((s) => !s)}>{showForm ? "Hide sharing options" : "Show sharing options"}</Button>
       </div>
-      {links.length === 0 && !showForm && <p className="text-xs text-muted-foreground">No direct links for this person yet.</p>}
-      {links.map((l) => (
-        <div key={l.id} className="rounded border p-2 flex flex-wrap items-center gap-2 justify-between">
-          <div className="min-w-0">
-            <div className="font-semibold break-words">{KIND_LABEL[l.item_type]}: {l.item_name}</div>
-            <div className="text-xs text-muted-foreground break-all">
-              {l.no_password ? `Personal link for ${[l.recipient_first_name, l.recipient_last_name].filter(Boolean).join(" ")} (${l.recipient_email})` : "Password link"} · {status(l)} · {l.expires_at ? `expires ${new Date(l.expires_at).toLocaleString()}` : "no expiry"}{l.no_password ? ` · ${l.email_sent_at ? `email sent ${new Date(l.email_sent_at).toLocaleString()}` : "email not sent"}` : ""}
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={() => copy(l.slug)}>Copy link</Button>
-            {l.no_password && (
-              <Button size="sm" variant="outline" onClick={async () => {
-                if (!window.confirm(`Send the email with this link to ${l.recipient_email}?`)) return;
-                try { await callShareLink("send_email", { id: l.id }); await onChanged(); toast({ title: "Email sent", description: `Sent to ${l.recipient_email}` }); }
-                catch (e) { toast({ title: "Could not send", description: (e as Error).message, variant: "destructive" }); }
-              }}>{l.email_sent_at ? "Resend email" : "Send email"}</Button>
-            )}
-            <Button size="sm" variant="outline" onClick={() => void convert(l)}>{l.no_password ? "Change to password link" : "Change to personal link"}</Button>
-            <Button size="sm" variant={l.active ? "destructive" : "default"} onClick={async () => {
-              try { await callShareLink("update", { id: l.id, active: !l.active }); await onChanged(); }
-              catch (e) { toast({ title: "Could not update", description: (e as Error).message, variant: "destructive" }); }
-            }}>{l.active ? "Turn off" : "Turn on"}</Button>
-            <Button size="sm" variant="destructive" onClick={async () => {
-              if (!window.confirm(`Delete this link to "${l.item_name}"? Anyone using it will no longer be able to open it. This can't be undone.`)) return;
-              try { await callShareLink("delete", { id: l.id }); await onChanged(); toast({ title: "Link deleted" }); }
-              catch (e) { toast({ title: "Could not delete", description: (e as Error).message, variant: "destructive" }); }
-            }}>Delete</Button>
-          </div>
-        </div>
-      ))}
       {showForm && (
-        <div className="rounded border p-3 space-y-3">
+        <div className="ef-share-create space-y-3">
           <div className="flex flex-wrap gap-4">
             {(["project", "video", "document"] as Kind[]).map((k) => (
               <label key={k} className="flex items-center gap-2 font-semibold">
@@ -140,7 +109,7 @@ export function UserShareLinks({
             ))}
           </div>
           {kind === "document" ? (
-            <div className="rounded p-2 max-h-72 overflow-y-auto" style={{ background: "#0A2A2E" }}>
+            <div className="ef-document-picker rounded p-2 max-h-72 overflow-y-auto">
               <DocsTree onOpenFile={(profileId, f) => setItem({ id: f.id, name: f.name, profileId })} activeFileId={item?.id ?? null} />
             </div>
           ) : (
@@ -176,6 +145,40 @@ export function UserShareLinks({
           <p className="text-xs text-muted-foreground">No email is sent unless you click "Create link & send email" or "Send email".</p>
         </div>
       )}
+      <section className="ef-existing-links space-y-3" aria-label="Existing shared links">
+        <h4 className="text-base font-semibold">Existing shared links ({links.length})</h4>
+        {links.length === 0 && <p className="text-muted-foreground">No direct links for this person yet.</p>}
+      {links.map((l) => (
+        <div key={l.id} className="ef-shared-item rounded border p-3 flex flex-wrap items-center gap-3 justify-between">
+          <div className="min-w-0">
+            <div className="font-semibold break-words">{KIND_LABEL[l.item_type]}: {l.item_name}</div>
+            <div className="text-xs text-muted-foreground break-all">
+              {l.no_password ? `Personal link for ${[l.recipient_first_name, l.recipient_last_name].filter(Boolean).join(" ")} (${l.recipient_email})` : "Password link"} · {status(l)} · {l.expires_at ? `expires ${new Date(l.expires_at).toLocaleString()}` : "no expiry"}{l.no_password ? ` · ${l.email_sent_at ? `email sent ${new Date(l.email_sent_at).toLocaleString()}` : "email not sent"}` : ""}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={() => copy(l.slug)}>Copy link</Button>
+            {l.no_password && (
+              <Button size="sm" variant="outline" onClick={async () => {
+                if (!window.confirm(`Send the email with this link to ${l.recipient_email}?`)) return;
+                try { await callShareLink("send_email", { id: l.id }); await onChanged(); toast({ title: "Email sent", description: `Sent to ${l.recipient_email}` }); }
+                catch (e) { toast({ title: "Could not send", description: (e as Error).message, variant: "destructive" }); }
+              }}>{l.email_sent_at ? "Resend email" : "Send email"}</Button>
+            )}
+            <Button size="sm" variant="outline" onClick={() => void convert(l)}>{l.no_password ? "Change to password link" : "Change to personal link"}</Button>
+            <Button size="sm" variant={l.active ? "destructive" : "default"} onClick={async () => {
+              try { await callShareLink("update", { id: l.id, active: !l.active }); await onChanged(); }
+              catch (e) { toast({ title: "Could not update", description: (e as Error).message, variant: "destructive" }); }
+            }}>{l.active ? "Turn off" : "Turn on"}</Button>
+            <Button size="sm" variant="destructive" onClick={async () => {
+              if (!window.confirm(`Delete this link to "${l.item_name}"? Anyone using it will no longer be able to open it. This can't be undone.`)) return;
+              try { await callShareLink("delete", { id: l.id }); await onChanged(); toast({ title: "Link deleted" }); }
+              catch (e) { toast({ title: "Could not delete", description: (e as Error).message, variant: "destructive" }); }
+            }}>Delete</Button>
+          </div>
+        </div>
+      ))}
+      </section>
     </div>
   );
 }

@@ -85,9 +85,9 @@ import {
   Download,
 } from "lucide-react";
 
-function Collapse({ title, children, nested = false, defaultOpen = false }: { title: React.ReactNode; children: React.ReactNode; nested?: boolean; defaultOpen?: boolean }) {
+function Collapse({ title, children, nested = false, defaultOpen = false, tone = "access" }: { title: React.ReactNode; children: React.ReactNode; nested?: boolean; defaultOpen?: boolean; tone?: "access" | "invite" | "share" | "materials" | "people" | "activity" }) {
   return (
-    <details open={defaultOpen} className={`ef-collapse group rounded-lg border bg-card text-card-foreground ${nested ? "ef-collapse--nested" : "mb-5 shadow-sm"}`}>
+    <details open={defaultOpen} className={`ef-collapse ef-section--${tone} group rounded-lg border bg-card text-card-foreground ${nested ? "ef-collapse--nested" : "mb-5 shadow-sm"}`}>
       <summary className={`cursor-pointer list-none flex items-center justify-between gap-3 ${nested ? "px-4 py-3 text-base" : "p-6 text-xl"} font-semibold`}>
         <span className="flex items-center gap-2 flex-wrap">{title}</span>
         <ChevronDown className="w-5 h-5 shrink-0 transition-transform group-open:rotate-180" />
@@ -1907,7 +1907,7 @@ export default function AdminDashboard() {
         </CardContent>
       </Collapse>
 
-<Collapse title={<>
+<Collapse tone="invite" title={<>
             <UserPlus className="w-5 h-5" /> Add users
 </>}>
         <Tabs defaultValue="invite" className="px-6 pt-1">
@@ -2226,13 +2226,13 @@ export default function AdminDashboard() {
         </Tabs>
       </Collapse>
 
-      <Collapse defaultOpen title={<><ExternalLink className="w-5 h-5" /> Share links — password &amp; personal</>}>
+      <Collapse tone="share" defaultOpen title={<><ExternalLink className="w-5 h-5" /> Share links — password &amp; personal</>}>
         <CardContent>
           <ShareLinksPanel videos={videoCatalog} pages={projectCatalog} />
         </CardContent>
       </Collapse>
 
-<Collapse title={<><FolderOpen className="w-5 h-5" /> Material config</>}><div className="px-6 pb-6 space-y-4"><Collapse nested title={<>Documents — profile folders
+<Collapse tone="materials" title={<><FolderOpen className="w-5 h-5" /> Material config</>}><div className="px-6 pb-6 space-y-4"><Collapse nested title={<>Documents — profile folders
 </>}>
         <CardContent>
           <div className="space-y-4">
@@ -2435,7 +2435,7 @@ export default function AdminDashboard() {
       </Collapse></div></Collapse>
 
 
-<Collapse title={<><Users className="w-5 h-5" /> People &amp; Inquiries</>}><div className="px-6 pb-6 space-y-4"><p className="text-sm text-muted-foreground"><strong>Users &amp; Website Signups</strong> are accounts and newsletter sign-ups ("Stay Connected"). <strong>Contact Inquiries</strong> are messages sent through the Contact Us form — invite someone from there to turn them into a user.</p><Collapse nested title={<>
+<Collapse tone="people" title={<><Users className="w-5 h-5" /> People &amp; Inquiries</>}><div className="px-6 pb-6 space-y-4"><p className="text-sm text-muted-foreground"><strong>Users &amp; Website Signups</strong> are accounts and newsletter sign-ups ("Stay Connected"). <strong>Contact Inquiries</strong> are messages sent through the Contact Us form — invite someone from there to turn them into a user.</p><Collapse nested title={<>
             Users & Website Signups{" "}
             <span className="text-sm font-normal text-muted-foreground">
               ({userRows.length} total · scroll to see more)
@@ -2760,7 +2760,7 @@ export default function AdminDashboard() {
         </CardContent>
       </Collapse></div></Collapse>
 
-<Collapse defaultOpen title={<>
+<Collapse tone="activity" defaultOpen title={<>
             <Activity className="w-5 h-5" /> Login Activity & Time Spent
 </>}>
         <CardContent className="space-y-4">

@@ -104,9 +104,7 @@ export function ShareLinksPanel({ videos, pages }: { videos: Item[]; pages: Item
 
   return (
     <div className="space-y-4 text-sm">
-      <p className="text-muted-foreground">
-        Make a link to one video, document or 3D page. Anyone with the link and password can open it without an account — you send both yourself. No email is sent. Or make a personal link for one person (no password, expires in 2 weeks) and email it to them.
-      </p>
+      <h4 className="text-base font-semibold">Share a direct link</h4>
       <div className="flex flex-wrap gap-4">
         {(["project", "video", "document"] as Kind[]).map((k) => (
           <label key={k} className="flex items-center gap-2 font-semibold">
@@ -116,7 +114,7 @@ export function ShareLinksPanel({ videos, pages }: { videos: Item[]; pages: Item
         ))}
       </div>
       {kind === "document" ? (
-        <div className="rounded p-2 max-h-72 overflow-y-auto" style={{ background: "#0A2A2E" }}>
+        <div className="ef-document-picker rounded p-2 max-h-72 overflow-y-auto">
           <DocsTree onOpenFile={(profileId, f) => setItem({ id: f.id, name: f.name, profileId })} activeFileId={item?.id ?? null} />
         </div>
       ) : (
@@ -157,9 +155,9 @@ export function ShareLinksPanel({ videos, pages }: { videos: Item[]; pages: Item
       </div>
       )}
 
-      <div>
+      <div className="ef-existing-links">
         <div className="flex items-center justify-between gap-2 mb-2">
-          <h4 className="font-semibold">Share links</h4>
+          <h4 className="font-semibold">Existing shared links ({links.length})</h4>
           <Button size="sm" variant="outline" disabled={loadingLinks} onClick={() => void load()}>Refresh</Button>
         </div>
         {loadingLinks && <p className="text-muted-foreground" role="status">Loading links…</p>}
@@ -169,7 +167,7 @@ export function ShareLinksPanel({ videos, pages }: { videos: Item[]; pages: Item
           {links.map((l) => {
             const o = opens.get(l.id);
             return (
-              <div key={l.id} className="rounded border p-2 flex flex-wrap items-center gap-2 justify-between">
+              <div key={l.id} className="ef-shared-item rounded border p-3 flex flex-wrap items-center gap-3 justify-between">
                 <div className="min-w-0">
                   <div className="font-semibold break-words">{KIND_LABEL[l.item_type]}: {l.item_name}</div>
                   {l.no_password && <div className="text-xs break-all">For <strong>{[l.recipient_first_name, l.recipient_last_name].filter(Boolean).join(" ")}</strong> ({l.recipient_email}) · no password · {l.email_sent_at ? `email sent ${new Date(l.email_sent_at).toLocaleString()}` : "email not sent"}</div>}
