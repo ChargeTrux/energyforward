@@ -1969,6 +1969,8 @@ export default function AdminDashboard() {
               )}
               {useOwnPassword && <span className="text-xs text-muted-foreground">Sent in the welcome email; they won't be asked to change it.</span>}
             </div>
+            )}
+            {inviteMode === "portal" && (
             <div className="md:col-span-12 ef-access-permissions text-sm">
               <div className="flex flex-wrap gap-6 pb-3 mb-3 border-b">
                 <label className="flex items-center gap-2 font-semibold">
