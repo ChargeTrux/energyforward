@@ -88,6 +88,16 @@ export function PortalNav({ current }: { current: Current }) {
       ? <span key={key} style={{ color: amber }}>{label}</span>
       : <Link key={key} to={target} style={link}>{label}</Link>;
   };
+  return (
+    <nav style={{ display: "flex", gap: 28, fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end", marginLeft: "auto" }}>
+      {a.investor || !(a.project || a.videos || a.documents || a.links.length)
+        ? <a href="/?public=1" style={link}>Home</a>
+        : current === "home" ? <span style={{ color: amber }}>Home</span> : <Link to="/investor/welcome" style={link}>Home</Link>}
+      {a.investor && <Link to="/investor" style={link}>Investor portal</Link>}
+      {a.investor && a.customer && <Link to="/customer" style={link}>Customer portal</Link>}
+      {item("project", "/investor/project", "Project 3D Demo", a.project, "project")}
+      {item("videos", "/investor/videos", "Videos", a.videos, "video")}
+      {item("documents", "/investor/documents", "Documents (Data Room)", a.documents, "document")}
       {a.admin && <Link to="/admin" style={link}>Admin</Link>}
       {isUserPreview ? <a href="/admin" style={link} onClick={(e) => { e.preventDefault(); exitUserPreview(); }}>Exit preview</a> : <Link to="/signout" style={link}>Sign out</Link>}
     </nav>
