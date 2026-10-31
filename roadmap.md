@@ -50,3 +50,6 @@
 - [x] Keep existing access intact: additive-only DB change (nullable share_links.user_id), no policy/permission changes.
 - [ ] Publish so the unified Access manager reaches energyforward.com.
 - [ ] Verify link recipients and convert flow while signed in as admin (blocked: authenticated checks unavailable for external Supabase).
+- [x] Remove user now also deletes their direct links (by account or recipient email); deleting a link alone stays link-only; confirm text updated.
+- [x] Merged direct-link option into Add users → Invite one person (Portal access / Direct link radio, item picker, personal/password choice); removed the separate link tab.
+- [x] Added "Has direct links" filter to the Access manager status filter.

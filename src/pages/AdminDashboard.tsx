@@ -1,5 +1,6 @@
-import { ShareLinksPanel, ActivityAlertToggle, type LinkRow } from "@/components/admin/ShareLinksPanel";
+import { ShareLinksPanel, ActivityAlertToggle, callShareLink, KIND_LABEL, type Kind, type LinkRow } from "@/components/admin/ShareLinksPanel";
 import { UserShareLinks } from "@/components/admin/UserShareLinks";
+import { DocsTree } from "@/components/DocsTree";
 import { ActivityMap } from "@/components/admin/ActivityMap";
 import type React from "react";
 import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react";
@@ -224,9 +225,11 @@ export default function AdminDashboard() {
   const [recentLoginCount, setRecentLoginCount] = useState(0);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
-  const [linkFirst, setLinkFirst] = useState("");
-  const [linkLast, setLinkLast] = useState("");
-  const [linkEmail, setLinkEmail] = useState("");
+  const [inviteMode, setInviteMode] = useState<"portal" | "link">("portal");
+  const [linkKind, setLinkKind] = useState<Kind>("video");
+  const [linkItem, setLinkItem] = useState<{ id: string; name: string; profileId?: string } | null>(null);
+  const [linkPersonal, setLinkPersonal] = useState(true);
+  const [linkPassword, setLinkPassword] = useState("");
   const [useOwnPassword, setUseOwnPassword] = useState(false);
   const [ownPassword, setOwnPassword] = useState("");
   const [inviteInvestor, setInviteInvestor] = useState(false);
@@ -260,7 +263,7 @@ export default function AdminDashboard() {
   >({});
   const [busy, setBusy] = useState(false);
   const [accessSearch, setAccessSearch] = useState("");
-  const [accessStatusFilter, setAccessStatusFilter] = useState<"all" | "active" | "success" | "pending" | "neutral" | "issue">("all");
+  const [accessStatusFilter, setAccessStatusFilter] = useState<"all" | "active" | "success" | "pending" | "neutral" | "issue" | "links">("all");
   const [accessSort, setAccessSort] = useState<"name" | "activity" | "status" | "added">("activity");
   const accessListRef = useRef<HTMLDivElement>(null);
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
@@ -575,7 +578,10 @@ export default function AdminDashboard() {
     const statusRank: Record<string, number> = { active: 0, success: 1, pending: 2, neutral: 3, issue: 4 };
     const rows = profiles
       .filter((u) => `${u.full_name ?? ""} ${u.email}`.toLowerCase().includes(search))
-      .filter((u) => accessStatusFilter === "all" || accessStatuses.get(u.user_id)?.tone === accessStatusFilter);
+      .filter((u) => accessStatusFilter === "all"
+        || (accessStatusFilter === "links"
+          ? shareLinks.some((l) => l.user_id === u.user_id || (l.recipient_email ?? "").toLowerCase() === u.email.toLowerCase())
+          : accessStatuses.get(u.user_id)?.tone === accessStatusFilter));
     rows.sort((a, b) => {
       const byName = (a.full_name ?? "").localeCompare(b.full_name ?? "") || a.email.localeCompare(b.email);
       if (accessSort === "activity") {
@@ -594,7 +600,7 @@ export default function AdminDashboard() {
       return byName;
     });
     return rows;
-  }, [profiles, accessSearch, accessStatusFilter, accessStatuses, accessSort, lastLogins, recentActivity]);
+  }, [profiles, shareLinks, accessSearch, accessStatusFilter, accessStatuses, accessSort, lastLogins, recentActivity]);
 
   // Direct links that belong to a portal user (by account or by recipient email).
   const linksForUser = (userId: string, email: string) =>
@@ -602,6 +608,7 @@ export default function AdminDashboard() {
 
   // People who only have a personal link (no portal account) — shown in the Access manager.
   const linkRecipients = useMemo(() => {
+    if (accessStatusFilter !== "all" && accessStatusFilter !== "links") return [];
     const accountEmails = new Set(profiles.map((p) => p.email.toLowerCase()));
     const byEmail = new Map<string, LinkRow[]>();
     for (const l of shareLinks) {
@@ -619,7 +626,7 @@ export default function AdminDashboard() {
       }))
       .filter((r) => `${r.name} ${r.email}`.toLowerCase().includes(search))
       .sort((a, b) => a.name.localeCompare(b.name) || a.email.localeCompare(b.email));
-  }, [shareLinks, profiles, accessSearch]);
+  }, [shareLinks, profiles, accessSearch, accessStatusFilter]);
 
   const filteredActivity = useMemo(() => {
     const search = activitySearch.trim().toLowerCase();
@@ -893,9 +900,37 @@ export default function AdminDashboard() {
     }
   };
 
+  // Create a direct link from the Add users form. Never emails unless send=true.
+  const createLinkFromInvite = async (send: boolean) => {
+    if (!inviteEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail.trim())) {
+      toast({ title: "Enter a valid email address", variant: "destructive" });
+      return;
+    }
+    if (!linkItem) { toast({ title: "Pick a file, video or 3D page first", variant: "destructive" }); return; }
+    const first = (inviteName.trim().split(" ")[0] ?? "").trim();
+    const last = inviteName.trim().split(" ").slice(1).join(" ");
+    if (linkPersonal && !first) { toast({ title: "Enter at least a first name", variant: "destructive" }); return; }
+    if (!linkPersonal && linkPassword.trim().length < 6) { toast({ title: "Password needs at least 6 characters", variant: "destructive" }); return; }
+    try {
+      const r = await callShareLink("create", linkPersonal
+        ? { item_type: linkKind, item_id: linkItem.id, item_name: linkItem.name, profile_id: linkItem.profileId, no_password: true, first_name: first, last_name: last, email: inviteEmail.trim() }
+        : { item_type: linkKind, item_id: linkItem.id, item_name: linkItem.name, profile_id: linkItem.profileId, password: linkPassword.trim() });
+      void navigator.clipboard.writeText(`https://energyforward.com/share/${r.slug}`);
+      if (send && linkPersonal) {
+        try { await callShareLink("send_email", { id: r.id }); toast({ title: "Email sent", description: `Sent to ${inviteEmail.trim()}` }); }
+        catch (e) { toast({ title: "Link created, but the email failed", description: (e as Error).message, variant: "destructive" }); }
+      } else {
+        toast({ title: "Link copied — no email sent", description: "Paste it into your own email when you're ready." });
+      }
+      setInviteEmail(""); setInviteName(""); setLinkItem(null); setLinkPassword("");
+      await load();
+    } catch (e) { toast({ title: "Could not create link", description: (e as Error).message, variant: "destructive" }); }
+  };
+
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail) return;
+    if (inviteMode === "link") { await createLinkFromInvite(false); return; }
     if (inviteAdmin) {
       setConfirmAdminInvite(true);
       return;
@@ -937,8 +972,9 @@ export default function AdminDashboard() {
   };
 
   const handleDelete = async (user_id: string, email: string) => {
-    if (!window.confirm(`Permanently delete ${email}? This cannot be undone.`)) return;
+    if (!window.confirm(`Permanently delete ${email}? This removes their account, all portal access, and any direct links made for them. This cannot be undone.`)) return;
     await callAdmin("delete_user", { user_id });
+    await load();
   };
 
   const openEditName = (row: UserListRow) => {
@@ -1473,6 +1509,7 @@ export default function AdminDashboard() {
               <SelectItem value="pending">Invite pending</SelectItem>
               <SelectItem value="neutral">Not invited</SelectItem>
               <SelectItem value="issue">Blocked / needs access</SelectItem>
+              <SelectItem value="links">Has direct links</SelectItem>
             </SelectContent>
           </Select>
           <Select value={accessSort} onValueChange={(v) => setAccessSort(v as typeof accessSort)}>
@@ -1876,7 +1913,6 @@ export default function AdminDashboard() {
         <Tabs defaultValue="invite" className="px-6 pt-1">
           <TabsList>
             <TabsTrigger value="invite">Invite one person</TabsTrigger>
-            <TabsTrigger value="link">Share a direct link</TabsTrigger>
             <TabsTrigger value="import">Import a list</TabsTrigger>
           </TabsList>
         <TabsContent value="invite">
@@ -1905,6 +1941,17 @@ export default function AdminDashboard() {
                 placeholder="user@example.com"
               />
             </div>
+            <div className="md:col-span-12 flex flex-wrap gap-6 text-sm">
+              <label className="flex items-center gap-2 font-semibold">
+                <input type="radio" name="invite-mode" checked={inviteMode === "portal"} onChange={() => setInviteMode("portal")} />
+                Portal access <span className="font-normal text-xs text-muted-foreground">(they sign in with an account)</span>
+              </label>
+              <label className="flex items-center gap-2 font-semibold">
+                <input type="radio" name="invite-mode" checked={inviteMode === "link"} onChange={() => setInviteMode("link")} />
+                Direct link <span className="font-normal text-xs text-muted-foreground">(one file, video or 3D page — no account)</span>
+              </label>
+            </div>
+            {inviteMode === "portal" && (
             <div className="md:col-span-12 flex flex-wrap items-center gap-3 text-sm">
               <label className="flex items-center gap-2 font-semibold">
                 <input type="checkbox" checked={useOwnPassword} onChange={(e) => setUseOwnPassword(e.target.checked)} />
@@ -1922,6 +1969,8 @@ export default function AdminDashboard() {
               )}
               {useOwnPassword && <span className="text-xs text-muted-foreground">Sent in the welcome email; they won't be asked to change it.</span>}
             </div>
+            )}
+            {inviteMode === "portal" && (
             <div className="md:col-span-12 ef-access-permissions text-sm">
               <div className="flex flex-wrap gap-6 pb-3 mb-3 border-b">
                 <label className="flex items-center gap-2 font-semibold">
@@ -2003,7 +2052,60 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
+            )}
+            {inviteMode === "link" && (
+            <div className="md:col-span-12 ef-access-permissions text-sm space-y-3">
+              <div className="flex flex-wrap gap-4">
+                {(["project", "video", "document"] as Kind[]).map((k) => (
+                  <label key={k} className="flex items-center gap-2 font-semibold">
+                    <input type="radio" name="invite-link-kind" checked={linkKind === k} onChange={() => { setLinkKind(k); setLinkItem(null); }} />
+                    {KIND_LABEL[k]}
+                  </label>
+                ))}
+              </div>
+              {linkKind === "document" ? (
+                <div className="rounded p-2 max-h-72 overflow-y-auto" style={{ background: "#0A2A2E" }}>
+                  <DocsTree onOpenFile={(profileId, f) => setLinkItem({ id: f.id, name: f.name, profileId })} activeFileId={linkItem?.id ?? null} />
+                </div>
+              ) : (
+                <div className="rounded border p-2 max-h-56 overflow-y-auto">
+                  {(linkKind === "video" ? videoCatalog : projectCatalog).length === 0 && <span className="text-muted-foreground">Nothing to pick yet.</span>}
+                  {(linkKind === "video" ? videoCatalog : projectCatalog).map((it) => (
+                    <label key={it.id} className="flex items-center gap-2 py-0.5">
+                      <input type="radio" name="invite-link-item" checked={linkItem?.id === it.id} onChange={() => setLinkItem(it)} />
+                      {it.name.replace(/\.[^.]+$/, "")}
+                    </label>
+                  ))}
+                </div>
+              )}
+              <p>Selected: <strong>{linkItem ? linkItem.name : "nothing yet"}</strong></p>
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="invite-link-mode" checked={linkPersonal} onChange={() => setLinkPersonal(true)} />Personal link <span className="font-normal text-xs text-muted-foreground">(no password — they type their email; expires in 2 weeks)</span></label>
+                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="invite-link-mode" checked={!linkPersonal} onChange={() => setLinkPersonal(false)} />Link with password</label>
+              </div>
+              {!linkPersonal && (
+                <div className="max-w-xs">
+                  <Label htmlFor="invite-link-pw">Password</Label>
+                  <Input id="invite-link-pw" value={linkPassword} onChange={(e) => setLinkPassword(e.target.value)} placeholder="At least 6 characters" autoComplete="off" />
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">No account is created and no email is sent unless you click "Create link &amp; send email". The person appears in the Access manager under "Link access".</p>
+            </div>
+            )}
             <div className="md:col-span-12 flex justify-end">
+              {inviteMode === "link" ? (
+                <>
+                  <Button type="submit" variant="outline" disabled={busy || !inviteEmail} className="mr-3">
+                    Create link (no email)
+                  </Button>
+                  {linkPersonal && (
+                    <Button type="button" disabled={busy || !inviteEmail} className="ef-cta px-8" onClick={() => void createLinkFromInvite(true)}>
+                      Create link &amp; send email
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <>
               <Button
                 type="button"
                 variant="outline"
@@ -2025,34 +2127,14 @@ export default function AdminDashboard() {
               <Button type="submit" disabled={busy} className="ef-cta px-8">
                 Create &amp; Invite
               </Button>
+                </>
+              )}
             </div>
           </form>
           <p className="text-xs text-muted-foreground mt-3">
             A temporary password will be generated and the user will be required to
             change it on first sign-in, unless you tick "Use my own password".
           </p>
-        </CardContent>
-        </TabsContent>
-        <TabsContent value="link">
-        <CardContent className="px-0 space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Share one file, video or 3D page without creating a portal account. The person appears in the Access manager under "Link access", and you can convert the link between personal (no password) and password at any time. No email is sent unless you click "Create link &amp; send email".
-          </p>
-          <div className="flex flex-wrap items-end gap-3">
-            <div><Label htmlFor="link-first">First name</Label><Input id="link-first" value={linkFirst} onChange={(e) => setLinkFirst(e.target.value)} maxLength={100} /></div>
-            <div><Label htmlFor="link-last">Last name</Label><Input id="link-last" value={linkLast} onChange={(e) => setLinkLast(e.target.value)} maxLength={100} /></div>
-            <div><Label htmlFor="link-email">Email</Label><Input id="link-email" type="email" value={linkEmail} onChange={(e) => setLinkEmail(e.target.value)} maxLength={255} /></div>
-          </div>
-          <UserShareLinks
-            key={linkEmail.trim().toLowerCase()}
-            videos={videoCatalog}
-            pages={projectCatalog}
-            links={linkEmail.trim() ? shareLinks.filter((l) => (l.recipient_email ?? "").toLowerCase() === linkEmail.trim().toLowerCase()) : []}
-            firstName={linkFirst}
-            lastName={linkLast}
-            email={linkEmail}
-            onChanged={load}
-          />
         </CardContent>
         </TabsContent>
         <TabsContent value="import">
