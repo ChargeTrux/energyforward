@@ -96,16 +96,16 @@ export function UserShareLinks({
   return (
     <div className="ef-user-links space-y-4 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <strong className="text-base">Share a direct link</strong>
+        <strong className="ef-subsection-title text-base">4 · Direct links</strong>
         <Button size="sm" variant="outline" aria-expanded={showForm} onClick={() => setShowForm((s) => !s)}>{showForm ? "Hide sharing options" : "Show sharing options"}</Button>
       </div>
       {showForm && (
         <div className="ef-share-create space-y-3">
           <fieldset className="ef-form-group">
-            <legend>Material type</legend>
+            <legend>4A · Choose material type</legend>
             <div className="ef-choice-row">
             {(["project", "video", "document"] as Kind[]).map((k) => (
-              <label key={k} className="flex items-center gap-2 font-semibold">
+              <label key={k} className={`ef-material-choice ef-material-choice--${k} flex items-center gap-2 font-semibold`}>
                 <input type="radio" name={`usk-${userId ?? email}`} checked={kind === k} onChange={() => { setKind(k); setItem(null); }} />
                 {KIND_LABEL[k]}
               </label>
@@ -129,7 +129,7 @@ export function UserShareLinks({
           )}
           <p>Selected: <strong>{item ? item.name : "nothing yet"}</strong></p>
           <fieldset className="ef-form-group">
-            <legend>Link access</legend>
+            <legend>4B · Choose link access</legend>
             <div className="ef-choice-row">
             <label className="flex items-center gap-2 font-semibold"><input type="radio" name={`usm-${userId ?? email}`} checked={personal} onChange={() => setPersonal(true)} />Personal link (no password, expires in 2 weeks)</label>
             <label className="flex items-center gap-2 font-semibold"><input type="radio" name={`usm-${userId ?? email}`} checked={!personal} onChange={() => setPersonal(false)} />Link with password</label>
@@ -137,6 +137,7 @@ export function UserShareLinks({
           </fieldset>
           {personal ? (
             <div>
+              <h4 className="ef-subsection-title">4C · Recipient details</h4>
               <div className="ef-recipient-fields">
               <div><Label htmlFor={`${fieldId}-first`}>First name</Label><Input id={`${fieldId}-first`} value={first} onChange={(e) => setFirst(e.target.value)} maxLength={100} /></div>
               <div><Label htmlFor={`${fieldId}-last`}>Last name</Label><Input id={`${fieldId}-last`} value={last} onChange={(e) => setLast(e.target.value)} maxLength={100} /></div>
@@ -157,7 +158,7 @@ export function UserShareLinks({
         </div>
       )}
       <section className="ef-existing-links space-y-3" aria-label="Existing shared links">
-        <h4 className="text-base font-semibold">Existing shared links ({links.length})</h4>
+        <h4 className="ef-subsection-title text-base font-semibold">4D · Existing shared links ({links.length})</h4>
         {links.length === 0 && <p className="text-muted-foreground">No direct links for this person yet.</p>}
       {links.map((l) => (
         <div key={l.id} className="ef-shared-item rounded border p-3 flex flex-wrap items-center gap-3 justify-between">
