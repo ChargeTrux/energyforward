@@ -788,6 +788,20 @@ export default function AdminDashboard() {
     return data;
   };
 
+  // Reset-password emails take a few seconds; give instant feedback and block
+  // repeat clicks so one press never sends two emails.
+  const [resetPending, setResetPending] = useState<string | null>(null);
+  const sendReset = async (email: string) => {
+    if (resetPending) return;
+    setResetPending(email);
+    toast({ title: "Sending reset email…", description: email });
+    try {
+      await callAdmin("send_reset", { email });
+    } finally {
+      setResetPending(null);
+    }
+  };
+
   const createInvite = async (
     rolesArr: PortalRole[],
     email = inviteEmail,
@@ -1732,8 +1746,8 @@ export default function AdminDashboard() {
                       >
                         Send invite with my password
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => callAdmin("send_reset", { email: u.email })}>
-                        Send reset password link
+                      <Button size="sm" variant="outline" disabled={resetPending === u.email} onClick={() => void sendReset(u.email)}>
+                        {resetPending === u.email ? "Sending…" : "Send reset password link"}
                       </Button>
                       <Button
                         size="sm"
@@ -2615,9 +2629,10 @@ export default function AdminDashboard() {
                                 {row.is_active ? "Deactivate" : "Activate"}
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onClick={() => callAdmin("send_reset", { email: row.email })}
+                                disabled={resetPending === row.email}
+                                onClick={() => void sendReset(row.email)}
                               >
-                                Reset Password
+                                {resetPending === row.email ? "Sending…" : "Reset Password"}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
