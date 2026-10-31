@@ -357,6 +357,7 @@ export default function AdminDashboard() {
       { data: invProfileRows },
       { data: invAccessRows },
       { data: shareLinkRows },
+      { count: loginTotal },
     ] =
       await Promise.all([
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
@@ -372,6 +373,7 @@ export default function AdminDashboard() {
         supabase.from("investor_profiles").select("*").order("sort_order"),
         supabase.from("investor_profile_access").select("user_id, profile_id"),
         supabase.from("share_links").select("id,slug,item_type,item_name,active,expires_at,created_at,no_password,recipient_first_name,recipient_last_name,recipient_email,email_sent_at,user_id").order("created_at", { ascending: false }),
+        supabase.from("login_sessions").select("id", { count: "exact", head: true }),
       ]);
 
     const invProfiles = (invProfileRows ?? []) as InvestorProfile[];
@@ -415,7 +417,7 @@ export default function AdminDashboard() {
     setProfiles(enrichedProfiles);
     setSignups((signupRows ?? []) as SignupRow[]);
     setContacts((contactRows ?? []) as ContactSubmissionRow[]);
-    setRecentLoginCount((sess ?? []).length);
+    setRecentLoginCount(loginTotal ?? (sess ?? []).length);
 
     const viewsBySession = new Map<string, PageViewRow[]>();
     (views ?? []).forEach((v) => {
