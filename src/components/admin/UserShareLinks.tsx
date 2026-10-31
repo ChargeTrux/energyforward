@@ -22,6 +22,7 @@ export function UserShareLinks({
   firstName = "",
   lastName = "",
   email = "",
+  profiles = [],
   onChanged,
 }: {
   videos: Item[];
@@ -31,6 +32,8 @@ export function UserShareLinks({
   firstName?: string;
   lastName?: string;
   email?: string;
+  /** Document folders (Drive profiles) for the document picker. */
+  profiles?: Profile[];
   onChanged: () => void | Promise<void>;
 }) {
   const { toast } = useToast();
@@ -38,12 +41,18 @@ export function UserShareLinks({
   const [showForm, setShowForm] = useState(true);
   const [kind, setKind] = useState<Kind>("video");
   const [item, setItem] = useState<(Item & { profileId?: string }) | null>(null);
+  const [docSel, setDocSel] = useState<Record<string, Selection>>({});
   const [personal, setPersonal] = useState(true);
   const [first, setFirst] = useState(firstName);
   const [last, setLast] = useState(lastName);
   const [addr, setAddr] = useState(email);
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Document picks across all folders — one link is created per ticked file.
+  const docPicks = profiles.flatMap((p) =>
+    [...(docSel[p.id] ?? new Map())].map(([id, picked]) => ({ id, name: picked.name, profileId: p.id })),
+  );
 
   const copy = (slug: string) => { void navigator.clipboard.writeText(linkUrl(slug)); toast({ title: "Link copied", description: linkUrl(slug) }); };
   const status = (l: LinkRow) => !l.active ? "Turned off" : l.expires_at && new Date(l.expires_at) <= new Date() ? "Expired" : "Active";
