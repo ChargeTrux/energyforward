@@ -1,0 +1,1 @@
+ALTER FUNCTION public.remove_selected_user_access(uuid[]) SECURITY INVOKER;
