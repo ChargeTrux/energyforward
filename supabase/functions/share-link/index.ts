@@ -205,7 +205,8 @@ Deno.serve(async (req) => {
       return json({ ok: true, ...data });
     }
     // Convert a link between personal (no password) and password modes in place —
-    // the URL stays the same. Never sends an email.
+    // the URL stays the same. Recipient details are kept both ways so the link
+    // can still be emailed after conversion; the frontend sends the email.
     if (action === "convert") {
       const { id, mode, password, first_name, last_name, email } = body;
       if (typeof id !== "string") return json({ error: "Missing link" }, 400);
@@ -231,9 +232,6 @@ Deno.serve(async (req) => {
         const { error } = await db.from("share_links").update({
           no_password: false,
           password_hash: await hashPassword(password.trim()),
-          recipient_first_name: null,
-          recipient_last_name: null,
-          recipient_email: null,
         }).eq("id", id);
         if (error) return json({ error: error.message }, 400);
         return json({ ok: true });
