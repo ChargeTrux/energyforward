@@ -4,6 +4,7 @@ import { ActivityMap } from "@/components/admin/ActivityMap";
 import type React from "react";
 import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react";
 import { activityInRange, userAccessStatus, type ActivityPreset } from "@/lib/admin-activity";
+import { investorRoleChange, materialRoles } from "@/lib/portal-access-policy";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalUser as useAuth } from "@/components/admin/UserPreviewBoundary";
@@ -816,9 +817,7 @@ export default function AdminDashboard() {
       return;
     }
     // Picking videos / 3D pages grants that section; investor portal stays independent.
-    rolesArr = [...rolesArr];
-    if (selectedVideoIds.length && rolesArr.includes("investor") && !rolesArr.includes("video")) rolesArr.push("video");
-    if (selectedProjectIds.length && rolesArr.includes("investor") && !rolesArr.includes("project")) rolesArr.push("project");
+    rolesArr = materialRoles(rolesArr, selectedVideoIds, selectedProjectIds) as PortalRole[];
     const data = (await callAdmin("invite", {
       send_email: sendEmail,
       email,
@@ -1810,13 +1809,8 @@ export default function AdminDashboard() {
                             checked={Boolean(u.is_investor)}
                             onChange={async (e) => {
                               const on = e.target.checked;
-                              if (!on && (u.is_project || u.is_video || folders.length) && !window.confirm(`Turning off Investor portal also removes ${u.email}'s Project 3D Demo, Videos and Documents access. Continue?`)) return;
-                              await callAdmin("set_investor", { user_id: u.user_id, make_investor: on });
-                              if (!on) {
-                                if (u.is_project) await callAdmin("set_project", { user_id: u.user_id, make_project: false });
-                                if (u.is_video) await callAdmin("set_video", { user_id: u.user_id, make_video: false });
-                                for (const f of folders) await toggleUserProfileAccess(u.user_id, f.id, false);
-                              }
+                              const { action, ...change } = investorRoleChange(u.user_id, on);
+                              await callAdmin(action, change);
                             }}
                           />
                           Investor portal <span className="font-normal text-xs text-muted-foreground">(portal pages only)</span>
@@ -2033,10 +2027,7 @@ export default function AdminDashboard() {
                   Full admin access
                 </label>
                 <label className="flex items-center gap-2 font-semibold">
-                  <input type="checkbox" checked={inviteInvestor} onChange={(e) => {
-                    setInviteInvestor(e.target.checked);
-                    if (!e.target.checked) { setInviteProject(false); setInviteVideo(false); setSelectedProjectIds([]); setSelectedVideoIds([]); setSelectedProfileIds([]); }
-                  }} />
+                  <input type="checkbox" checked={inviteInvestor} onChange={(e) => setInviteInvestor(e.target.checked)} />
                   Investor portal <span className="font-normal text-xs text-muted-foreground">(portal pages only)</span>
                 </label>
                 <label className="flex items-center gap-2 font-semibold">

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { ACCESS_REFRESH_MS, accessRevision } from "@/lib/portal-access-policy";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalUser as useAuth } from "@/components/admin/UserPreviewBoundary";
@@ -15,6 +16,7 @@ export type PortalAccess = {
   documents: boolean;
   links: DirectLink[];
   ready?: boolean;
+  revision?: string;
 };
 
 const NONE: PortalAccess = { admin: false, investor: false, customer: false, videos: false, project: false, documents: false, links: [] };
@@ -41,24 +43,32 @@ export function niceLinkName(name: string) {
 }
 
 /** What sections this person may see. Only sections they were granted are shown. */
-let accessCache: { uid: string; a: PortalAccess } | null = null;
-
 export function usePortalAccess() {
   const { user } = useAuth();
-  const [access, setAccessRaw] = useState<PortalAccess>(user && accessCache?.uid === user.id ? accessCache.a : NONE);
-  useEffect(() => {
-    if (!user) { setAccessRaw(NONE); return; }
-    const setAccess = (a: PortalAccess) => { accessCache = { uid: user.id, a }; setAccessRaw(a); };
-    Promise.all([
+  const query = useQuery({
+    queryKey: ["portal-access", user?.id, isUserPreview],
+    enabled: Boolean(user),
+    staleTime: 0,
+    refetchInterval: ACCESS_REFRESH_MS,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: "always",
+    retry: false,
+    queryFn: async (): Promise<PortalAccess> => {
+      if (!user) return NONE;
+      const [{ data: r, error: re }, { data: d, error: de }, { data: v, error: ve }, { data: pp, error: pe }, { data: items, error: ie }, { data: profile, error: profileError }, links] = await Promise.all([
       supabase.from("user_roles").select("role").eq("user_id", user.id),
-      supabase.from("investor_profile_access").select("profile_id").eq("user_id", user.id).limit(1),
-      supabase.from("investor_video_access").select("file_id").eq("user_id", user.id).limit(1),
-      supabase.from("project_page_access").select("file_id").eq("user_id", user.id).limit(1),
-      fetchDirectLinks(isUserPreview ? user.id : null).catch(() => [] as DirectLink[]),
-    ]).then(([{ data: r }, { data: d }, { data: v }, { data: pp }, links]) => {
+      supabase.from("investor_profile_access").select("profile_id").eq("user_id", user.id),
+      supabase.from("investor_video_access").select("file_id").eq("user_id", user.id),
+      supabase.from("project_page_access").select("file_id").eq("user_id", user.id),
+      supabase.from("investor_document_access").select("profile_id,item_id,is_folder").eq("user_id", user.id),
+      supabase.from("profiles").select("is_active").eq("user_id", user.id).maybeSingle(),
+      fetchDirectLinks(isUserPreview ? user.id : null),
+    ]);
+      if (re || de || ve || pe || ie || profileError) throw new Error("Could not verify current access");
+      if (!profile?.is_active) return { ...NONE, ready: true, revision: "inactive" };
       const roles = new Set((r ?? []).map((x) => x.role as string));
       const admin = roles.has("admin");
-      setAccess({
+      return {
         admin,
         investor: admin || roles.has("investor"),
         customer: admin || roles.has("customer"),
@@ -67,10 +77,13 @@ export function usePortalAccess() {
         documents: admin || (d ?? []).length > 0,
         links,
         ready: true,
-      });
-    });
-  }, [user]);
-  return access;
+        revision: accessRevision([r ?? [], d ?? [], v ?? [], pp ?? [], items ?? [], links]),
+      };
+    },
+  });
+  if (!user) return NONE;
+  if (query.isError) return { ...NONE, ready: true, revision: "unverified" };
+  return query.data ?? NONE;
 }
 
 type Current = "home" | "videos" | "project" | "documents" | "shared";
