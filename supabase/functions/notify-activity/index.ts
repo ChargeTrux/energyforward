@@ -32,9 +32,9 @@ Deno.serve(async (req) => {
     const { data: w } = await db.from("activity_watchers").select("notify_email,enabled").eq("user_id", u.user.id).maybeSingle();
     if (!w?.enabled || !w.notify_email) return json({ ok: true, sent: false });
 
-    // Once per sign-in session / once per item per day.
-    const day = new Date().toISOString().slice(0, 10);
-    const key = kind === "login" ? `login:${ref}` : `${kind}:${ref}:${day}`;
+    // Exactly one email per sign-in, and exactly one per item ever —
+    // reopening the same video, document or 3D page never emails again.
+    const key = kind === "login" ? `login:${ref}` : `${kind}:${ref}`;
     const { error: dup } = await db.from("activity_alerts_sent").insert({ user_id: u.user.id, dedupe_key: key });
     if (dup) return json({ ok: true, sent: false });
 

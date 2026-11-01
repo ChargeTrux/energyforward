@@ -41,15 +41,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsAdmin(!!roles?.some((r) => r.role === "admin"));
 
           if (event === "SIGNED_IN" && !isUserPreview) {
-            const { data: ls } = await supabase
-              .from("login_sessions")
-              .insert({ user_id: newSession.user.id })
-              .select("id")
-              .single();
-            if (ls) {
-              setSessionId(ls.id);
-              localStorage.setItem("login_session_id", ls.id);
-              notifyActivity("login", ls.id);
+            // SIGNED_IN can fire more than once for the same sign-in; record it only once
+            // per tab so the login count and the alert email stay single.
+            const mark = `login_recorded:${newSession.expires_at ?? ""}`;
+            if (sessionStorage.getItem(mark)) {
+              const stored = localStorage.getItem("login_session_id");
+              if (stored) setSessionId(stored);
+            } else {
+              sessionStorage.setItem(mark, "1");
+              const { data: ls } = await supabase
+                .from("login_sessions")
+                .insert({ user_id: newSession.user.id })
+                .select("id")
+                .single();
+              if (ls) {
+                setSessionId(ls.id);
+                localStorage.setItem("login_session_id", ls.id);
+                // Stable per sign-in (session expiry), so a duplicate call can't email twice.
+                notifyActivity("login", `${newSession.user.id}:${newSession.expires_at ?? ls.id}`);
+              }
             }
           } else if (event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
             const stored = localStorage.getItem("login_session_id");
