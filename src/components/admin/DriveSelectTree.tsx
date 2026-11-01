@@ -92,20 +92,8 @@ export function DriveSelectTree({
     }
   }, [profileId]);
 
-  // Load and expand every folder so admins see the full structure.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      let queue = (await load()).filter((i) => i.mimeType === FOLDER_MIME);
-      while (queue.length && !cancelled) {
-        const ids = queue.map((q) => q.id);
-        setExpanded((s) => new Set([...s, ...ids]));
-        const kids = await Promise.all(queue.map((q) => load(q.id)));
-        queue = kids.flat().filter((i) => i.mimeType === FOLDER_MIME);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [load]);
+  // Load the top level only — every folder starts collapsed and loads when opened.
+  useEffect(() => { void load(); }, [load]);
 
   const render = (key: string, depth: number, path: DriveItem[], covered: boolean): React.ReactNode =>
     (tree[key] ?? []).map((it) => {
