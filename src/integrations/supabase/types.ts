@@ -687,6 +687,10 @@ export type Database = {
           slug: string
         }[]
       }
+      remove_selected_user_access: {
+        Args: { _user_ids: string[] }
+        Returns: number
+      }
     }
     Enums: {
       app_role: "admin" | "user" | "investor" | "customer" | "video" | "project"
