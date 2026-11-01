@@ -55,6 +55,7 @@ export default function SharePage() {
   useEffect(() => {
     if (!open || open.type === "video") return;
     let url: string | null = null;
+    let cancelled = false;
     setLoading(true);
     fetch(contentUrl(open.ticket)).then(async (r) => {
       if (!r.ok) { const b = await r.json().catch(() => ({})); throw new Error(b.error ?? "Could not open this item."); }
@@ -66,11 +67,12 @@ export default function SharePage() {
         : /\.(png|jpe?g|gif|webp)$/.test(n) ? `image/${n.split(".").pop()?.replace("jpg", "jpeg") ?? "png"}`
         : hdr;
       const blob = await r.blob();
+      if (cancelled) return;
       url = URL.createObjectURL(new Blob([blob], { type: type || blob.type }));
       setBlobType(type);
       setBlobUrl(url);
-    }).catch((e) => setError(e.message)).finally(() => setLoading(false));
-    return () => { if (url) URL.revokeObjectURL(url); };
+    }).catch((e) => { if (!cancelled) setError(e.message); }).finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; if (url) URL.revokeObjectURL(url); };
   }, [open]);
 
   const unlock = async (e: React.FormEvent) => {
