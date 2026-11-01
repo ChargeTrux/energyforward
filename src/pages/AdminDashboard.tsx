@@ -1733,20 +1733,30 @@ export default function AdminDashboard() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="ef-action-btn"
+                        className="ef-action-btn ef-action-btn--lg"
                         onClick={async () => {
-                          const name = window.prompt("Full name", u.full_name || "");
+                          const name = window.prompt("Update full name", u.full_name || "");
                           if (name === null) return;
-                          const email = window.prompt("Email address", u.email || "");
-                          if (email === null) return;
                           if (name.trim() !== (u.full_name || "")) await callAdmin("update_name", { user_id: u.user_id, full_name: name.trim() });
-                          if (email.trim().toLowerCase() !== (u.email || "").toLowerCase()) await callAdmin("update_email", { user_id: u.user_id, email: email.trim() });
                         }}
                       >
-                        Edit name / email
+                        Update full name
                       </Button>
                       <Button
                         size="sm"
+                        variant="outline"
+                        className="ef-action-btn ef-action-btn--lg"
+                        onClick={async () => {
+                          const email = window.prompt("Update email address", u.email || "");
+                          if (email === null) return;
+                          if (email.trim().toLowerCase() !== (u.email || "").toLowerCase()) await callAdmin("update_email", { user_id: u.user_id, email: email.trim() });
+                        }}
+                      >
+                        Update email
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="ef-action-btn--lg"
                         onClick={() => {
                           if (!window.confirm(`Send the welcome invite to ${u.email}? A new temporary password will be emailed.`)) return;
                           callAdmin("send_welcome", { user_ids: [u.user_id], app_origin: window.location.origin });
@@ -1754,7 +1764,7 @@ export default function AdminDashboard() {
                       >
                         Send welcome invite with temporary password
                       </Button>
-                      <Button size="sm" variant="outline" className="ef-action-btn" disabled={resetPending === u.email} onClick={() => void sendReset(u.email)}>
+                      <Button size="sm" className="ef-action-btn--lg" disabled={resetPending === u.email} onClick={() => void sendReset(u.email)}>
                         {resetPending === u.email ? "Sending…" : "Send reset password link"}
                       </Button>
                       <Button
@@ -1812,6 +1822,10 @@ export default function AdminDashboard() {
                           Investor portal <span className="font-normal text-xs text-muted-foreground">(portal pages only)</span>
                         </label>
                       </div>
+                      <p className="text-xs text-muted-foreground -mt-2 mb-3">
+                        Tick <strong>Investor portal</strong> only if this person should see the investor portal pages and menu on top of the materials below.
+                        Leave it unticked if they should only open the specific materials you tick in 3A–3C.
+                      </p>
                       <div className="grid gap-4 md:grid-cols-3">
                       <fieldset className="ef-permission-group ef-section--invite">
                         <legend className="ef-subsection-title">3A · Project 3D Demo</legend>

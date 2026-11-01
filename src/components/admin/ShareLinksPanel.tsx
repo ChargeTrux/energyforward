@@ -230,9 +230,15 @@ export function ActivityAlertToggle({ userId }: { userId: string }) {
   };
 
   return (
-    <div className="ef-admin-notifications text-sm">
+    <div className="text-sm space-y-2">
+      <p className="text-xs text-muted-foreground">
+        This is for you, the admin — not for the person. When it's on, the addresses you type below get an email
+        every time this person signs in and each time they open a video, document or 3D page. The person never
+        sees or receives these alerts.
+      </p>
+      <div className="ef-admin-notifications">
       <label className="ef-notification-toggle flex items-center gap-2 font-semibold">
-        <input type="checkbox" checked={enabled} onChange={(e) => {
+        <input type="checkbox" className="ef-checkbox-alert" checked={enabled} onChange={(e) => {
           if (e.target.checked && !email.trim()) { setEnabled(true); toast({ title: "Now type the email address(es) to notify" }); return; }
           if (!e.target.checked && !saved) { setEnabled(false); return; }
           void save(e.target.checked, email);
@@ -246,6 +252,7 @@ export function ActivityAlertToggle({ userId }: { userId: string }) {
           onBlur={() => { if (enabled && email.trim() && email.trim().toLowerCase() !== saved) void save(true, email); }} />
       </div>
       <span className="ef-notification-note text-xs text-muted-foreground">Sign-ins and each video, document or 3D page they open.</span>
+      </div>
     </div>
   );
 }

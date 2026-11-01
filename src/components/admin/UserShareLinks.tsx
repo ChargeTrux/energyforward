@@ -156,6 +156,7 @@ export function UserShareLinks({
                   {it.name.replace(/\.[^.]+$/, "")}
                 </label>
               ))}
+              <p className="text-xs text-muted-foreground mt-2">Select one item at a time to create a link — with a password or without one.</p>
             </div>
           )}
           <p>Selected: <strong>{kind === "document" ? (docPicks.length ? `${docPicks.length} file${docPicks.length > 1 ? "s" : ""}` : "nothing yet") : item ? item.name : "nothing yet"}</strong></p>
@@ -165,6 +166,10 @@ export function UserShareLinks({
             <label className="flex items-center gap-2 font-semibold"><input type="radio" name={`usm-${userId ?? email}`} checked={personal} onChange={() => setPersonal(true)} />Personal link (no password, expires in 2 weeks)</label>
             <label className="flex items-center gap-2 font-semibold"><input type="radio" name={`usm-${userId ?? email}`} checked={!personal} onChange={() => setPersonal(false)} />Link with password</label>
             </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              <strong>Personal link:</strong> the person opens it by typing the email address the link was sent to — no password needed.
+              <strong> Link with password:</strong> you make up a password, and they must enter it to open the link. You share the link and password yourself.
+            </p>
           </fieldset>
           {personal ? (
             <div>
@@ -175,17 +180,17 @@ export function UserShareLinks({
               <div><Label htmlFor={`${fieldId}-email`}>Email</Label><Input id={`${fieldId}-email`} type="email" value={addr} onChange={(e) => setAddr(e.target.value)} maxLength={255} /></div>
               </div>
               <div className="ef-form-actions">
-              <Button type="button" variant="outline" onClick={() => create(false)} disabled={busy}>{busy ? "Working…" : "Create link (no email)"}</Button>
-              <Button type="button" onClick={() => create(true)} disabled={busy}>{busy ? "Working…" : "Create link & send email"}</Button>
+              <Button type="button" variant="outline" onClick={() => create(false)} disabled={busy}>{busy ? "Working…" : "Create link — don't send email"}</Button>
+              <Button type="button" onClick={() => create(true)} disabled={busy}>{busy ? "Working…" : "Create link & send email invite"}</Button>
               </div>
             </div>
           ) : (
             <div className="flex flex-wrap items-end gap-3">
               <div><Label htmlFor={`${fieldId}-password`}>Password</Label><Input id={`${fieldId}-password`} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" autoComplete="off" /></div>
-              <Button type="button" onClick={() => create(false)} disabled={busy}>{busy ? "Working…" : "Create link (no email)"}</Button>
+              <Button type="button" onClick={() => create(false)} disabled={busy}>{busy ? "Working…" : "Create link — don't send email"}</Button>
             </div>
           )}
-          <p className="text-xs text-muted-foreground">No email is sent unless you click "Create link & send email" or "Send email".</p>
+          <p className="text-xs text-muted-foreground">No email is sent unless you click "Create link & send email invite" or "Send email". Password links are never emailed — copy the link and send it yourself with the password.</p>
         </div>
       )}
       <section className="ef-existing-links space-y-3" aria-label="Existing shared links">

@@ -452,3 +452,7 @@
   .ef-admin label:has(input) { flex-wrap: wrap; }
   .ef-admin label:has(input) > span { min-width: 0; flex: 1; }
 }
+
+/* Distinct alert checkbox + larger account action buttons */
+.ef-admin .ef-checkbox-alert { accent-color: hsl(var(--admin-status-warning, 38 92% 50%)); width: 18px; height: 18px; }
+.ef-admin .ef-account-actions .ef-action-btn--lg { min-height: 40px; padding-left: 18px; padding-right: 18px; font-weight: 600; }
