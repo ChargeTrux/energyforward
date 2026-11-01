@@ -2,7 +2,7 @@
 
 - Keep admin presentation scoped to the dashboard with global semantic color tokens, explicit section tones, numbered user-management headings, aligned notification controls, labelled writing surfaces, and native selection controls grouped by fieldsets; keep per-person sharing in user management and invitations without a duplicate standalone panel, because one clear workflow avoids confusion; visual changes must not alter authorization or share-link operations.
 
-- Keep full investor-portal authorization and video-portal authorization as separate `user_roles` values because administrators must grant either experience independently.
+- Keep Investor portal and material authorization independent: unticking only the investor role preserves video/project/document grants and direct links because administrators manage each separately.
 - Stream investor videos only through the authenticated `investor-videos` Edge Function because Google Drive identifiers and files must never be exposed directly.
 - Route native video requests through the scoped service worker so browser range requests stay authenticated without exposing session tokens in media URLs.
 - Read current video roles and individual grants concurrently for each request without caching authorization; cache only CORS preflight permission to reduce streaming round trips without delaying revocation.
@@ -20,3 +20,4 @@
 - Video service-worker credentials are scoped to the requesting browser client rather than shared between tabs, because admin preview and normal playback must remain isolated.
 - Admin preview exposes the unchanged dashboard only for a server-validated target admin; a preview-scoped request allowlist blocks all application mutations and emails while keeping catalogs, filters, and navigation available.
 - Signed-in people's portal menu and welcome page include their own active direct links via the read-only `my_direct_links` security-definer function (admin may pass a preview target), and sign-in routing treats individual grants or direct links as portal access, because admins change access often and people must see their current materials without new links.
+- Revalidate open-portal grants and shared-ticket viewers every five seconds and on focus; remove revoked viewers, clear document caches on grant changes, and authorize cached document reopens server-side because downloaded/browser-buffered content cannot be recalled but ongoing display must follow current access.

@@ -53,7 +53,7 @@ export function PortalSidebar({ current, children, onOpenDoc, activeDocId }: Sid
     if (access.project && !custom("project"))
       call("project-pages", "?action=mine").then((b) => setItems((s) => (itemsCache = { ...itemsCache, project: b.pages ?? [] }, { ...s, project: b.pages ?? [] })));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [access.videos, access.project, current]);
+  }, [access.videos, access.project, access.revision, current]);
 
   const sections: { key: Section; label: string; show: boolean; href?: (id: string) => string }[] = [
     { key: "project", label: "Project 3D Demo", show: access.project, href: (id) => `/investor/project?page=${encodeURIComponent(id)}` },
@@ -76,7 +76,7 @@ export function PortalSidebar({ current, children, onOpenDoc, activeDocId }: Sid
               <span>{isOpen ? "▾" : "▸"}</span>{s.label}
             </button>
             {isOpen && (custom(s.key) ? children : s.key === "documents" ? (
-              <DocsTree onOpenFile={onOpenDoc} activeFileId={activeDocId} />
+              <DocsTree key={access.revision} onOpenFile={onOpenDoc} activeFileId={activeDocId} />
             ) : (
               <div>
                 {list === null && <div style={{ fontSize: 12, opacity: 0.6, padding: "4px 0 4px 18px" }}>Loading…</div>}

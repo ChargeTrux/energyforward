@@ -7,6 +7,7 @@ import { LockKeyhole, Play } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalUser as useAuth } from "@/components/admin/UserPreviewBoundary";
 import { isUserPreview, previewUrl } from "@/lib/admin-preview";
+import { useLiveRefresh } from "@/hooks/useLiveRefresh";
 
 type Video = { id: string; name: string; description: string };
 
@@ -69,6 +70,7 @@ export default function InvestorVideos() {
 
 function InvestorVideosInner() {
   const { user, loading: authLoading } = useAuth();
+  const access = usePortalAccess();
   const [videos, setVideos] = useState<Video[]>([]);
   const [active, setActive] = useState<Video | null>(null);
   const [streamOk, setStreamOk] = useState(false);
@@ -108,11 +110,23 @@ function InvestorVideosInner() {
       }
       setLoading(false);
     })();
-  }, [user, authLoading]);
+  }, [user, authLoading, access.revision]);
 
   const videoEls = useRef(new Map<string, HTMLVideoElement>());
   const watches = useRef(new Map<string, { id: string | null; max: number }>());
   const [maxedId, setMaxedId] = useState<string | null>(null);
+  useLiveRefresh(async () => {
+    const res = await callFn("action=mine").catch(() => null);
+    const body = await res?.json().catch(() => ({}));
+    const next: Video[] = res?.ok ? body.videos ?? [] : [];
+    videoEls.current.forEach((el, id) => {
+      if (!next.some((v) => v.id === id)) { el.pause(); el.removeAttribute("src"); el.load(); }
+    });
+    setVideos(next);
+    setActive((v) => v && next.some((n) => n.id === v.id) ? v : null);
+    setMaxedId((id) => id && next.some((v) => v.id === id) ? id : null);
+    rememberItems("videos", next);
+  }, Boolean(user));
   const playVideo = useCallback((video: Video) => {
     setActive(video);
     setSearchParams({ video: video.id }, { replace: true });
