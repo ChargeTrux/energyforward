@@ -59,3 +59,6 @@
 - [x] Remove user now also deletes their direct links (by account or recipient email); deleting a link alone stays link-only; confirm text updated.
 - [x] Merged direct-link option into Add users → Invite one person (Portal access / Direct link radio, item picker, personal/password choice); removed the separate link tab.
 - [x] Added "Has direct links" filter to the Access manager status filter.
+- [ ] Fix invisible "Suspend access" button in Account management (renders white-on-white).
+- [ ] Suspending a user must also turn off their direct share links (remove already deletes them).
+- [ ] 3C Documents tree: clearer folder/subfolder/file styling, all collapsed by default, more visible expand arrows.
