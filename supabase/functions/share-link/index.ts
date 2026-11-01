@@ -253,16 +253,30 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
     if (action === "send_email") {
-      const { id } = body;
+      const { id, password } = body;
       if (typeof id !== "string") return json({ error: "Missing link" }, 400);
       const { data: link } = await db.from("share_links").select("*").eq("id", id).maybeSingle<Link>();
-      if (!link?.no_password || !link.recipient_email) return json({ error: "This link has no recipient" }, 400);
+      if (!link?.recipient_email) return json({ error: "This link has no recipient" }, 400);
       if (!isLive(link)) return json({ error: "This link is off or expired" }, 400);
       const RESEND = Deno.env.get("RESEND_API_KEY");
       if (!RESEND) return json({ error: "Email not configured" }, 500);
       const url = `https://energyforward.com/share/${link.slug}`;
-      const until = new Date(link.expires_at!).toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", dateStyle: "long" });
       const kindLabel = KIND_LABEL[link.item_type] ?? "Item";
+      // How the recipient opens the link: personal links check their email,
+      // password links need the password (included when the caller passes it).
+      let accessHtml: string;
+      if (link.no_password) {
+        const until = new Date(link.expires_at!).toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", dateStyle: "long" });
+        accessHtml = `<p style="margin:14px 0 0;padding:10px 14px;border-left:3px solid #f5a524;color:#f4f1ea;font-size:13px;"><strong>This link expires in two weeks (on ${esc(until)}).</strong> It is personal to you — please do not share it with anyone.</p>`;
+      } else {
+        const pwLine = typeof password === "string" && password.trim()
+          ? ` Your password is: <strong style="color:#f5a524;">${esc(password.trim())}</strong>`
+          : " Use the password you were given.";
+        const expLine = link.expires_at
+          ? ` This link expires on ${esc(new Date(link.expires_at).toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", dateStyle: "long" }))}.`
+          : "";
+        accessHtml = `<p style="margin:14px 0 0;padding:10px 14px;border-left:3px solid #f5a524;color:#f4f1ea;font-size:13px;"><strong>This link is protected by a password.</strong>${pwLine}${expLine} Please do not share it with anyone.</p>`;
+      }
       const bodyHtml = `
         <p style="margin:0 0 14px;">Dear ${esc(link.recipient_first_name ?? "")},</p>
         <p style="margin:0 0 14px;">Welcome to EnergyForward. Energy Forward is building the delivery infrastructure for the next era of energy—connecting technology, operations and execution to move critical projects from ambition to reality.</p>
@@ -270,7 +284,7 @@ Deno.serve(async (req) => {
         <p style="margin:0 0 18px;padding:12px 16px;border:1px solid #1f2a44;border-radius:8px;background:#0d1730;"><span style="color:#8a99b3;font-size:11px;text-transform:uppercase;letter-spacing:1px;font-weight:700;">${esc(kindLabel)}</span><br/><strong style="color:#f5a524;font-size:16px;">${esc(link.item_name)}</strong></p>
         <p style="margin:0 0 18px;text-align:center;"><a href="${url}" style="display:inline-block;background:#f5a524;color:#0a1428;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:6px;">Open ${esc(kindLabel)}</a></p>
         <p style="margin:0 0 6px;color:#8a99b3;font-size:12px;">Or copy this link: <a href="${url}" style="color:#f5a524;">${url}</a></p>
-        <p style="margin:14px 0 0;padding:10px 14px;border-left:3px solid #f5a524;color:#f4f1ea;font-size:13px;"><strong>This link expires in two weeks (on ${esc(until)}).</strong> It is personal to you — please do not share it with anyone.</p>`;
+        ${accessHtml}`;
       const html = shell({ preheader: `EnergyForward shared ${link.item_name} with you`, heading: "Shared with you", bodyHtml, securityNote: "Confidential — Do Not Share. This link was created for you only." });
       const r = await fetch("https://api.resend.com/emails", {
         method: "POST",
