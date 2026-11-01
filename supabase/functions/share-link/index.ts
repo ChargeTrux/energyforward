@@ -115,6 +115,8 @@ Deno.serve(async (req) => {
       if (!t) return json({ error: "This link has expired. Please enter the password again." }, 401);
       const { data: link } = await db.from("share_links").select("*").eq("id", t.linkId).maybeSingle<Link>();
       if (!link || !isLive(link) || tagOf(link.password_hash) !== t.tag) return json({ error: "This link is no longer available." }, 403);
+      // Revalidate an open viewer without fetching content or recording another view/email.
+      if (url.searchParams.get("check") === "1") return json({ ok: true });
       if (!LOVABLE_API_KEY || !DRIVE_KEY) return json({ error: "Files are not available right now." }, 500);
       const metaRes = await gateway(`/drive/v3/files/${encodeURIComponent(link.item_id)}`, { fields: "name,mimeType", supportsAllDrives: "true" });
       if (!metaRes.ok) return json({ error: "File not available", status: metaRes.status }, metaRes.status);

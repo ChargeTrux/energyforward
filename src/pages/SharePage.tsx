@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PortalNav } from "@/components/PortalNav";
+import { useLiveRefresh } from "@/hooks/useLiveRefresh";
 
 const teal = "#0A2A2E";
 const amber = "#E8B14A";
@@ -41,10 +42,20 @@ export default function SharePage() {
   }, [slug]);
 
   const contentUrl = (t: string, dl = false) => `${base}?action=content&t=${encodeURIComponent(t)}${dl ? "&download=1" : ""}`;
+  useLiveRefresh(async () => {
+    if (!open) return;
+    const res = await fetch(`${contentUrl(open.ticket)}&check=1`).catch(() => null);
+    if (!res?.ok) {
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      setBlobUrl(null); setBlobType(""); setOpen(null);
+      setError("This link is no longer available. Its access may have changed or expired.");
+    }
+  }, Boolean(open));
 
   useEffect(() => {
     if (!open || open.type === "video") return;
     let url: string | null = null;
+    let cancelled = false;
     setLoading(true);
     fetch(contentUrl(open.ticket)).then(async (r) => {
       if (!r.ok) { const b = await r.json().catch(() => ({})); throw new Error(b.error ?? "Could not open this item."); }
@@ -53,14 +64,15 @@ export default function SharePage() {
       const n = open.name.toLowerCase();
       const type = open.type === "project" || /\.html?$/.test(n) ? "text/html"
         : /\.pdf$/.test(n) ? "application/pdf"
-        : /\.(png|jpe?g|gif|webp)$/.test(n) ? `image/${n.split(".").pop()!.replace("jpg", "jpeg")}`
+        : /\.(png|jpe?g|gif|webp)$/.test(n) ? `image/${n.split(".").pop()?.replace("jpg", "jpeg") ?? "png"}`
         : hdr;
       const blob = await r.blob();
+      if (cancelled) return;
       url = URL.createObjectURL(new Blob([blob], { type: type || blob.type }));
       setBlobType(type);
       setBlobUrl(url);
-    }).catch((e) => setError(e.message)).finally(() => setLoading(false));
-    return () => { if (url) URL.revokeObjectURL(url); };
+    }).catch((e) => { if (!cancelled) setError(e.message); }).finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; if (url) URL.revokeObjectURL(url); };
   }, [open]);
 
   const unlock = async (e: React.FormEvent) => {

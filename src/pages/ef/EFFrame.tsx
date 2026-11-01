@@ -5,6 +5,7 @@ import { PlayCircle } from "lucide-react";
 import { usePortalUser as useAuth } from "@/components/admin/UserPreviewBoundary";
 import { isUserPreview } from "@/lib/admin-preview";
 import { supabase } from "@/integrations/supabase/client";
+import { usePortalAccess } from "@/components/PortalNav";
 
 export function EFFrame({ src, title }: { src: string; title: string }) {
   useEffect(() => {
@@ -40,6 +41,7 @@ export const LandingStealth = () => <EFFrame src="/ef-assets/site/index.html" ti
 export const CustomerPortal = () => <EFFrame src="/ef-assets/site/customer/index.html" title="energyforward · customer portal" />;
 export const InvestorPortal = () => {
   const { user, loading } = useAuth();
+  const access = usePortalAccess();
   const [destination, setDestination] = useState<"investor" | "video" | "project" | "home" | null>(null);
   const [hasProject, setHasProject] = useState(false);
 
@@ -54,7 +56,8 @@ export const InvestorPortal = () => {
       });
   }, [user, loading]);
 
-  if (loading || destination === null) return <div className="min-h-screen grid place-items-center">Loading…</div>;
+  if (loading || destination === null || (user && !access.ready)) return <div className="min-h-screen grid place-items-center">Loading…</div>;
+  if (user && !access.investor) return <Navigate to="/investor/welcome" replace />;
   if (destination !== "investor") return <Navigate to={destination === "video" ? "/investor/videos" : destination === "project" ? "/investor/project" : user ? "/investor/welcome" : "/?login=1"} replace />;
 
   return <>

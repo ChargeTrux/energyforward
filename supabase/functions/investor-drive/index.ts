@@ -159,13 +159,14 @@ Deno.serve(async (req) => {
     // Speed: for file opens, start the Drive metadata + content requests while we verify the
     // user. Nothing is returned to the browser until every authorization check has passed.
     const isTicketReq = url.searchParams.get("mode") === "ticket";
+    const isAccessCheck = url.searchParams.get("mode") === "check";
     let spec: { metaP: Promise<Response>; contentP: Promise<Response> | null; exportMime: string | undefined } | null = null;
     if (req.method === "GET" && action === "file" && fileId && !contentCache.has(fileId)) {
       const hint = url.searchParams.get("mime") ?? "";
       const exportMime = GOOGLE_EXPORT[hint];
       spec = {
         metaP: gateway(`/drive/v3/files/${fileId}`, { fields: "id,name,mimeType,parents", supportsAllDrives: "true" }),
-        contentP: isTicketReq || !hint ? null : (exportMime
+        contentP: isTicketReq || isAccessCheck || !hint ? null : (exportMime
           ? gateway(`/drive/v3/files/${fileId}/export`, { mimeType: exportMime })
           : gateway(`/drive/v3/files/${fileId}`, { alt: "media", supportsAllDrives: "true" })),
         exportMime,
@@ -350,7 +351,7 @@ Deno.serve(async (req) => {
       }
       const exportMime = GOOGLE_EXPORT[meta.mimeType];
       let contentP: Promise<Response> | null = null;
-      if (!fresh && !isTicketReq) {
+      if (!fresh && !isTicketReq && !isAccessCheck) {
         if (spec?.contentP && spec.exportMime === exportMime) contentP = spec.contentP;
         else {
           spec?.contentP?.then((r) => r.body?.cancel()).catch(() => {});
@@ -367,6 +368,8 @@ Deno.serve(async (req) => {
         contentP?.then((r) => r.body?.cancel()).catch(() => {});
         return json({ error: !inTree ? "File is outside your authorized folder" : "Not authorized for this file" }, 403);
       }
+
+      if (isAccessCheck) return json({ ok: true });
 
       if (isTicketReq) {
         const isSheet = /spreadsheet|ms-excel|text\/csv/i.test(meta.mimeType) || /\.(xlsx|xlsm|xls|csv)$/i.test(meta.name);

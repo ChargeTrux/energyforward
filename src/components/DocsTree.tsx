@@ -42,21 +42,22 @@ const treeCache: { tree: Record<string, Node[]>; expanded: Set<string>; ready: b
 
 export function DocsTree({ onOpenFile, activeFileId, onFiles }: { onOpenFile?: (profileId: string, f: DocFile) => void; activeFileId?: string | null; onFiles?: (files: Node[]) => void }) {
   const navigate = useNavigate();
-  const [tree, setTree] = useState<Record<string, Node[]>>(treeCache.tree);
+  const [tree, setTree] = useState<Record<string, Node[]>>({});
   const [expanded, setExpanded] = useState<Set<string>>(treeCache.expanded);
   const [loadingKeys, setLoadingKeys] = useState<Set<string>>(new Set());
-  const [ready, setReady] = useState(treeCache.ready);
+  const [ready, setReady] = useState(false);
   useEffect(() => { treeCache.tree = tree; treeCache.expanded = expanded; treeCache.ready = ready; }, [tree, expanded, ready]);
   useEffect(() => { if (onFiles) onFiles(Object.values(tree).flat()); }, [tree, onFiles]);
   const [busyAll, setBusyAll] = useState(false);
 
   useEffect(() => {
-    if (treeCache.ready) return; // already loaded on a previous portal page
+    let cancelled = false;
     (async () => {
       const res = await callFn("", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "profiles" }) });
       const body = await res.json().catch(() => ({}));
       const profiles: { id: string }[] = body.profiles ?? [];
       const lists = await Promise.all(profiles.map((p) => listFolder(p.id)));
+      if (cancelled) return;
       const known: Record<string, Node[]> = { root: lists.flat() };
       setTree(known);
       setReady(true);
@@ -67,10 +68,12 @@ export function DocsTree({ onOpenFile, activeFileId, onFiles }: { onOpenFile?: (
         queue.forEach((n) => all.add(n.key));
         setExpanded(new Set(all));
         const kids = await Promise.all(queue.map(async (n) => (known[n.key] = await listFolder(n.profileId, n.id))));
+        if (cancelled) return;
         setTree({ ...known });
         queue = kids.flat().filter((n) => n.mimeType === FOLDER_MIME);
       }
     })();
+    return () => { cancelled = true; };
   }, []);
 
   const load = useCallback(async (n: Node) => {

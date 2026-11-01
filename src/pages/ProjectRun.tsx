@@ -8,6 +8,7 @@ import { Link, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalUser as useAuth } from "@/components/admin/UserPreviewBoundary";
 import { isUserPreview, previewUrl } from "@/lib/admin-preview";
+import { useLiveRefresh } from "@/hooks/useLiveRefresh";
 
 type Page = { id: string; name: string; description?: string };
 
@@ -101,11 +102,19 @@ function ProjectSection({ page, idx, userId }: { page: Page; idx: number; userId
 export default function ProjectRun() {
   const { user, loading: authLoading } = useAuth();
   const access = usePortalAccess();
-  const [pages, setPages] = useState<Page[]>(() => (cachedItems("project") ?? []) as Page[]);
+  const [pages, setPages] = useState<Page[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { document.title = "energyforward · project 3D demo"; }, []);
+  useLiveRefresh(async () => {
+    const res = await callFn("action=mine").catch(() => null);
+    const body = await res?.json().catch(() => ({}));
+    const next: Page[] = res?.ok ? body.pages ?? [] : [];
+    setPages(next);
+    rememberItems("project", next);
+    for (const id of htmlCache.keys()) if (!next.some((p) => p.id === id)) htmlCache.delete(id);
+  }, Boolean(user));
 
   useEffect(() => {
     if (!user) return;
@@ -123,7 +132,7 @@ export default function ProjectRun() {
         setLoading(false);
       }
     })();
-  }, [user]);
+  }, [user, access.revision]);
 
   // Jump to a requested page (?page=id) once the list is on screen.
   useEffect(() => {

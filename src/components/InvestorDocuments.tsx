@@ -4,7 +4,8 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalUser as useAuth } from "@/components/admin/UserPreviewBoundary";
 import { isUserPreview, previewUrl } from "@/lib/admin-preview";
-import { PortalNav } from "@/components/PortalNav";
+import { PortalNav, usePortalAccess } from "@/components/PortalNav";
+import { useLiveRefresh } from "@/hooks/useLiveRefresh";
 import { ZoomFrame } from "@/components/ZoomFrame";
 import { DocsTree, type DocFile } from "@/components/DocsTree";
 
@@ -21,7 +22,10 @@ const isSheetFile = (f: { name: string; mimeType: string }) =>
 
 function fetchBlob(profileId: string, f: { id: string; name: string; mimeType: string }, onProgress?: (mb: number) => void): Promise<Blob> {
   const hit = blobCache.get(f.id);
-  if (hit) return Promise.resolve(hit);
+  if (hit) return callFn(`?${new URLSearchParams({ action: "file", mode: "check", profile_id: profileId, file_id: f.id })}`).then((res) => {
+    if (!res.ok) { blobCache.delete(f.id); throw new Error("This document is no longer available."); }
+    return hit;
+  });
   const running = inflight.get(f.id);
   if (running) return running;
   const p = (async () => {
@@ -115,6 +119,8 @@ function parseSpreadsheet(buf: ArrayBuffer): Promise<SheetResult> {
 /** Documents (Data Room) page: viewer full width, folders in the shared slide-out menu. */
 export function InvestorDocuments() {
   const { user } = useAuth();
+  const access = usePortalAccess();
+  const activeProfile = useRef<string | null>(null);
   const [preview, setPreview] = useState<{ name: string; url: string; mime: string } | null>(null);
   const [htmlDoc, setHtmlDoc] = useState<string | null>(null);
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
@@ -142,6 +148,7 @@ export function InvestorDocuments() {
 
   const openFile = useCallback(async (profileId: string, f: DocFile) => {
     const run = ++openSeq.current;
+    activeProfile.current = profileId;
     setActiveFileId(f.id);
     setHtmlDoc(null);
     setPreview(null);
@@ -205,6 +212,20 @@ export function InvestorDocuments() {
     }
   }, [user, revoke]);
 
+  const clearViewer = useCallback(() => {
+    ++openSeq.current;
+    revoke();
+    blobCache.clear();
+    setPreview(null); setHtmlDoc(null); setSheets(null); setMax(false);
+    setActiveFileId(null); setLoading(false); setProgress(null);
+  }, [revoke]);
+  useLiveRefresh(async () => {
+    if (!activeProfile.current || !activeFileId) return;
+    const res = await callFn(`?${new URLSearchParams({ action: "file", mode: "check", profile_id: activeProfile.current, file_id: activeFileId })}`).catch(() => null);
+    if (!res?.ok) { clearViewer(); setError("This document is no longer available. Your access may have changed."); }
+  }, Boolean(user && activeFileId));
+  useEffect(() => { clearViewer(); }, [access.revision, clearViewer]);
+
   useEffect(() => {
     if (!sheets) return;
     const s = sheets.sheets[sheetIdx];
@@ -259,7 +280,7 @@ export function InvestorDocuments() {
       <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
       <aside style={{ width: "30%", minWidth: 220, borderRight: "1px solid rgba(238,234,226,0.12)", overflowY: "auto", padding: "12px 10px" }}>
         <div style={{ ...label, color: amber, fontSize: 10, padding: "0 0 8px 6px" }}>Document repository</div>
-        <DocsTree onOpenFile={openFile} activeFileId={activeFileId} onFiles={preloadDocs} />
+        <DocsTree key={access.revision} onOpenFile={openFile} activeFileId={activeFileId} onFiles={preloadDocs} />
       </aside>
       <main style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
         {error && <div style={{ padding: 16, fontSize: 13, color: "#f4b5a3" }}>{error}</div>}
