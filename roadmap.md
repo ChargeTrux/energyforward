@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Preserve material grants when Investor portal is unticked, automatically refresh open-portal permissions and revoked viewers, and verify stable invitation/link behavior without sending emails.
+
 - [x] Align admin notification controls, number and distinguish expanded user sections, rename existing-user management, and remove only the duplicate standalone sharing section; sample-data notification alignment/disabled-state and sharing checks passed, 7 regression tests passed. Real-account checks remain unavailable with external authentication; publication pending.
 
 - [x] Distinguish admin field titles, editable fields, and checked/unchecked/disabled selections without changing access behavior; sample-data desktop/mobile interaction checks and 7 regression tests passed. Real-account checks remain blocked by external authentication; publication pending.
