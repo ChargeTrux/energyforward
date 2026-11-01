@@ -11,8 +11,9 @@ type Profile = { id: string; name: string };
 
 /**
  * Per-person direct links inside the Access manager / Add users.
- * Shows the person's existing links and creates new ones. Creating or
- * converting a link never sends an email — only "Send email" does.
+ * Shows the person's existing links and creates new ones. Creating a link
+ * sends an email only via "Create link & send email invite"; converting a
+ * link emails the recipient about the new way to open it.
  */
 export function UserShareLinks({
   videos,
@@ -90,23 +91,40 @@ export function UserShareLinks({
     setBusy(false);
   };
 
+  // Converting a link keeps the same URL and emails the recipient about the change.
   const convert = async (l: LinkRow) => {
     if (l.no_password) {
-      const p = window.prompt(`Turn this into a password link for "${l.item_name}".\nNew password (at least 6 characters). The link address stays the same; the email check is removed. No email is sent.`);
+      const p = window.prompt(`Turn this into a link with password for "${l.item_name}".\nNew password (at least 6 characters). The link address stays the same, and ${l.recipient_email ?? "the recipient"} gets an email with the new password.`);
       if (!p) return;
       if (p.trim().length < 6) { toast({ title: "Password needs at least 6 characters", variant: "destructive" }); return; }
-      try { await callShareLink("convert", { id: l.id, mode: "password", password: p.trim() }); await onChanged(); toast({ title: "Now a password link", description: "Same link, now asks for the password." }); }
-      catch (e) { toast({ title: "Could not convert", description: (e as Error).message, variant: "destructive" }); }
+      try {
+        await callShareLink("convert", { id: l.id, mode: "password", password: p.trim() });
+        if (l.recipient_email) {
+          try {
+            await callShareLink("send_email", { id: l.id, password: p.trim() });
+            toast({ title: "Now a link with password — email sent", description: `${l.recipient_email} received the link and the new password.` });
+          } catch (e) { toast({ title: "Converted, but the email failed", description: (e as Error).message, variant: "destructive" }); }
+        } else {
+          toast({ title: "Now a link with password", description: "Same link, now asks for the password. No recipient on file, so no email was sent." });
+        }
+        await onChanged();
+      } catch (e) { toast({ title: "Could not convert", description: (e as Error).message, variant: "destructive" }); }
     } else {
-      const fn = window.prompt(`Turn this into a personal link (no password) for "${l.item_name}".\nFirst name of the person:`, first || "");
+      const fn = window.prompt(`Turn this into a personal link (no password) for "${l.item_name}".\nFirst name of the person:`, first || l.recipient_first_name || "");
       if (fn === null) return;
-      const ln = window.prompt("Last name (optional):", last || "");
+      const ln = window.prompt("Last name (optional):", last || l.recipient_last_name || "");
       if (ln === null) return;
-      const em = window.prompt("Their email address — they must type it to open the link:", addr || "");
+      const em = window.prompt("Their email address — they must type it to open the link:", addr || l.recipient_email || "");
       if (em === null) return;
       if (!fn.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em.trim())) { toast({ title: "Need a first name and a valid email", variant: "destructive" }); return; }
-      try { await callShareLink("convert", { id: l.id, mode: "personal", first_name: fn.trim(), last_name: ln.trim(), email: em.trim() }); await onChanged(); toast({ title: "Now a personal link", description: "Same link, no password — they type their email. No email was sent." }); }
-      catch (e) { toast({ title: "Could not convert", description: (e as Error).message, variant: "destructive" }); }
+      try {
+        await callShareLink("convert", { id: l.id, mode: "personal", first_name: fn.trim(), last_name: ln.trim(), email: em.trim() });
+        try {
+          await callShareLink("send_email", { id: l.id });
+          toast({ title: "Now a personal link — email sent", description: `${em.trim()} received the link. They open it by typing their email.` });
+        } catch (e) { toast({ title: "Converted, but the email failed", description: (e as Error).message, variant: "destructive" }); }
+        await onChanged();
+      } catch (e) { toast({ title: "Could not convert", description: (e as Error).message, variant: "destructive" }); }
     }
   };
 
@@ -201,19 +219,21 @@ export function UserShareLinks({
           <div className="min-w-0">
             <div className="font-semibold break-words">{KIND_LABEL[l.item_type]}: {l.item_name}</div>
             <div className="text-xs text-muted-foreground break-all">
-              {l.no_password ? `Personal link for ${[l.recipient_first_name, l.recipient_last_name].filter(Boolean).join(" ")} (${l.recipient_email})` : "Password link"} · {status(l)} · {l.expires_at ? `expires ${new Date(l.expires_at).toLocaleString()}` : "no expiry"}{l.no_password ? ` · ${l.email_sent_at ? `email sent ${new Date(l.email_sent_at).toLocaleString()}` : "email not sent"}` : ""}
+              {l.no_password
+                ? `Personal link (no password) for ${[l.recipient_first_name, l.recipient_last_name].filter(Boolean).join(" ")} (${l.recipient_email})`
+                : `Link with password${l.recipient_email ? ` for ${[l.recipient_first_name, l.recipient_last_name].filter(Boolean).join(" ")} (${l.recipient_email})` : ""}`} · {status(l)} · {l.expires_at ? `expires ${new Date(l.expires_at).toLocaleString()}` : "no expiry"}{l.recipient_email ? ` · ${l.email_sent_at ? `email sent ${new Date(l.email_sent_at).toLocaleString()}` : "email not sent"}` : ""}
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" onClick={() => copy(l.slug)}>Copy link</Button>
-            {l.no_password && (
+            {l.recipient_email && (
               <Button size="sm" variant="outline" onClick={async () => {
-                if (!window.confirm(`Send the email with this link to ${l.recipient_email}?`)) return;
+                if (!window.confirm(`Send the email with this link to ${l.recipient_email}?${l.no_password ? "" : " The email says the link needs a password, but does not include it — share the password yourself."}`)) return;
                 try { await callShareLink("send_email", { id: l.id }); await onChanged(); toast({ title: "Email sent", description: `Sent to ${l.recipient_email}` }); }
                 catch (e) { toast({ title: "Could not send", description: (e as Error).message, variant: "destructive" }); }
               }}>{l.email_sent_at ? "Resend email" : "Send email"}</Button>
             )}
-            <Button size="sm" variant="outline" onClick={() => void convert(l)}>{l.no_password ? "Change to password link" : "Change to personal link"}</Button>
+            <Button size="sm" variant="outline" onClick={() => void convert(l)}>{l.no_password ? "Change to link with password" : "Change to personal link"}</Button>
             <Button size="sm" variant={l.active ? "destructive" : "default"} onClick={async () => {
               try { await callShareLink("update", { id: l.id, active: !l.active }); await onChanged(); }
               catch (e) { toast({ title: "Could not update", description: (e as Error).message, variant: "destructive" }); }
