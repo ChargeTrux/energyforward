@@ -1822,6 +1822,10 @@ export default function AdminDashboard() {
                           Investor portal <span className="font-normal text-xs text-muted-foreground">(portal pages only)</span>
                         </label>
                       </div>
+                      <p className="text-xs text-muted-foreground -mt-2 mb-3">
+                        Tick <strong>Investor portal</strong> only if this person should see the investor portal pages and menu on top of the materials below.
+                        Leave it unticked if they should only open the specific materials you tick in 3A–3C.
+                      </p>
                       <div className="grid gap-4 md:grid-cols-3">
                       <fieldset className="ef-permission-group ef-section--invite">
                         <legend className="ef-subsection-title">3A · Project 3D Demo</legend>
