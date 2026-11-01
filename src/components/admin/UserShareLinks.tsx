@@ -11,8 +11,9 @@ type Profile = { id: string; name: string };
 
 /**
  * Per-person direct links inside the Access manager / Add users.
- * Shows the person's existing links and creates new ones. Creating or
- * converting a link never sends an email — only "Send email" does.
+ * Shows the person's existing links and creates new ones. Creating a link
+ * sends an email only via "Create link & send email invite"; converting a
+ * link emails the recipient about the new way to open it.
  */
 export function UserShareLinks({
   videos,
