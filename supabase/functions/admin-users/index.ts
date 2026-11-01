@@ -772,6 +772,14 @@ Deno.serve(async (req) => {
         ban_duration: is_active ? "none" : "876000h",
       });
       if (bErr) return json({ error: bErr.message }, 400);
+      // Suspending also turns off the person's direct share links (by account or
+      // recipient email). Restoring access does NOT turn them back on — the admin
+      // re-enables each link individually, so a restore never silently reopens links.
+      if (!is_active) {
+        const { data: prof } = await admin.from("profiles").select("email").eq("user_id", user_id).maybeSingle();
+        await admin.from("share_links").update({ active: false }).eq("user_id", user_id);
+        if (prof?.email) await admin.from("share_links").update({ active: false }).ilike("recipient_email", prof.email);
+      }
       return json({ ok: true });
     }
 

@@ -92,20 +92,8 @@ export function DriveSelectTree({
     }
   }, [profileId]);
 
-  // Load and expand every folder so admins see the full structure.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      let queue = (await load()).filter((i) => i.mimeType === FOLDER_MIME);
-      while (queue.length && !cancelled) {
-        const ids = queue.map((q) => q.id);
-        setExpanded((s) => new Set([...s, ...ids]));
-        const kids = await Promise.all(queue.map((q) => load(q.id)));
-        queue = kids.flat().filter((i) => i.mimeType === FOLDER_MIME);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [load]);
+  // Load the top level only — every folder starts collapsed and loads when opened.
+  useEffect(() => { void load(); }, [load]);
 
   const render = (key: string, depth: number, path: DriveItem[], covered: boolean): React.ReactNode =>
     (tree[key] ?? []).map((it) => {
@@ -118,20 +106,24 @@ export function DriveSelectTree({
       };
       return (
         <div key={it.id}>
-          <div className="flex items-center gap-1" style={{ paddingLeft: depth * 14 }}>
+          <div
+            className={`flex items-center gap-1.5 rounded ${isFolder ? "bg-muted/60 border border-border/60 my-0.5 py-0.5 pr-2" : "py-0.5"}`}
+            style={{ paddingLeft: depth * 16 + 2 }}
+          >
             {isFolder ? (
               <button
                 type="button"
-                className="w-4 text-xs text-muted-foreground"
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-primary/40 bg-card text-sm font-bold text-primary hover:bg-primary/10"
                 onClick={toggleOpen}
                 aria-label={isOpen ? "Collapse folder" : "Expand folder"}
+                aria-expanded={isOpen}
               >
                 {isOpen ? "▾" : "▸"}
               </button>
-            ) : <span className="w-4" />}
+            ) : <span className="w-6 shrink-0" />}
             {isFolder && filesOnly ? (
-              <button type="button" className="flex items-center gap-2 min-w-0 font-medium text-left" onClick={toggleOpen}>
-                <span className="break-words">📁 {niceName(it.name)}</span>
+              <button type="button" className="flex items-center gap-2 min-w-0 font-semibold text-left" onClick={toggleOpen}>
+                <span className="break-words"><span aria-hidden="true">📁 </span>{niceName(it.name)}</span>
               </button>
             ) : (
             <label className={`flex items-center gap-2 min-w-0 ${disabled ? "opacity-50 cursor-not-allowed" : ""}`} title={disabled ? disabledHint : undefined}>
@@ -147,13 +139,17 @@ export function DriveSelectTree({
                   onChange(toggleItem(base, tree, path, it, e.target.checked));
                 }}
               />
-              <span className={`break-words ${isFolder ? "font-medium" : ""}`}>{isFolder ? "📁 " : "📄 "}{niceName(it.name)}</span>
+              <span className={`break-words ${isFolder ? "font-semibold" : "text-foreground/80"}`}>
+                <span aria-hidden="true">{isFolder ? "📁 " : "📄 "}</span>
+                {niceName(it.name)}
+                {isFolder && <span className="ml-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">folder</span>}
+              </span>
             </label>
             )}
           </div>
           {isFolder && isOpen && (
-            <div>
-              {loadingIds.has(it.id) && <div className="text-xs text-muted-foreground" style={{ paddingLeft: depth * 14 + 20 }}>Loading…</div>}
+            <div className="ml-3 border-l-2 border-border/70 pl-1">
+              {loadingIds.has(it.id) && <div className="text-xs text-muted-foreground" style={{ paddingLeft: depth * 16 + 24 }}>Loading…</div>}
               {render(it.id, depth + 1, [...path, it], checked)}
             </div>
           )}

@@ -1769,11 +1769,11 @@ export default function AdminDashboard() {
                       </Button>
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant="ghost"
                         className="ef-btn-warn"
                         onClick={() => {
                           const suspend = u.is_active !== false;
-                          if (suspend && !window.confirm(`Suspend ${u.email}? They won't be able to sign in until you restore access.`)) return;
+                          if (suspend && !window.confirm(`Suspend ${u.email}? They won't be able to sign in until you restore access. Their direct share links will also be turned off (you can turn them back on individually later).`)) return;
                           callAdmin("set_active", { user_id: u.user_id, is_active: !suspend });
                         }}
                       >
