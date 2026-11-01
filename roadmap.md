@@ -1,6 +1,7 @@
 # Roadmap
 
-- [ ] Fix bulk Remove access for selected users without requiring material selections; revoke all portal/material/direct-link access, use red removal controls, and clarify the Apply label.
+- [x] Fix bulk Remove access without material selections: one admin-checked transaction clears all selected accounts' role/material/page grants and disables direct links; red removal controls, clarified Apply label and progress/error feedback. Fifteen tests passed and build clean; no real accounts changed. Frontend publication pending.
+- [ ] Verify bulk removal with real selected users (blocked: external Supabase authenticated checks unavailable; simulated sign-in did not reach admin).
 
 - [x] Preserve materials when Investor portal is unticked; refresh grants/viewers every five seconds and on focus; keep existing URLs. Twelve tests and simulated signed-in menu checks passed without sending emails; read-only document/share checks deployed. Frontend publication pending.
 - [ ] Verify live revocation with real signed-in document/video/HTML viewers (blocked: external Supabase authenticated checks unavailable).

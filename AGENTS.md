@@ -3,6 +3,7 @@
 - Keep admin presentation scoped to the dashboard with global semantic color tokens, explicit section tones, numbered user-management headings, aligned notification controls, labelled writing surfaces, and native selection controls grouped by fieldsets; keep per-person sharing in user management and invitations without a duplicate standalone panel, because one clear workflow avoids confusion; visual changes must not alter authorization or share-link operations.
 
 - Keep Investor portal and material authorization independent: unticking only the investor role preserves video/project/document grants and direct links because administrators manage each separately.
+- Bulk Remove access uses one admin-checked, security-invoker database transaction to clear selected users' roles and all material/page grants and disable their links by account or exact recipient email; reject self-removal and preserve accounts/history/URLs, because partial revocation must not report success.
 - Stream investor videos only through the authenticated `investor-videos` Edge Function because Google Drive identifiers and files must never be exposed directly.
 - Route native video requests through the scoped service worker so browser range requests stay authenticated without exposing session tokens in media URLs.
 - Read current video roles and individual grants concurrently for each request without caching authorization; cache only CORS preflight permission to reduce streaming round trips without delaying revocation.

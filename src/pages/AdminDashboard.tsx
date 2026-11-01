@@ -5,6 +5,7 @@ import type React from "react";
 import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react";
 import { activityInRange, userAccessStatus, type ActivityPreset } from "@/lib/admin-activity";
 import { investorRoleChange, materialRoles } from "@/lib/portal-access-policy";
+import { removeSelectedAccess } from "@/lib/bulk-access";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalUser as useAuth } from "@/components/admin/UserPreviewBoundary";
@@ -1172,12 +1173,35 @@ export default function AdminDashboard() {
   };
 
   const [bulkMode, setBulkMode] = useState<"add" | "remove">("add");
+  const [bulkApplying, setBulkApplying] = useState(false);
+  const bulkApplyingRef = useRef(false);
   const emptyBulk = { investor: false, project: false, projectPages: [] as string[], video: false, videos: [] as string[], docs: [] as string[] };
   const [bulk, setBulk] = useState(emptyBulk);
   const [bulkDocItems, setBulkDocItems] = useState<Record<string, Selection>>({});
   const applyBulkAccess = async () => {
+    if (bulkApplyingRef.current || busy) return;
+    if (isUserPreview) { toast({ title: "Read-only preview", description: "Exit preview to make changes." }); return; }
     const ids = selectedInvitees;
     const add = bulkMode === "add";
+    if (!add) {
+      if (!window.confirm(`Remove ALL access from ${ids.length} selected ${ids.length === 1 ? "user" : "users"}? Portal, admin, videos, documents, folders and Project 3D Demo access will be removed and existing direct links turned off. Accounts and history remain. No emails will be sent.`)) return;
+      bulkApplyingRef.current = true;
+      setBulkApplying(true);
+      try {
+        const count = await removeSelectedAccess(ids, user?.id, (userIds) => supabase.rpc("remove_selected_user_access", { _user_ids: userIds }));
+        await Promise.all([load(), loadVideos(), loadProject()]);
+        setBulk(emptyBulk);
+        setBulkDocItems({});
+        setSelectedInvitees([]);
+        toast({ title: `All access removed for ${count} ${count === 1 ? "user" : "users"}`, description: "Existing direct links are off. No emails were sent." });
+      } catch (error) {
+        toast({ title: "Access removal failed", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" });
+      } finally {
+        bulkApplyingRef.current = false;
+        setBulkApplying(false);
+      }
+      return;
+    }
     const nothing = !bulk.investor && !bulk.project && !bulk.video && !bulk.docs.length;
     if (nothing) { toast({ title: "Tick at least one thing to change" }); return; }
     if (!window.confirm(`${add ? "Give" : "Remove"} the ticked access ${add ? "to" : "from"} ${ids.length} people? No emails will be sent.`)) return;
@@ -1617,13 +1641,17 @@ export default function AdminDashboard() {
             </Button>
           </div>
           {selectedInvitees.length > 0 && (
-            <div className="mb-4 rounded border p-3 text-sm">
+            <div className={`ef-bulk-access mb-4 rounded border p-3 text-sm ${bulkMode === "remove" ? "ef-bulk-access--remove" : ""}`} aria-busy={bulkApplying}>
               <div className="flex flex-wrap items-center gap-3 mb-2">
                 <strong>Change access for {selectedInvitees.length} selected</strong>
-                <label className="flex items-center gap-1"><input type="radio" checked={bulkMode === "add"} onChange={() => setBulkMode("add")} /> Give access</label>
-                <label className="flex items-center gap-1"><input type="radio" checked={bulkMode === "remove"} onChange={() => setBulkMode("remove")} /> Remove access</label>
-                <span className="text-xs text-muted-foreground">Only what you tick here changes; everything else each person has stays the same. No emails are sent.</span>
+                <fieldset className="flex flex-wrap gap-3" disabled={bulkApplying || busy}>
+                  <legend className="sr-only">Access change</legend>
+                  <label className="flex items-center gap-1"><input name="bulk-access-mode" type="radio" checked={bulkMode === "add"} onChange={() => setBulkMode("add")} /> Give access</label>
+                  <label className="ef-removal-choice flex items-center gap-1"><input name="bulk-access-mode" type="radio" checked={bulkMode === "remove"} onChange={() => setBulkMode("remove")} /> Remove access</label>
+                </fieldset>
+                <span className="text-xs text-muted-foreground">{bulkMode === "remove" ? "All portal, admin and material access will be removed, and existing direct links turned off. Accounts and history remain. No emails are sent." : "Only what you tick here changes; everything else each person has stays the same. No emails are sent."}</span>
               </div>
+              {bulkMode === "add" && <>
               <label className="flex items-center gap-2 font-semibold mb-2">
                 <input type="checkbox" checked={bulk.investor} onChange={(e) => setBulk((b) => ({ ...b, investor: e.target.checked }))} /> Investor portal
               </label>
@@ -1678,7 +1706,9 @@ export default function AdminDashboard() {
                   })}
                 </div>
               </div>
-              <Button size="sm" className="mt-3" disabled={busy} onClick={applyBulkAccess}>Apply to {selectedInvitees.length} selected</Button>
+              </>}
+              <Button size="sm" variant={bulkMode === "remove" ? "destructive" : "default"} className="mt-3 h-auto min-h-10 whitespace-normal" disabled={busy || bulkApplying} onClick={applyBulkAccess}>{bulkApplying ? "Removing access…" : `Apply the change to the selected ${selectedInvitees.length === 1 ? "user" : "users"}`}</Button>
+              {bulkApplying && <p role="status" className="mt-2">Removing all access for {selectedInvitees.length} selected users…</p>}
             </div>
           )}
           <div ref={accessListRef} className="ef-access-list space-y-1.5" tabIndex={0} role="region" aria-label="User access list">
@@ -1768,8 +1798,7 @@ export default function AdminDashboard() {
                       </Button>
                       <Button
                         size="sm"
-                        variant="ghost"
-                        className="ef-btn-warn"
+                        variant={u.is_active === false ? "outline" : "destructive"}
                         onClick={() => {
                           const suspend = u.is_active !== false;
                           if (suspend && !window.confirm(`Suspend ${u.email}? They won't be able to sign in until you restore access. Their direct share links will also be turned off (you can turn them back on individually later).`)) return;

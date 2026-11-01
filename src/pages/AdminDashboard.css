@@ -456,3 +456,9 @@
 /* Distinct alert checkbox + larger account action buttons */
 .ef-admin .ef-checkbox-alert { accent-color: hsl(var(--admin-status-warning, 38 92% 50%)); width: 18px; height: 18px; }
 .ef-admin .ef-account-actions .ef-action-btn--lg { min-height: 40px; padding-left: 18px; padding-right: 18px; font-weight: 600; }
+
+/* Removal remains distinct from permission-grant choices. */
+.ef-admin .ef-bulk-access--remove { border-color: hsl(var(--destructive)); border-left-width: 4px; background: hsl(var(--destructive) / 0.06); }
+.ef-admin label.ef-removal-choice { color: hsl(var(--admin-status-issue)) !important; border-color: hsl(var(--destructive)); }
+.ef-admin label.ef-removal-choice:has(input:checked) { background: hsl(var(--destructive)); color: hsl(var(--destructive-foreground)) !important; border-color: hsl(var(--destructive)); box-shadow: none; }
+.ef-admin .ef-removal-choice input[type="radio"]:checked { background: hsl(var(--destructive)) !important; border-color: hsl(var(--destructive-foreground)) !important; }
