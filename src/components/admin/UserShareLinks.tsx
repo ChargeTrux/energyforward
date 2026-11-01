@@ -218,19 +218,21 @@ export function UserShareLinks({
           <div className="min-w-0">
             <div className="font-semibold break-words">{KIND_LABEL[l.item_type]}: {l.item_name}</div>
             <div className="text-xs text-muted-foreground break-all">
-              {l.no_password ? `Personal link for ${[l.recipient_first_name, l.recipient_last_name].filter(Boolean).join(" ")} (${l.recipient_email})` : "Password link"} · {status(l)} · {l.expires_at ? `expires ${new Date(l.expires_at).toLocaleString()}` : "no expiry"}{l.no_password ? ` · ${l.email_sent_at ? `email sent ${new Date(l.email_sent_at).toLocaleString()}` : "email not sent"}` : ""}
+              {l.no_password
+                ? `Personal link (no password) for ${[l.recipient_first_name, l.recipient_last_name].filter(Boolean).join(" ")} (${l.recipient_email})`
+                : `Link with password${l.recipient_email ? ` for ${[l.recipient_first_name, l.recipient_last_name].filter(Boolean).join(" ")} (${l.recipient_email})` : ""}`} · {status(l)} · {l.expires_at ? `expires ${new Date(l.expires_at).toLocaleString()}` : "no expiry"}{l.recipient_email ? ` · ${l.email_sent_at ? `email sent ${new Date(l.email_sent_at).toLocaleString()}` : "email not sent"}` : ""}
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" onClick={() => copy(l.slug)}>Copy link</Button>
-            {l.no_password && (
+            {l.recipient_email && (
               <Button size="sm" variant="outline" onClick={async () => {
-                if (!window.confirm(`Send the email with this link to ${l.recipient_email}?`)) return;
+                if (!window.confirm(`Send the email with this link to ${l.recipient_email}?${l.no_password ? "" : " The email says the link needs a password, but does not include it — share the password yourself."}`)) return;
                 try { await callShareLink("send_email", { id: l.id }); await onChanged(); toast({ title: "Email sent", description: `Sent to ${l.recipient_email}` }); }
                 catch (e) { toast({ title: "Could not send", description: (e as Error).message, variant: "destructive" }); }
               }}>{l.email_sent_at ? "Resend email" : "Send email"}</Button>
             )}
-            <Button size="sm" variant="outline" onClick={() => void convert(l)}>{l.no_password ? "Change to password link" : "Change to personal link"}</Button>
+            <Button size="sm" variant="outline" onClick={() => void convert(l)}>{l.no_password ? "Change to link with password" : "Change to personal link"}</Button>
             <Button size="sm" variant={l.active ? "destructive" : "default"} onClick={async () => {
               try { await callShareLink("update", { id: l.id, active: !l.active }); await onChanged(); }
               catch (e) { toast({ title: "Could not update", description: (e as Error).message, variant: "destructive" }); }
