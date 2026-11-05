@@ -474,6 +474,39 @@ export type Database = {
         }
         Relationships: []
       }
+      portal_entry_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          emails: string[]
+          enabled: boolean
+          expires_at: string
+          id: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          emails?: string[]
+          enabled?: boolean
+          expires_at?: string
+          id?: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          emails?: string[]
+          enabled?: boolean
+          expires_at?: string
+          id?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
