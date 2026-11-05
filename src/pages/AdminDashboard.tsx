@@ -1016,11 +1016,15 @@ export default function AdminDashboard() {
 
   // Bulk import with exactly the same choices as "Invite one person".
   const bulkImportRunning = useRef(false);
+  const [bulkStatus, setBulkStatus] = useState<{ done: number; total: number; current: string } | null>(null);
+  const [bulkDoneAction, setBulkDoneAction] = useState<string | null>(null);
   const runBulkSame = async (action: "account" | "invite" | "link" | "link_send") => {
     if (!importRows.length || bulkImportRunning.current) return;
     if (isUserPreview) { toast({ title: "Read-only preview", description: "Exit preview to make changes." }); return; }
     if (inviteMode === "portal" && inviteAdmin && !window.confirm(`Give full admin access to all ${importRows.length} people?`)) return;
     bulkImportRunning.current = true;
+    setBulkDoneAction(null);
+    setBulkStatus({ done: 0, total: importRows.length, current: "" });
     toast({ title: `Working on ${importRows.length} people…` });
     const results: { email: string; ok: boolean; message: string }[] = [];
     const links: string[] = [];
@@ -1033,6 +1037,7 @@ export default function AdminDashboard() {
     try {
       for (const row of importRows) {
         const name = row.full_name || row.email.split("@")[0];
+        setBulkStatus({ done: results.length, total: importRows.length, current: row.email });
         try {
           const ok = action === "link" || action === "link_send"
             ? await createLinkFromInvite(action === "link_send", { email: row.email, name, collect: links })
@@ -1044,8 +1049,9 @@ export default function AdminDashboard() {
       if (links.length) await navigator.clipboard.writeText(links.join("\n")).catch(() => undefined);
       await Promise.all([load(), loadVideos(), loadProject()]);
       const okCount = results.filter((r) => r.ok).length;
+      setBulkDoneAction(action);
       toast({ title: "Import finished", description: `${okCount} of ${results.length} people done.${links.length ? " All links copied (email: link, one per line)." : ""}` });
-    } finally { bulkImportRunning.current = false; }
+    } finally { bulkImportRunning.current = false; setBulkStatus(null); }
   };
 
   const renderAccessSections = () => (
@@ -2439,7 +2445,10 @@ export default function AdminDashboard() {
                 ) : (
                   <>
                     <Button type="button" disabled={busy} className="ef-cta" onClick={() => void runBulkSame("invite")}>Create {importRows.length} {importRows.length === 1 ? "account" : "accounts"} (send the invite)</Button>
-                    <Button type="button" disabled={busy} className="ef-cta" onClick={async () => { await runBulkSame("account"); await copyPortalLink(); }}><Copy className="w-4 h-4 mr-2" />Create {importRows.length} {importRows.length === 1 ? "account" : "accounts"} (no invite, copy the link)</Button>
+                    <Button type="button" disabled={busy || !!bulkStatus} className="ef-cta" onClick={() => void runBulkSame("account")}>Create {importRows.length} {importRows.length === 1 ? "account" : "accounts"} (no invite)</Button>
+                    {bulkDoneAction === "account" && !bulkStatus && (
+                      <Button type="button" className="ef-cta" onClick={() => void copyPortalLink()}><Copy className="w-4 h-4 mr-2" />Copy the sign-in link for all of them</Button>
+                    )}
                   </>
                 )}
                 <Button
