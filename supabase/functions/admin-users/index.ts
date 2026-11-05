@@ -387,12 +387,13 @@ Deno.serve(async (req) => {
       // Create accounts in bulk from an uploaded list. No emails are sent —
       // the admin assigns access and invites each person individually later.
       const { people } = body;
+      const emailCodeOnly = body.email_code_only === true;
       if (!Array.isArray(people) || people.length === 0) {
         return json({ error: "Missing people list" }, 400);
       }
       if (people.length > 200) return json({ error: "Maximum 200 people per import" }, 400);
 
-      const results: { email: string; ok: boolean; message: string }[] = [];
+      const results: { email: string; ok: boolean; message: string; user_id?: string }[] = [];
       for (const raw of people as unknown[]) {
         const p = raw as { email?: unknown; full_name?: unknown };
         const email = typeof p.email === "string" ? p.email.trim() : "";
@@ -434,16 +435,16 @@ Deno.serve(async (req) => {
             results.push({ email, ok: false, message: "Already exists, could not look up" });
             continue;
           }
-          results.push({ email, ok: true, message: "Already existed — added to list" });
+          results.push({ email, ok: true, message: "Already existed — added to list", user_id: userId });
         } else {
-          results.push({ email, ok: true, message: "Created" });
+          results.push({ email, ok: true, message: "Created", user_id: userId });
         }
         await admin.from("profiles").upsert(
           {
             user_id: userId,
             email,
             full_name: fullName,
-            must_change_password: true,
+            must_change_password: !emailCodeOnly,
             is_active: true,
           },
           { onConflict: "user_id" },
