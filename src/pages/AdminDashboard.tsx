@@ -821,11 +821,12 @@ export default function AdminDashboard() {
     email = inviteEmail,
     fullName = inviteName,
     sendEmail = true,
-  ) => {
-    if (!email) return;
+    quiet = false,
+  ): Promise<boolean> => {
+    if (!email) return false;
     if (useOwnPassword && ownPassword.trim().length < 8) {
       toast({ title: "Password too short", description: "Your chosen password needs at least 8 characters.", variant: "destructive" });
-      return;
+      return false;
     }
     // Picking videos / 3D pages grants that section; investor portal stays independent.
     rolesArr = materialRoles(rolesArr, selectedVideoIds, selectedProjectIds) as PortalRole[];
@@ -846,6 +847,7 @@ export default function AdminDashboard() {
       investor_video_ids: rolesArr.includes("video") ? (selectedVideoIds.length ? selectedVideoIds : videoCatalog.map((v) => v.id)) : [],
       project_page_ids: rolesArr.includes("project") ? (selectedProjectIds.length ? selectedProjectIds : projectCatalog.map((pg) => pg.id)) : [],
     })) as { temp_password?: string } | null;
+    if (data && quiet) return true;
     if (data) {
       const list = rolesArr.length ? rolesArr.join(", ") : "no portal";
       toast(sendEmail
@@ -865,6 +867,7 @@ export default function AdminDashboard() {
       setInviteDocItems({});
       setSelectedVideoIds([]);
     }
+    return !!data;
   };
 
   const downloadImportTemplate = () => {
@@ -954,7 +957,10 @@ export default function AdminDashboard() {
   const linkDocPicks = investorProfiles.flatMap((p) =>
     [...(linkDocSel[p.id] ?? new Map())].map(([id, picked]) => ({ id, name: picked.name, profileId: p.id })),
   );
-  const createLinkFromInvite = async (send: boolean) => {
+  const createLinkFromInvite = async (send: boolean, who?: { email: string; name: string }): Promise<boolean> => {
+    const inviteEmail = who ? who.email : inviteEmailState;
+    const inviteName = who ? who.name : inviteNameState;
+    const quiet = !!who;
     if (!inviteEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail.trim())) {
       toast({ title: "Enter a valid email address", variant: "destructive" });
       return;
