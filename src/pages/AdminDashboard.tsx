@@ -1104,15 +1104,6 @@ export default function AdminDashboard() {
             </div>
             )}
             {inviteMode === "portal" && (
-            <fieldset className="md:col-span-12 ef-form-group text-sm">
-              <legend>How they sign in (for the copied link)</legend>
-              <div className="ef-choice-row">
-                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="portal-sign-in" checked={portalSignIn === "personal"} onChange={() => setPortalSignIn("personal")} />Personal link <span className="font-normal text-xs text-muted-foreground">(no password — they only type their email; expires in 2 weeks)</span></label>
-                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="portal-sign-in" checked={portalSignIn === "password"} onChange={() => setPortalSignIn("password")} />Link with password <span className="font-normal text-xs text-muted-foreground">(email + password)</span></label>
-              </div>
-            </fieldset>
-            )}
-            {inviteMode === "portal" && (
             <div className="md:col-span-12 ef-access-permissions text-sm">
               <h3 className="ef-subsection-title">2 · Portal &amp; material access</h3>
               <div className="flex flex-wrap gap-6 pb-3 mb-3 border-b">
@@ -1209,6 +1200,15 @@ export default function AdminDashboard() {
                 </fieldset>
               </div>
             </div>
+            )}
+            {inviteMode === "portal" && (
+            <fieldset className="md:col-span-12 ef-form-group ef-section--invite text-sm">
+              <legend className="ef-subsection-title">2B · Choose link access</legend>
+              <div className="ef-choice-row">
+                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="portal-sign-in" checked={portalSignIn === "personal"} onChange={() => setPortalSignIn("personal")} />Personal link <span className="font-normal text-xs text-muted-foreground">(no password — they only type their email; expires in 2 weeks)</span></label>
+                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="portal-sign-in" checked={portalSignIn === "password"} onChange={() => setPortalSignIn("password")} />Link with password <span className="font-normal text-xs text-muted-foreground">(email + password)</span></label>
+              </div>
+            </fieldset>
             )}
             {inviteMode === "link" && (
             <div className="md:col-span-12 ef-access-permissions text-sm space-y-3">
