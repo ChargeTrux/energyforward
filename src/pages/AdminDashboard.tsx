@@ -989,6 +989,194 @@ export default function AdminDashboard() {
     } catch (e) { toast({ title: "Could not create link", description: (e as Error).message, variant: "destructive" }); }
   };
 
+  const renderAccessSections = () => (
+    <>
+            <fieldset className="md:col-span-12 ef-form-group text-sm">
+              <legend>1 · Access type</legend>
+              <div className="ef-choice-row">
+              <label className="flex items-center gap-2 font-semibold">
+                <input type="radio" name="invite-mode" checked={inviteMode === "portal"} onChange={() => setInviteMode("portal")} />
+                Portal access <span className="font-normal text-xs text-muted-foreground">(they sign in with an account)</span>
+              </label>
+              <label className="flex items-center gap-2 font-semibold">
+                <input type="radio" name="invite-mode" checked={inviteMode === "link"} onChange={() => setInviteMode("link")} />
+                Direct link <span className="font-normal text-xs text-muted-foreground">(one file, video or 3D page — no account)</span>
+              </label>
+              </div>
+            </fieldset>
+            {inviteMode === "portal" && (
+            <div className="md:col-span-12 flex flex-wrap items-center gap-3 text-sm">
+              <label className="flex items-center gap-2 font-semibold">
+                <input type="checkbox" checked={useOwnPassword} onChange={(e) => setUseOwnPassword(e.target.checked)} />
+                Use my own password
+              </label>
+              {useOwnPassword && (
+                <Input
+                  className="max-w-xs"
+                  value={ownPassword}
+                  onChange={(e) => setOwnPassword(e.target.value)}
+                  placeholder="At least 8 characters"
+                  autoComplete="off"
+                  aria-label="Password to send"
+                />
+              )}
+              {useOwnPassword && <span className="text-xs text-muted-foreground">Sent in the welcome email; they won't be asked to change it.</span>}
+            </div>
+            )}
+            {inviteMode === "portal" && (
+            <div className="md:col-span-12 ef-access-permissions text-sm">
+              <h3 className="ef-subsection-title">2 · Portal &amp; material access</h3>
+              <div className="flex flex-wrap gap-6 pb-3 mb-3 border-b">
+                <label className="flex items-center gap-2 font-semibold">
+                  <input type="checkbox" checked={inviteAdmin} onChange={(e) => setInviteAdmin(e.target.checked)} />
+                  Full admin access
+                </label>
+                <label className="flex items-center gap-2 font-semibold">
+                  <input type="checkbox" checked={inviteInvestor} onChange={(e) => setInviteInvestor(e.target.checked)} />
+                  Investor portal <span className="font-normal text-xs text-muted-foreground">(portal pages only)</span>
+                </label>
+                <label className="flex items-center gap-2 font-semibold">
+                  <input type="checkbox" checked={inviteCustomer} onChange={(e) => setInviteCustomer(e.target.checked)} />
+                  Customer portal
+                </label>
+              </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <fieldset className="ef-permission-group ef-section--invite">
+                  <legend className="ef-subsection-title">2A · Project 3D Demo</legend>
+                  <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
+                    <input type="checkbox" checked={inviteProject} onChange={(e) => { setInviteProject(e.target.checked); setSelectedProjectIds(e.target.checked ? projectCatalog.map((pg) => pg.id) : []); }} />
+                    Project 3D Demo
+                  </label>
+                  {projectCatalog.length === 0 && <span className="text-muted-foreground">{projectCatalogMsg}</span>}
+                  {projectCatalog.map((pg) => (
+                    <label key={pg.id} className={`flex items-center gap-2 ml-5 ${!inviteProject ? "opacity-50 cursor-not-allowed" : ""}`} title={!inviteProject ? "Enable Project 3D Demo first" : undefined}>
+                      <input
+                        type="checkbox"
+                        disabled={!inviteProject}
+                        checked={selectedProjectIds.includes(pg.id)}
+                        onChange={(e) => {
+                          const on = e.target.checked;
+                          setSelectedProjectIds((prev) => on ? [...prev, pg.id] : prev.filter((id) => id !== pg.id));
+                        }}
+                      />
+                      <span className="min-w-0 break-words">{pg.name}</span>
+                    </label>
+                  ))}
+                </fieldset>
+                <fieldset className="ef-permission-group ef-section--materials">
+                  <legend className="ef-subsection-title">2B · Videos</legend>
+                  <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
+                    <input type="checkbox" checked={inviteVideo} onChange={(e) => { setInviteVideo(e.target.checked); setSelectedVideoIds(e.target.checked ? videoCatalog.map((v) => v.id) : []); }} />
+                    Videos
+                  </label>
+                  {videoCatalog.length === 0 && <span className="text-muted-foreground">{videoCatalogMsg}</span>}
+                  {videoCatalog.map((v) => (
+                    <label key={v.id} className={`flex items-center gap-2 ml-5 ${!inviteVideo ? "opacity-50 cursor-not-allowed" : ""}`} title={!inviteVideo ? "Enable Videos first" : undefined}>
+                      <input
+                        type="checkbox"
+                        disabled={!inviteVideo}
+                        checked={selectedVideoIds.includes(v.id)}
+                        onChange={(e) => {
+                          const on = e.target.checked;
+                          setSelectedVideoIds((prev) => on ? [...prev, v.id] : prev.filter((id) => id !== v.id));
+                        }}
+                      />
+                      <span className="min-w-0 break-words">{v.name.replace(/\.[^.]+$/, "")}</span>
+                    </label>
+                  ))}
+                </fieldset>
+                <fieldset className="ef-permission-group ef-section--people">
+                  <legend className="ef-subsection-title">2C · Documents</legend>
+                  {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up</span>}
+                  {investorProfiles.map((p) => {
+                    const on = selectedProfileIds.includes(p.id);
+                    const sel = inviteDocItems[p.id] ?? new Map();
+                    return (
+                    <div key={p.id}>
+                      <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
+                        <input
+                          type="checkbox"
+                          checked={on}
+                          onChange={(e) => {
+                            setSelectedProfileIds((prev) => e.target.checked ? [...prev, p.id] : prev.filter((id) => id !== p.id));
+                            if (!e.target.checked) setInviteDocItems((s) => ({ ...s, [p.id]: new Map() }));
+                          }}
+                        />
+                        Documents (Data Room){on && !sel.size ? " — whole folder" : ""}
+                      </label>
+                      <div className="ml-5 rounded border p-2 max-h-72 overflow-y-auto">
+                        <p className="text-xs text-muted-foreground mb-1">Ticking a folder ticks everything inside it; untick single files to leave them out. Nothing ticked = the whole folder.</p>
+                        <DriveSelectTree
+                          profileId={p.id}
+                          selection={on ? sel : new Map()}
+                          onChange={(next) => setInviteDocItems((s) => ({ ...s, [p.id]: next }))}
+                          disabled={!on}
+                          disabledHint="Tick Documents (Data Room) first"
+                        />
+                      </div>
+                    </div>
+                    );
+                  })}
+                </fieldset>
+              </div>
+            </div>
+            )}
+            {inviteMode === "link" && (
+            <div className="md:col-span-12 ef-access-permissions text-sm space-y-3">
+              <h3 className="ef-subsection-title">2A · Choose material type</h3>
+              <div className="flex flex-wrap gap-4">
+                {(["project", "video", "document"] as Kind[]).map((k) => (
+                  <label key={k} className={`ef-material-choice ef-material-choice--${k} flex items-center gap-2 font-semibold`}>
+                    <input type="radio" name="invite-link-kind" checked={linkKind === k} onChange={() => { setLinkKind(k); setLinkItem(null); }} />
+                    {KIND_LABEL[k]}
+                  </label>
+                ))}
+              </div>
+              {linkKind === "document" ? (
+                <div className="ef-document-picker rounded p-2 max-h-72 overflow-y-auto space-y-3">
+                  {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up.</span>}
+                  {investorProfiles.map((p) => (
+                    <div key={p.id}>
+                      {investorProfiles.length > 1 && <div className="text-xs font-semibold uppercase mb-1">{p.name}</div>}
+                      <DriveSelectTree
+                        profileId={p.id}
+                        selection={linkDocSel[p.id] ?? new Map()}
+                        onChange={(next) => setLinkDocSel((s) => ({ ...s, [p.id]: next }))}
+                        filesOnly
+                      />
+                    </div>
+                  ))}
+                  <p className="text-xs text-muted-foreground">Tick as many files as you like — each one gets its own link. Open a folder to pick files inside it.</p>
+                </div>
+              ) : (
+                <div className="rounded border p-2 max-h-56 overflow-y-auto">
+                  {(linkKind === "video" ? videoCatalog : projectCatalog).length === 0 && <span className="text-muted-foreground">Nothing to pick yet.</span>}
+                  {(linkKind === "video" ? videoCatalog : projectCatalog).map((it) => (
+                    <label key={it.id} className="flex items-center gap-2 py-0.5">
+                      <input type="radio" name="invite-link-item" checked={linkItem?.id === it.id} onChange={() => setLinkItem(it)} />
+                      {it.name.replace(/\.[^.]+$/, "")}
+                    </label>
+                  ))}
+                </div>
+              )}
+              <p>Selected: <strong>{linkKind === "document" ? (linkDocPicks.length ? `${linkDocPicks.length} file${linkDocPicks.length > 1 ? "s" : ""}` : "nothing yet") : linkItem ? linkItem.name : "nothing yet"}</strong></p>
+              <h3 className="ef-subsection-title">2B · Choose link access</h3>
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="invite-link-mode" checked={linkPersonal} onChange={() => setLinkPersonal(true)} />Personal link <span className="font-normal text-xs text-muted-foreground">(no password — they type their email; expires in 2 weeks)</span></label>
+                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="invite-link-mode" checked={!linkPersonal} onChange={() => setLinkPersonal(false)} />Link with password</label>
+              </div>
+              {!linkPersonal && (
+                <div className="max-w-xs">
+                  <Label htmlFor="invite-link-pw">Password</Label>
+                  <Input id="invite-link-pw" value={linkPassword} onChange={(e) => setLinkPassword(e.target.value)} placeholder="At least 6 characters" autoComplete="off" />
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">No account is created and no email is sent unless you click "Create link &amp; send email". The person appears in the Investor & user manager under "Link access".</p>
+            </div>
+            )}
+    </>
+  );
+
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail) return;
@@ -2067,189 +2255,7 @@ export default function AdminDashboard() {
                 placeholder="user@example.com"
               />
             </div>
-            <fieldset className="md:col-span-12 ef-form-group text-sm">
-              <legend>1 · Access type</legend>
-              <div className="ef-choice-row">
-              <label className="flex items-center gap-2 font-semibold">
-                <input type="radio" name="invite-mode" checked={inviteMode === "portal"} onChange={() => setInviteMode("portal")} />
-                Portal access <span className="font-normal text-xs text-muted-foreground">(they sign in with an account)</span>
-              </label>
-              <label className="flex items-center gap-2 font-semibold">
-                <input type="radio" name="invite-mode" checked={inviteMode === "link"} onChange={() => setInviteMode("link")} />
-                Direct link <span className="font-normal text-xs text-muted-foreground">(one file, video or 3D page — no account)</span>
-              </label>
-              </div>
-            </fieldset>
-            {inviteMode === "portal" && (
-            <div className="md:col-span-12 flex flex-wrap items-center gap-3 text-sm">
-              <label className="flex items-center gap-2 font-semibold">
-                <input type="checkbox" checked={useOwnPassword} onChange={(e) => setUseOwnPassword(e.target.checked)} />
-                Use my own password
-              </label>
-              {useOwnPassword && (
-                <Input
-                  className="max-w-xs"
-                  value={ownPassword}
-                  onChange={(e) => setOwnPassword(e.target.value)}
-                  placeholder="At least 8 characters"
-                  autoComplete="off"
-                  aria-label="Password to send"
-                />
-              )}
-              {useOwnPassword && <span className="text-xs text-muted-foreground">Sent in the welcome email; they won't be asked to change it.</span>}
-            </div>
-            )}
-            {inviteMode === "portal" && (
-            <div className="md:col-span-12 ef-access-permissions text-sm">
-              <h3 className="ef-subsection-title">2 · Portal &amp; material access</h3>
-              <div className="flex flex-wrap gap-6 pb-3 mb-3 border-b">
-                <label className="flex items-center gap-2 font-semibold">
-                  <input type="checkbox" checked={inviteAdmin} onChange={(e) => setInviteAdmin(e.target.checked)} />
-                  Full admin access
-                </label>
-                <label className="flex items-center gap-2 font-semibold">
-                  <input type="checkbox" checked={inviteInvestor} onChange={(e) => setInviteInvestor(e.target.checked)} />
-                  Investor portal <span className="font-normal text-xs text-muted-foreground">(portal pages only)</span>
-                </label>
-                <label className="flex items-center gap-2 font-semibold">
-                  <input type="checkbox" checked={inviteCustomer} onChange={(e) => setInviteCustomer(e.target.checked)} />
-                  Customer portal
-                </label>
-              </div>
-              <div className="grid gap-4 md:grid-cols-3">
-                <fieldset className="ef-permission-group ef-section--invite">
-                  <legend className="ef-subsection-title">2A · Project 3D Demo</legend>
-                  <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
-                    <input type="checkbox" checked={inviteProject} onChange={(e) => { setInviteProject(e.target.checked); setSelectedProjectIds(e.target.checked ? projectCatalog.map((pg) => pg.id) : []); }} />
-                    Project 3D Demo
-                  </label>
-                  {projectCatalog.length === 0 && <span className="text-muted-foreground">{projectCatalogMsg}</span>}
-                  {projectCatalog.map((pg) => (
-                    <label key={pg.id} className={`flex items-center gap-2 ml-5 ${!inviteProject ? "opacity-50 cursor-not-allowed" : ""}`} title={!inviteProject ? "Enable Project 3D Demo first" : undefined}>
-                      <input
-                        type="checkbox"
-                        disabled={!inviteProject}
-                        checked={selectedProjectIds.includes(pg.id)}
-                        onChange={(e) => {
-                          const on = e.target.checked;
-                          setSelectedProjectIds((prev) => on ? [...prev, pg.id] : prev.filter((id) => id !== pg.id));
-                        }}
-                      />
-                      <span className="min-w-0 break-words">{pg.name}</span>
-                    </label>
-                  ))}
-                </fieldset>
-                <fieldset className="ef-permission-group ef-section--materials">
-                  <legend className="ef-subsection-title">2B · Videos</legend>
-                  <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
-                    <input type="checkbox" checked={inviteVideo} onChange={(e) => { setInviteVideo(e.target.checked); setSelectedVideoIds(e.target.checked ? videoCatalog.map((v) => v.id) : []); }} />
-                    Videos
-                  </label>
-                  {videoCatalog.length === 0 && <span className="text-muted-foreground">{videoCatalogMsg}</span>}
-                  {videoCatalog.map((v) => (
-                    <label key={v.id} className={`flex items-center gap-2 ml-5 ${!inviteVideo ? "opacity-50 cursor-not-allowed" : ""}`} title={!inviteVideo ? "Enable Videos first" : undefined}>
-                      <input
-                        type="checkbox"
-                        disabled={!inviteVideo}
-                        checked={selectedVideoIds.includes(v.id)}
-                        onChange={(e) => {
-                          const on = e.target.checked;
-                          setSelectedVideoIds((prev) => on ? [...prev, v.id] : prev.filter((id) => id !== v.id));
-                        }}
-                      />
-                      <span className="min-w-0 break-words">{v.name.replace(/\.[^.]+$/, "")}</span>
-                    </label>
-                  ))}
-                </fieldset>
-                <fieldset className="ef-permission-group ef-section--people">
-                  <legend className="ef-subsection-title">2C · Documents</legend>
-                  {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up</span>}
-                  {investorProfiles.map((p) => {
-                    const on = selectedProfileIds.includes(p.id);
-                    const sel = inviteDocItems[p.id] ?? new Map();
-                    return (
-                    <div key={p.id}>
-                      <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
-                        <input
-                          type="checkbox"
-                          checked={on}
-                          onChange={(e) => {
-                            setSelectedProfileIds((prev) => e.target.checked ? [...prev, p.id] : prev.filter((id) => id !== p.id));
-                            if (!e.target.checked) setInviteDocItems((s) => ({ ...s, [p.id]: new Map() }));
-                          }}
-                        />
-                        Documents (Data Room){on && !sel.size ? " — whole folder" : ""}
-                      </label>
-                      <div className="ml-5 rounded border p-2 max-h-72 overflow-y-auto">
-                        <p className="text-xs text-muted-foreground mb-1">Ticking a folder ticks everything inside it; untick single files to leave them out. Nothing ticked = the whole folder.</p>
-                        <DriveSelectTree
-                          profileId={p.id}
-                          selection={on ? sel : new Map()}
-                          onChange={(next) => setInviteDocItems((s) => ({ ...s, [p.id]: next }))}
-                          disabled={!on}
-                          disabledHint="Tick Documents (Data Room) first"
-                        />
-                      </div>
-                    </div>
-                    );
-                  })}
-                </fieldset>
-              </div>
-            </div>
-            )}
-            {inviteMode === "link" && (
-            <div className="md:col-span-12 ef-access-permissions text-sm space-y-3">
-              <h3 className="ef-subsection-title">2A · Choose material type</h3>
-              <div className="flex flex-wrap gap-4">
-                {(["project", "video", "document"] as Kind[]).map((k) => (
-                  <label key={k} className={`ef-material-choice ef-material-choice--${k} flex items-center gap-2 font-semibold`}>
-                    <input type="radio" name="invite-link-kind" checked={linkKind === k} onChange={() => { setLinkKind(k); setLinkItem(null); }} />
-                    {KIND_LABEL[k]}
-                  </label>
-                ))}
-              </div>
-              {linkKind === "document" ? (
-                <div className="ef-document-picker rounded p-2 max-h-72 overflow-y-auto space-y-3">
-                  {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up.</span>}
-                  {investorProfiles.map((p) => (
-                    <div key={p.id}>
-                      {investorProfiles.length > 1 && <div className="text-xs font-semibold uppercase mb-1">{p.name}</div>}
-                      <DriveSelectTree
-                        profileId={p.id}
-                        selection={linkDocSel[p.id] ?? new Map()}
-                        onChange={(next) => setLinkDocSel((s) => ({ ...s, [p.id]: next }))}
-                        filesOnly
-                      />
-                    </div>
-                  ))}
-                  <p className="text-xs text-muted-foreground">Tick as many files as you like — each one gets its own link. Open a folder to pick files inside it.</p>
-                </div>
-              ) : (
-                <div className="rounded border p-2 max-h-56 overflow-y-auto">
-                  {(linkKind === "video" ? videoCatalog : projectCatalog).length === 0 && <span className="text-muted-foreground">Nothing to pick yet.</span>}
-                  {(linkKind === "video" ? videoCatalog : projectCatalog).map((it) => (
-                    <label key={it.id} className="flex items-center gap-2 py-0.5">
-                      <input type="radio" name="invite-link-item" checked={linkItem?.id === it.id} onChange={() => setLinkItem(it)} />
-                      {it.name.replace(/\.[^.]+$/, "")}
-                    </label>
-                  ))}
-                </div>
-              )}
-              <p>Selected: <strong>{linkKind === "document" ? (linkDocPicks.length ? `${linkDocPicks.length} file${linkDocPicks.length > 1 ? "s" : ""}` : "nothing yet") : linkItem ? linkItem.name : "nothing yet"}</strong></p>
-              <h3 className="ef-subsection-title">2B · Choose link access</h3>
-              <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="invite-link-mode" checked={linkPersonal} onChange={() => setLinkPersonal(true)} />Personal link <span className="font-normal text-xs text-muted-foreground">(no password — they type their email; expires in 2 weeks)</span></label>
-                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="invite-link-mode" checked={!linkPersonal} onChange={() => setLinkPersonal(false)} />Link with password</label>
-              </div>
-              {!linkPersonal && (
-                <div className="max-w-xs">
-                  <Label htmlFor="invite-link-pw">Password</Label>
-                  <Input id="invite-link-pw" value={linkPassword} onChange={(e) => setLinkPassword(e.target.value)} placeholder="At least 6 characters" autoComplete="off" />
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground">No account is created and no email is sent unless you click "Create link &amp; send email". The person appears in the Investor & user manager under "Link access".</p>
-            </div>
-            )}
+            {renderAccessSections()}
             <div className="md:col-span-12 flex justify-end">
               {inviteMode === "link" ? (
                 <>
