@@ -694,7 +694,7 @@ Deno.serve(async (req) => {
       if (userLinksError) return json({ error: "Could not load direct links for deletion. Please retry." }, 500);
       for (const l of linksByUser ?? []) linkIds.add(l.id as string);
       if (targetEmail) {
-        const { data: linksByEmail, error: emailLinksError } = await admin.from("share_links").select("id").eq("recipient_email", targetEmail.toLowerCase());
+        const { data: linksByEmail, error: emailLinksError } = await admin.from("share_links").select("id").ilike("recipient_email", targetEmail.toLowerCase().replace(/[\\%_]/g, (c) => `\\${c}`));
         if (emailLinksError) return json({ error: "Could not load recipient links for deletion. Please retry." }, 500);
         for (const l of linksByEmail ?? []) linkIds.add(l.id as string);
       }
