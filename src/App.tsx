@@ -150,7 +150,7 @@ function AppContent() {
           .select('must_change_password')
           .eq('user_id', session.user.id)
           .maybeSingle();
-        if (profile?.must_change_password && searchParams.get("auth") !== "code") {
+        if (profile?.must_change_password && searchParams.get("auth") !== "code" && !window.location.pathname.startsWith("/enter/")) {
           navigate('/reset-password');
           return;
         }
@@ -225,6 +225,7 @@ function AppContent() {
         {session && <Route path="/admin" element={<AdminDashboard />} />}
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/share/:slug" element={<SharePage />} />
+        <Route path="/enter/:slug" element={<PortalEntryPage />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
