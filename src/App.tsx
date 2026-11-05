@@ -233,7 +233,7 @@ function AppContent() {
         open={showLogin} 
         onOpenChange={setShowLogin}
         defaultEmail={prefillEmail}
-        defaultMode={loginMode}
+        defaultMode="password"
       />
     </>
   );

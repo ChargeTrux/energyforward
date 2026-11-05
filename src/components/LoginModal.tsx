@@ -138,8 +138,8 @@ export function LoginModal({ open, onOpenChange, defaultEmail, defaultMode = "pa
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className={mode === "code" ? "sm:max-w-md p-0 overflow-hidden bg-background text-foreground rounded-lg" : "sm:max-w-md border-0 p-0 overflow-hidden"}
-        style={mode === "code" ? undefined : {
+        className="sm:max-w-md border-0 p-0 overflow-hidden"
+        style={{
           background: "rgba(14, 54, 59, 0.96)",
           color: "#EEEAE2",
           border: "1px solid rgba(238,234,226,0.12)",
@@ -152,7 +152,7 @@ export function LoginModal({ open, onOpenChange, defaultEmail, defaultMode = "pa
           <DialogHeader>
             <DialogTitle
               className="text-center"
-              style={mode === "code" ? undefined : {
+              style={{
                 fontFamily: '"Cabinet Grotesk", sans-serif',
                 fontWeight: 700,
                 fontSize: 28,
@@ -161,7 +161,7 @@ export function LoginModal({ open, onOpenChange, defaultEmail, defaultMode = "pa
                 letterSpacing: "-0.02em",
               }}
             >
-              {mode === "code" ? "EnergyForward portal" : <>login to energyforward<span style={{ color: "#E8B14A" }}>.</span></>}
+              <>login to energyforward<span style={{ color: "#E8B14A" }}>.</span></>
             </DialogTitle>
             <p
               className="text-center mt-2"
@@ -201,8 +201,7 @@ export function LoginModal({ open, onOpenChange, defaultEmail, defaultMode = "pa
             </div>
           ) : (
           <form onSubmit={handleSubmit} className="space-y-4 mt-6">
-            <Button type="button" variant="secondary" className="w-full" onClick={() => setMode("code")}>Sign in with an email code</Button>
-            <div className="space-y-2">
+                        <div className="space-y-2">
               <Label
                 htmlFor="email"
                 style={{
