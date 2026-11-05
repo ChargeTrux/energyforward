@@ -272,6 +272,20 @@ export default function AdminDashboard() {
   const [busy, setBusy] = useState(false);
   const [deletingUsers, setDeletingUsers] = useState(false);
   const deletingUsersRef = useRef(false);
+  // "password" = normal sign-in page; "personal" = email-only link limited to these people.
+  const [portalSignIn, setPortalSignIn] = useState<"password" | "personal">("password");
+  const [createdEmails, setCreatedEmails] = useState<string[]>([]);
+  const copySignInLink = async (emails: string[]) => {
+    if (portalSignIn === "password" || !emails.length) return copyPortalLink();
+    if (isUserPreview) { toast({ title: "Read-only preview", description: "Exit preview to make changes." }); return; }
+    const { data, error } = await supabase.functions.invoke("portal-entry", { body: { action: "create", emails } });
+    if (error || !data?.slug) { toast({ title: "Could not create the link", description: (data as { error?: string })?.error ?? error?.message, variant: "destructive" }); return; }
+    const url = `https://energyforward.com/enter/${data.slug}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({ title: "Personal portal link copied — no email sent", description: `Works for ${emails.length} ${emails.length === 1 ? "person" : "people"} by typing their email. Expires in 2 weeks.` });
+    } catch { toast({ title: "Copy this link", description: url }); }
+  };
   const copyPortalLink = async () => {
     try {
       await navigator.clipboard.writeText(PORTAL_SIGN_IN_URL);
@@ -1088,6 +1102,15 @@ export default function AdminDashboard() {
               )}
               {useOwnPassword && <span className="text-xs text-muted-foreground">Sent in the welcome email; they won't be asked to change it.</span>}
             </div>
+            )}
+            {inviteMode === "portal" && (
+            <fieldset className="md:col-span-12 ef-form-group text-sm">
+              <legend>How they sign in (for the copied link)</legend>
+              <div className="ef-choice-row">
+                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="portal-sign-in" checked={portalSignIn === "personal"} onChange={() => setPortalSignIn("personal")} />Personal link <span className="font-normal text-xs text-muted-foreground">(no password — they only type their email; expires in 2 weeks)</span></label>
+                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="portal-sign-in" checked={portalSignIn === "password"} onChange={() => setPortalSignIn("password")} />Link with password <span className="font-normal text-xs text-muted-foreground">(email + password)</span></label>
+              </div>
+            </fieldset>
             )}
             {inviteMode === "portal" && (
             <div className="md:col-span-12 ef-access-permissions text-sm">
@@ -2350,12 +2373,15 @@ export default function AdminDashboard() {
                   if (inviteCustomer) r.push("customer");
                   if (inviteVideo) r.push("video");
                   if (inviteProject) r.push("project");
-                  createInvite(r, inviteEmail, inviteName, false);
+                  const em = inviteEmail.trim().toLowerCase();
+                  void createInvite(r, inviteEmail, inviteName, false).then((ok) => setCreatedEmails(ok ? [em] : []));
                 }}
               >
-                Create account (no invite email)
+                Create account (no invite)
               </Button>
-              <Button type="button" variant="outline" disabled={busy} className="mr-3" onClick={() => void copyPortalLink()}><Copy className="w-4 h-4 mr-2" />Copy portal sign-in link</Button>
+              {createdEmails.length === 1 && (
+                <Button type="button" disabled={busy} className="ef-cta mr-3" onClick={() => void copySignInLink(createdEmails)}><Copy className="w-4 h-4 mr-2" />Copy the sign-in link</Button>
+              )}
               <Button type="submit" disabled={busy} className="ef-cta px-8">
                 Create &amp; Invite
               </Button>
@@ -2364,7 +2390,7 @@ export default function AdminDashboard() {
             </div>
           </form>
           <p className="text-xs text-muted-foreground mt-3">
-            Create the account and assign all selected materials first. Copy portal sign-in link sends no invitation: the person enters their account email and verifies a sign-in code to see their current materials. The same portal link works when access changes. Create &amp; Invite sends a welcome email with a temporary password, unless you tick "Use my own password".
+            Create account (no invite) sends no email; then use Copy the sign-in link. With a personal link they only type their email; otherwise they sign in with email and password. Create &amp; Invite sends a welcome email with a temporary password, unless you tick "Use my own password".
           </p>
         </CardContent>
         </TabsContent>
@@ -2459,7 +2485,7 @@ export default function AdminDashboard() {
                     <Button type="button" disabled={busy} className="ef-cta" onClick={() => void runBulkSame("invite")}>Create {importRows.length} {importRows.length === 1 ? "account" : "accounts"} (send the invite)</Button>
                     <Button type="button" disabled={busy || !!bulkStatus} className="ef-cta" onClick={() => void runBulkSame("account")}>Create {importRows.length} {importRows.length === 1 ? "account" : "accounts"} (no invite)</Button>
                     {bulkDoneAction === "account" && !bulkStatus && (
-                      <Button type="button" className="ef-cta" onClick={() => void copyPortalLink()}><Copy className="w-4 h-4 mr-2" />Copy the sign-in link for all of them</Button>
+                      <Button type="button" className="ef-cta" onClick={() => void copySignInLink(importResults.filter((r) => r.ok).map((r) => r.email.trim().toLowerCase()))}><Copy className="w-4 h-4 mr-2" />Copy the sign-in link for all of them</Button>
                     )}
                   </>
                 )}

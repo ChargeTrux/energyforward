@@ -16,6 +16,7 @@ import DocumentsPage from "./pages/DocumentsPage";
 import InvestorVideos from "@/pages/InvestorVideos";
 import NotFound from "./pages/NotFound";
 import SharePage from "./pages/SharePage";
+import PortalEntryPage from "./pages/PortalEntryPage";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { usePageTracking } from "@/hooks/usePageTracking";
 import { supabase } from "@/integrations/supabase/client";
