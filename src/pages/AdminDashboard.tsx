@@ -85,6 +85,7 @@ import {
   ExternalLink,
   Eye,
   Download,
+  Loader2,
 } from "lucide-react";
 
 function Collapse({ title, children, nested = false, defaultOpen = false, tone = "access" }: { title: React.ReactNode; children: React.ReactNode; nested?: boolean; defaultOpen?: boolean; tone?: "access" | "invite" | "share" | "materials" | "people" | "activity" }) {
