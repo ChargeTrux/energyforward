@@ -248,6 +248,7 @@ export default function AdminDashboard() {
   const [inviteAdmin, setInviteAdmin] = useState(false);
   const [importRows, setImportRows] = useState<{ full_name: string; email: string }[]>([]);
   const [importFileName, setImportFileName] = useState("");
+  const [importOpts, setImportOpts] = useState({ investor: false, project: false, video: false, signIn: "code" as "code" | "welcome" | "none" });
   const [importResults, setImportResults] = useState<
     { email: string; ok: boolean; message: string }[] | null
   >(null);
@@ -918,18 +919,34 @@ export default function AdminDashboard() {
 
   const runBulkImport = async () => {
     if (importRows.length === 0) return;
-    const data = (await callAdmin("bulk_import", { people: importRows })) as {
+    if (isUserPreview) { toast({ title: "Read-only preview", description: "Exit preview to make changes." }); return; }
+    const data = (await callAdmin("bulk_import", { people: importRows, email_code_only: importOpts.signIn !== "welcome" })) as {
       imported?: number;
       total?: number;
-      results?: { email: string; ok: boolean; message: string }[];
+      results?: { email: string; ok: boolean; message: string; user_id?: string }[];
     } | null;
-    if (data) {
-      setImportResults(data.results ?? []);
-      toast({
-        title: "Import finished",
-        description: `${data.imported ?? 0} of ${data.total ?? importRows.length} people added. Assign access and invite them from the Investor & user manager above.`,
-      });
+    if (!data) return;
+    setImportResults(data.results ?? []);
+    const ids = (data.results ?? []).filter((r) => r.ok && r.user_id).map((r) => r.user_id as string);
+    for (const uid of ids) {
+      if (importOpts.investor) await callAdmin("set_investor", { user_id: uid, make_investor: true });
+      if (importOpts.project && projectCatalog.length) {
+        await supabase.from("project_page_access").upsert(projectCatalog.map((p) => ({ user_id: uid, file_id: p.id })), { onConflict: "user_id,file_id" });
+      }
+      if (importOpts.video && videoCatalog.length) {
+        await supabase.from("investor_video_access").upsert(videoCatalog.map((v) => ({ user_id: uid, file_id: v.id })), { onConflict: "user_id,file_id" });
+      }
     }
+    let note = "No emails were sent.";
+    if (importOpts.signIn === "welcome" && ids.length) {
+      await callAdmin("send_welcome", { user_ids: ids, app_origin: window.location.origin });
+      note = "Welcome emails with temporary passwords were sent.";
+    } else if (importOpts.signIn === "code" && ids.length) {
+      await copyPortalLink();
+      note = "The portal sign-in link was copied — paste it to everyone. They sign in with their email and a code.";
+    }
+    await Promise.all([load(), loadVideos(), loadProject()]);
+    toast({ title: "Import finished", description: `${data.imported ?? 0} of ${data.total ?? importRows.length} people added. ${note}` });
   };
 
   // Create a direct link from the Add users form. Never emails unless send=true.
@@ -1195,7 +1212,7 @@ export default function AdminDashboard() {
     await loadVideos();
   };
 
-  const [bulkMode, setBulkMode] = useState<"add" | "remove">("add");
+  const [bulkMode, setBulkMode] = useState<"add" | "remove" | "delete">("add");
   const [bulkApplying, setBulkApplying] = useState(false);
   const bulkApplyingRef = useRef(false);
   const emptyBulk = { investor: false, project: false, projectPages: [] as string[], video: false, videos: [] as string[], docs: [] as string[] };
@@ -1206,6 +1223,11 @@ export default function AdminDashboard() {
     if (isUserPreview) { toast({ title: "Read-only preview", description: "Exit preview to make changes." }); return; }
     const ids = selectedInvitees;
     const add = bulkMode === "add";
+    if (bulkMode === "delete") {
+      if (!window.confirm(`Permanently delete ${ids.length} selected ${ids.length === 1 ? "user" : "users"}? Their account, email, access and direct links are removed everywhere. This cannot be undone. No emails will be sent.`)) return;
+      await deleteUsers(ids);
+      return;
+    }
     if (!add) {
       if (!window.confirm(`Remove ALL access from ${ids.length} selected ${ids.length === 1 ? "user" : "users"}? Portal, admin, videos, documents, folders and Project 3D Demo access will be removed and their direct links permanently deleted. Account history remains. No emails will be sent.`)) return;
       bulkApplyingRef.current = true;
@@ -1937,15 +1959,16 @@ export default function AdminDashboard() {
             {visibleAccessProfiles.length === 0 && linkRecipients.length === 0 && <p className="py-8 text-center text-muted-foreground">No users match your search or filters.</p>}
           </div>
           {selectedInvitees.length > 0 && (
-            <div className={`ef-bulk-access mt-4 mb-4 rounded border p-3 text-sm ${bulkMode === "remove" ? "ef-bulk-access--remove" : ""}`} aria-busy={bulkApplying}>
+            <div className={`ef-bulk-access mt-4 mb-4 rounded border p-3 text-sm ${bulkMode !== "add" ? "ef-bulk-access--remove" : ""}`} aria-busy={bulkApplying}>
               <div className="flex flex-wrap items-center gap-3 mb-2">
                 <strong>Change access for {selectedInvitees.length} selected</strong>
                 <fieldset className="flex flex-wrap gap-3" disabled={bulkApplying || busy}>
                   <legend className="sr-only">Access change</legend>
                   <label className="flex items-center gap-1"><input name="bulk-access-mode" type="radio" checked={bulkMode === "add"} onChange={() => setBulkMode("add")} /> Give access</label>
-                  <label className="ef-removal-choice flex items-center gap-1"><input name="bulk-access-mode" type="radio" checked={bulkMode === "remove"} onChange={() => setBulkMode("remove")} /> Remove access</label>
+                  <label className="ef-removal-choice flex items-center gap-1"><input name="bulk-access-mode" type="radio" checked={bulkMode === "remove"} onChange={() => setBulkMode("remove")} /> Remove access only (keep account)</label>
+                  <label className="ef-removal-choice flex items-center gap-1"><input name="bulk-access-mode" type="radio" checked={bulkMode === "delete"} onChange={() => setBulkMode("delete")} /> Remove user completely (delete account)</label>
                 </fieldset>
-                <span className="text-xs text-muted-foreground">{bulkMode === "remove" ? "All portal, admin and material access will be removed, and their direct links deleted, so they leave the list unless they still have an account. Account history remains. No emails are sent." : "Only what you tick here changes; everything else each person has stays the same. No emails are sent."}</span>
+                <span className="text-xs text-muted-foreground">{bulkMode === "delete" ? "The account, email, all access and direct links are permanently deleted, so they disappear everywhere. No emails are sent." : bulkMode === "remove" ? "All portal, admin and material access will be removed, and their direct links deleted, so they leave the list unless they still have an account. Account history remains. No emails are sent." : "Only what you tick here changes; everything else each person has stays the same. No emails are sent."}</span>
               </div>
               {bulkMode === "add" && <>
               <label className="flex items-center gap-2 font-semibold mb-2">
@@ -2003,7 +2026,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
               </>}
-              <Button size="sm" variant={bulkMode === "remove" ? "destructive" : "default"} className="mt-3 h-auto min-h-10 whitespace-normal" disabled={busy || bulkApplying} onClick={applyBulkAccess}>{bulkApplying ? "Removing access…" : `Apply the change to the selected ${selectedInvitees.length === 1 ? "user" : "users"}`}</Button>
+              <Button size="sm" variant={bulkMode !== "add" ? "destructive" : "default"} className="mt-3 h-auto min-h-10 whitespace-normal" disabled={busy || bulkApplying} onClick={applyBulkAccess}>{bulkApplying ? "Removing access…" : deletingUsers ? "Deleting users…" : `Apply the change to the selected ${selectedInvitees.length === 1 ? "user" : "users"}`}</Button>
               {bulkApplying && <p role="status" className="mt-2">Removing all access for {selectedInvitees.length} selected users…</p>}
             </div>
           )}
@@ -2275,9 +2298,8 @@ export default function AdminDashboard() {
         <TabsContent value="import">
         <CardContent className="space-y-4 px-0">
           <p className="text-sm text-muted-foreground">
-            Upload a list of people to create their accounts all at once. No emails are sent during
-            import — afterwards, assign each person's access and send their invite individually from
-            the Investor & user manager above.
+            Upload a list of people to create their accounts all at once, then choose below what
+            everyone gets and how they sign in.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <Button type="button" variant="outline" onClick={downloadImportTemplate}>
@@ -2338,6 +2360,17 @@ export default function AdminDashboard() {
                   </TableBody>
                 </Table>
               </div>
+              <fieldset className="rounded border p-3 space-y-2 text-sm" disabled={busy}>
+                <legend className="font-semibold px-1">Apply to everyone in this list</legend>
+                <label className="flex items-center gap-2"><input type="checkbox" checked={importOpts.investor} onChange={(e) => setImportOpts((o) => ({ ...o, investor: e.target.checked }))} /> Investor portal</label>
+                <label className="flex items-center gap-2"><input type="checkbox" checked={importOpts.project} onChange={(e) => setImportOpts((o) => ({ ...o, project: e.target.checked }))} /> Project 3D Demo (all models)</label>
+                <label className="flex items-center gap-2"><input type="checkbox" checked={importOpts.video} onChange={(e) => setImportOpts((o) => ({ ...o, video: e.target.checked }))} /> Videos (all videos)</label>
+                <p className="text-xs text-muted-foreground">Documents and individual items can be given afterwards with the Investor &amp; user manager.</p>
+                <p className="font-semibold pt-1">How they sign in</p>
+                <label className="flex items-center gap-2"><input type="radio" name="import-signin" checked={importOpts.signIn === "code"} onChange={() => setImportOpts((o) => ({ ...o, signIn: "code" }))} /> Email only, no password — copy the portal sign-in link to send them (no email sent)</label>
+                <label className="flex items-center gap-2"><input type="radio" name="import-signin" checked={importOpts.signIn === "welcome"} onChange={() => setImportOpts((o) => ({ ...o, signIn: "welcome" }))} /> Send each a welcome invite with a temporary password</label>
+                <label className="flex items-center gap-2"><input type="radio" name="import-signin" checked={importOpts.signIn === "none"} onChange={() => setImportOpts((o) => ({ ...o, signIn: "none" }))} /> Just create the accounts (decide later)</label>
+              </fieldset>
               <div className="flex gap-2">
                 <Button type="button" onClick={runBulkImport} disabled={busy}>
                   Import {importRows.length} people
