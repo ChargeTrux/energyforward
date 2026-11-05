@@ -1207,7 +1207,7 @@ export default function AdminDashboard() {
     const ids = selectedInvitees;
     const add = bulkMode === "add";
     if (!add) {
-      if (!window.confirm(`Remove ALL access from ${ids.length} selected ${ids.length === 1 ? "user" : "users"}? Portal, admin, videos, documents, folders and Project 3D Demo access will be removed and existing direct links turned off. Accounts and history remain. No emails will be sent.`)) return;
+      if (!window.confirm(`Remove ALL access from ${ids.length} selected ${ids.length === 1 ? "user" : "users"}? Portal, admin, videos, documents, folders and Project 3D Demo access will be removed and their direct links permanently deleted. Account history remains. No emails will be sent.`)) return;
       bulkApplyingRef.current = true;
       setBulkApplying(true);
       try {
@@ -1216,7 +1216,7 @@ export default function AdminDashboard() {
         setBulk(emptyBulk);
         setBulkDocItems({});
         setSelectedInvitees([]);
-        toast({ title: `All access removed for ${count} ${count === 1 ? "user" : "users"}`, description: "Existing direct links are off. No emails were sent." });
+        toast({ title: `All access removed for ${count} ${count === 1 ? "user" : "users"}`, description: "Their direct links were deleted. No emails were sent." });
       } catch (error) {
         toast({ title: "Access removal failed", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" });
       } finally {
@@ -1668,77 +1668,6 @@ export default function AdminDashboard() {
               void deleteUsers(selectedInvitees);
             }}>{deletingUsers ? "Deleting users…" : "Delete selected users"}</Button>
           </div>
-          {selectedInvitees.length > 0 && (
-            <div className={`ef-bulk-access mb-4 rounded border p-3 text-sm ${bulkMode === "remove" ? "ef-bulk-access--remove" : ""}`} aria-busy={bulkApplying}>
-              <div className="flex flex-wrap items-center gap-3 mb-2">
-                <strong>Change access for {selectedInvitees.length} selected</strong>
-                <fieldset className="flex flex-wrap gap-3" disabled={bulkApplying || busy}>
-                  <legend className="sr-only">Access change</legend>
-                  <label className="flex items-center gap-1"><input name="bulk-access-mode" type="radio" checked={bulkMode === "add"} onChange={() => setBulkMode("add")} /> Give access</label>
-                  <label className="ef-removal-choice flex items-center gap-1"><input name="bulk-access-mode" type="radio" checked={bulkMode === "remove"} onChange={() => setBulkMode("remove")} /> Remove access</label>
-                </fieldset>
-                <span className="text-xs text-muted-foreground">{bulkMode === "remove" ? "All portal, admin and material access will be removed, and existing direct links turned off. Accounts and history remain. No emails are sent." : "Only what you tick here changes; everything else each person has stays the same. No emails are sent."}</span>
-              </div>
-              {bulkMode === "add" && <>
-              <label className="flex items-center gap-2 font-semibold mb-2">
-                <input type="checkbox" checked={bulk.investor} onChange={(e) => setBulk((b) => ({ ...b, investor: e.target.checked }))} /> Investor portal
-              </label>
-              <div className="grid gap-4 md:grid-cols-3">
-                <div>
-                  <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
-                    <input type="checkbox" checked={bulk.project} onChange={(e) => setBulk((b) => ({ ...b, project: e.target.checked, projectPages: e.target.checked ? projectCatalog.map((p) => p.id) : [] }))} /> Project 3D Demo
-                  </label>
-                  {projectCatalog.map((pg) => (
-                    <label key={pg.id} className={`flex items-center gap-2 ml-5 ${!bulk.project ? "opacity-50" : ""}`}>
-                      <input type="checkbox" disabled={!bulk.project} checked={bulk.projectPages.includes(pg.id)} onChange={(e) => setBulk((b) => ({ ...b, projectPages: e.target.checked ? [...b.projectPages, pg.id] : b.projectPages.filter((x) => x !== pg.id) }))} />
-                      <span className="min-w-0 break-words">{pg.name}</span>
-                    </label>
-                  ))}
-                </div>
-                <div>
-                  <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
-                    <input type="checkbox" checked={bulk.video} onChange={(e) => setBulk((b) => ({ ...b, video: e.target.checked, videos: e.target.checked ? videoCatalog.map((v) => v.id) : [] }))} /> Videos
-                  </label>
-                  {videoCatalog.map((v) => (
-                    <label key={v.id} className={`flex items-center gap-2 ml-5 ${!bulk.video ? "opacity-50" : ""}`}>
-                      <input type="checkbox" disabled={!bulk.video} checked={bulk.videos.includes(v.id)} onChange={(e) => setBulk((b) => ({ ...b, videos: e.target.checked ? [...b.videos, v.id] : b.videos.filter((x) => x !== v.id) }))} />
-                      <span className="min-w-0 break-words">{v.name.replace(/\.[^.]+$/, "")}</span>
-                    </label>
-                  ))}
-                </div>
-                <div>
-                  {investorProfiles.map((p) => {
-                    const on = bulk.docs.includes(p.id);
-                    const sel = bulkDocItems[p.id] ?? new Map();
-                    return (
-                      <div key={p.id}>
-                        <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
-                          <input type="checkbox" checked={on} onChange={(e) => {
-                            setBulk((b) => ({ ...b, docs: e.target.checked ? [...b.docs, p.id] : b.docs.filter((x) => x !== p.id) }));
-                            if (!e.target.checked) setBulkDocItems((s) => ({ ...s, [p.id]: new Map() }));
-                          }} />
-                          Documents (Data Room){on && !sel.size ? " — whole folder" : ""}
-                        </label>
-                        <div className="ml-5 rounded border p-2 max-h-72 overflow-y-auto">
-                          <p className="text-xs text-muted-foreground mb-1">Ticking a folder ticks everything inside it; untick single files to leave them out. Nothing ticked = the whole folder.</p>
-                          <DriveSelectTree
-                            profileId={p.id}
-                            selection={on ? sel : new Map()}
-                            onChange={(next) => setBulkDocItems((s) => ({ ...s, [p.id]: next }))}
-                            disabled={!on}
-                            disabledHint="Tick Documents (Data Room) first"
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              </>}
-              <Button size="sm" variant={bulkMode === "remove" ? "destructive" : "default"} className="mt-3 h-auto min-h-10 whitespace-normal" disabled={busy || bulkApplying} onClick={applyBulkAccess}>{bulkApplying ? "Removing access…" : `Apply the change to the selected ${selectedInvitees.length === 1 ? "user" : "users"}`}</Button>
-              {bulkApplying && <p role="status" className="mt-2">Removing all access for {selectedInvitees.length} selected users…</p>}
-            </div>
-          )}
           <div ref={accessListRef} className="ef-access-list space-y-1.5" tabIndex={0} role="region" aria-label="User access list">
             {visibleAccessProfiles.map((u) => {
                  const status = accessStatuses.get(u.user_id) ?? userAccessStatus(u, lastLogins.get(u.user_id), recentActivity.get(u.user_id), activityNow);
@@ -2007,6 +1936,77 @@ export default function AdminDashboard() {
             ))}
             {visibleAccessProfiles.length === 0 && linkRecipients.length === 0 && <p className="py-8 text-center text-muted-foreground">No users match your search or filters.</p>}
           </div>
+          {selectedInvitees.length > 0 && (
+            <div className={`ef-bulk-access mt-4 mb-4 rounded border p-3 text-sm ${bulkMode === "remove" ? "ef-bulk-access--remove" : ""}`} aria-busy={bulkApplying}>
+              <div className="flex flex-wrap items-center gap-3 mb-2">
+                <strong>Change access for {selectedInvitees.length} selected</strong>
+                <fieldset className="flex flex-wrap gap-3" disabled={bulkApplying || busy}>
+                  <legend className="sr-only">Access change</legend>
+                  <label className="flex items-center gap-1"><input name="bulk-access-mode" type="radio" checked={bulkMode === "add"} onChange={() => setBulkMode("add")} /> Give access</label>
+                  <label className="ef-removal-choice flex items-center gap-1"><input name="bulk-access-mode" type="radio" checked={bulkMode === "remove"} onChange={() => setBulkMode("remove")} /> Remove access</label>
+                </fieldset>
+                <span className="text-xs text-muted-foreground">{bulkMode === "remove" ? "All portal, admin and material access will be removed, and their direct links deleted, so they leave the list unless they still have an account. Account history remains. No emails are sent." : "Only what you tick here changes; everything else each person has stays the same. No emails are sent."}</span>
+              </div>
+              {bulkMode === "add" && <>
+              <label className="flex items-center gap-2 font-semibold mb-2">
+                <input type="checkbox" checked={bulk.investor} onChange={(e) => setBulk((b) => ({ ...b, investor: e.target.checked }))} /> Investor portal
+              </label>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
+                    <input type="checkbox" checked={bulk.project} onChange={(e) => setBulk((b) => ({ ...b, project: e.target.checked, projectPages: e.target.checked ? projectCatalog.map((p) => p.id) : [] }))} /> Project 3D Demo
+                  </label>
+                  {projectCatalog.map((pg) => (
+                    <label key={pg.id} className={`flex items-center gap-2 ml-5 ${!bulk.project ? "opacity-50" : ""}`}>
+                      <input type="checkbox" disabled={!bulk.project} checked={bulk.projectPages.includes(pg.id)} onChange={(e) => setBulk((b) => ({ ...b, projectPages: e.target.checked ? [...b.projectPages, pg.id] : b.projectPages.filter((x) => x !== pg.id) }))} />
+                      <span className="min-w-0 break-words">{pg.name}</span>
+                    </label>
+                  ))}
+                </div>
+                <div>
+                  <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
+                    <input type="checkbox" checked={bulk.video} onChange={(e) => setBulk((b) => ({ ...b, video: e.target.checked, videos: e.target.checked ? videoCatalog.map((v) => v.id) : [] }))} /> Videos
+                  </label>
+                  {videoCatalog.map((v) => (
+                    <label key={v.id} className={`flex items-center gap-2 ml-5 ${!bulk.video ? "opacity-50" : ""}`}>
+                      <input type="checkbox" disabled={!bulk.video} checked={bulk.videos.includes(v.id)} onChange={(e) => setBulk((b) => ({ ...b, videos: e.target.checked ? [...b.videos, v.id] : b.videos.filter((x) => x !== v.id) }))} />
+                      <span className="min-w-0 break-words">{v.name.replace(/\.[^.]+$/, "")}</span>
+                    </label>
+                  ))}
+                </div>
+                <div>
+                  {investorProfiles.map((p) => {
+                    const on = bulk.docs.includes(p.id);
+                    const sel = bulkDocItems[p.id] ?? new Map();
+                    return (
+                      <div key={p.id}>
+                        <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
+                          <input type="checkbox" checked={on} onChange={(e) => {
+                            setBulk((b) => ({ ...b, docs: e.target.checked ? [...b.docs, p.id] : b.docs.filter((x) => x !== p.id) }));
+                            if (!e.target.checked) setBulkDocItems((s) => ({ ...s, [p.id]: new Map() }));
+                          }} />
+                          Documents (Data Room){on && !sel.size ? " — whole folder" : ""}
+                        </label>
+                        <div className="ml-5 rounded border p-2 max-h-72 overflow-y-auto">
+                          <p className="text-xs text-muted-foreground mb-1">Ticking a folder ticks everything inside it; untick single files to leave them out. Nothing ticked = the whole folder.</p>
+                          <DriveSelectTree
+                            profileId={p.id}
+                            selection={on ? sel : new Map()}
+                            onChange={(next) => setBulkDocItems((s) => ({ ...s, [p.id]: next }))}
+                            disabled={!on}
+                            disabledHint="Tick Documents (Data Room) first"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              </>}
+              <Button size="sm" variant={bulkMode === "remove" ? "destructive" : "default"} className="mt-3 h-auto min-h-10 whitespace-normal" disabled={busy || bulkApplying} onClick={applyBulkAccess}>{bulkApplying ? "Removing access…" : `Apply the change to the selected ${selectedInvitees.length === 1 ? "user" : "users"}`}</Button>
+              {bulkApplying && <p role="status" className="mt-2">Removing all access for {selectedInvitees.length} selected users…</p>}
+            </div>
+          )}
         </CardContent>
       </Collapse>
 
