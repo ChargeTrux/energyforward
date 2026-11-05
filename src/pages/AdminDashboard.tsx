@@ -959,7 +959,7 @@ export default function AdminDashboard() {
   );
   const inviteEmailState = inviteEmail;
   const inviteNameState = inviteName;
-  const createLinkFromInvite = async (send: boolean, who?: { email: string; name: string }): Promise<boolean> => {
+  const createLinkFromInvite = async (send: boolean, who?: { email: string; name: string; collect?: string[] }): Promise<boolean> => {
     const inviteEmail = who ? who.email : inviteEmailState;
     const inviteName = who ? who.name : inviteNameState;
     const quiet = !!who;
@@ -981,8 +981,10 @@ export default function AdminDashboard() {
           : { item_type: linkKind, item_id: p.id, item_name: p.name, profile_id: p.profileId, password: linkPassword.trim() });
         created.push(r);
       }
-      void navigator.clipboard.writeText(created.map((r) => `https://energyforward.com/share/${r.slug}`).join("\n"));
+      const urls = created.map((r) => `https://energyforward.com/share/${r.slug}`);
+      if (!quiet) void navigator.clipboard.writeText(urls.join("\n"));
       if (quiet) {
+        who?.collect?.push(...urls.map((u) => `${inviteEmail.trim()}: ${u}`));
         if (send && linkPersonal) for (const r of created) await callShareLink("send_email", { id: r.id });
         return true;
       }
@@ -1004,6 +1006,40 @@ export default function AdminDashboard() {
       toast({ title: "Could not create link", description: (e as Error).message, variant: "destructive" });
       return false;
     }
+  };
+
+  // Bulk import with exactly the same choices as "Invite one person".
+  const bulkImportRunning = useRef(false);
+  const runBulkSame = async (action: "account" | "invite" | "link" | "link_send") => {
+    if (!importRows.length || bulkImportRunning.current) return;
+    if (isUserPreview) { toast({ title: "Read-only preview", description: "Exit preview to make changes." }); return; }
+    if (inviteMode === "portal" && inviteAdmin && !window.confirm(`Give full admin access to all ${importRows.length} people?`)) return;
+    bulkImportRunning.current = true;
+    toast({ title: `Working on ${importRows.length} people…` });
+    const results: { email: string; ok: boolean; message: string }[] = [];
+    const links: string[] = [];
+    const roles: PortalRole[] = [];
+    if (inviteAdmin) roles.push("admin");
+    if (inviteInvestor) roles.push("investor");
+    if (inviteCustomer) roles.push("customer");
+    if (inviteVideo) roles.push("video");
+    if (inviteProject) roles.push("project");
+    try {
+      for (const row of importRows) {
+        const name = row.full_name || row.email.split("@")[0];
+        try {
+          const ok = action === "link" || action === "link_send"
+            ? await createLinkFromInvite(action === "link_send", { email: row.email, name, collect: links })
+            : await createInvite([...roles], row.email, row.full_name, action === "invite", true);
+          results.push({ email: row.email, ok, message: ok ? (action === "invite" || action === "link_send" ? "Done — email sent" : "Done — no email sent") : "Failed" });
+        } catch (e) { results.push({ email: row.email, ok: false, message: (e as Error).message }); }
+      }
+      setImportResults(results);
+      if (links.length) await navigator.clipboard.writeText(links.join("\n")).catch(() => undefined);
+      await Promise.all([load(), loadVideos(), loadProject()]);
+      const okCount = results.filter((r) => r.ok).length;
+      toast({ title: "Import finished", description: `${okCount} of ${results.length} people done.${links.length ? " All links copied (email: link, one per line)." : ""}` });
+    } finally { bulkImportRunning.current = false; }
   };
 
   const renderAccessSections = () => (
@@ -2383,21 +2419,23 @@ export default function AdminDashboard() {
                   </TableBody>
                 </Table>
               </div>
-              <fieldset className="rounded border p-3 space-y-2 text-sm" disabled={busy}>
-                <legend className="font-semibold px-1">Apply to everyone in this list</legend>
-                <label className="flex items-center gap-2"><input type="checkbox" checked={importOpts.investor} onChange={(e) => setImportOpts((o) => ({ ...o, investor: e.target.checked }))} /> Investor portal</label>
-                <label className="flex items-center gap-2"><input type="checkbox" checked={importOpts.project} onChange={(e) => setImportOpts((o) => ({ ...o, project: e.target.checked }))} /> Project 3D Demo (all models)</label>
-                <label className="flex items-center gap-2"><input type="checkbox" checked={importOpts.video} onChange={(e) => setImportOpts((o) => ({ ...o, video: e.target.checked }))} /> Videos (all videos)</label>
-                <p className="text-xs text-muted-foreground">Documents and individual items can be given afterwards with the Investor &amp; user manager.</p>
-                <p className="font-semibold pt-1">How they sign in</p>
-                <label className="flex items-center gap-2"><input type="radio" name="import-signin" checked={importOpts.signIn === "code"} onChange={() => setImportOpts((o) => ({ ...o, signIn: "code" }))} /> Email only, no password — copy the portal sign-in link to send them (no email sent)</label>
-                <label className="flex items-center gap-2"><input type="radio" name="import-signin" checked={importOpts.signIn === "welcome"} onChange={() => setImportOpts((o) => ({ ...o, signIn: "welcome" }))} /> Send each a welcome invite with a temporary password</label>
-                <label className="flex items-center gap-2"><input type="radio" name="import-signin" checked={importOpts.signIn === "none"} onChange={() => setImportOpts((o) => ({ ...o, signIn: "none" }))} /> Just create the accounts (decide later)</label>
-              </fieldset>
-              <div className="flex gap-2">
-                <Button type="button" onClick={runBulkImport} disabled={busy}>
-                  Import {importRows.length} people
-                </Button>
+              <div className="grid md:grid-cols-12 gap-x-5 gap-y-5 items-end">
+                <h3 className="md:col-span-12 ef-subsection-title">Apply to everyone in this list — same choices as Invite one person</h3>
+                {renderAccessSections()}
+              </div>
+              <div className="flex flex-wrap gap-2 justify-end">
+                {inviteMode === "link" ? (
+                  <>
+                    <Button type="button" variant="outline" disabled={busy} onClick={() => void runBulkSame("link")}>Create links for {importRows.length} people (no email)</Button>
+                    {linkPersonal && <Button type="button" disabled={busy} className="ef-cta" onClick={() => void runBulkSame("link_send")}>Create links &amp; send emails</Button>}
+                  </>
+                ) : (
+                  <>
+                    <Button type="button" variant="outline" disabled={busy} onClick={() => void runBulkSame("account")}>Create {importRows.length} accounts (no invite email)</Button>
+                    <Button type="button" variant="outline" disabled={busy} onClick={() => void copyPortalLink()}><Copy className="w-4 h-4 mr-2" />Copy portal sign-in link</Button>
+                    <Button type="button" disabled={busy} className="ef-cta" onClick={() => void runBulkSame("invite")}>Create &amp; Invite all {importRows.length}</Button>
+                  </>
+                )}
                 <Button
                   type="button"
                   variant="ghost"
