@@ -1,5 +1,8 @@
 # Roadmap
 
+- [ ] Add reusable portal-link copying and optional email-code sign-in for existing accounts without automatic welcome invitations.
+- [ ] Investigate why two selected users remain after removal; distinguish revoking access from deleting accounts and fix any failed deletion flow.
+
 - [x] Fix bulk Remove access without material selections: one admin-checked transaction clears all selected accounts' role/material/page grants and disables direct links; red removal controls, clarified Apply label and progress/error feedback. Fifteen tests passed and build clean; no real accounts changed. Frontend publication pending.
 - [ ] Verify bulk removal with real selected users (blocked: external Supabase authenticated checks unavailable; simulated sign-in did not reach admin).
 
