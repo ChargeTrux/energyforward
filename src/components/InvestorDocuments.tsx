@@ -222,7 +222,7 @@ export function InvestorDocuments() {
   useLiveRefresh(async () => {
     if (!activeProfile.current || !activeFileId) return;
     const res = await callFn(`?${new URLSearchParams({ action: "file", mode: "check", profile_id: activeProfile.current, file_id: activeFileId })}`).catch(() => null);
-    if (!res?.ok) { clearViewer(); setError("This document is no longer available. Your access may have changed."); }
+    if (res && !res.ok && res.status < 500) { clearViewer(); setError("This document is no longer available. Your access may have changed."); }
   }, Boolean(user && activeFileId));
   useEffect(() => { clearViewer(); }, [access.revision, clearViewer]);
 

@@ -52,7 +52,7 @@ export function usePortalAccess() {
     refetchInterval: ACCESS_REFRESH_MS,
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: "always",
-    retry: false,
+    retry: 1,
     queryFn: async (): Promise<PortalAccess> => {
       if (!user) return NONE;
       const [{ data: r, error: re }, { data: d, error: de }, { data: v, error: ve }, { data: pp, error: pe }, { data: items, error: ie }, { data: profile, error: profileError }, links] = await Promise.all([
@@ -82,7 +82,8 @@ export function usePortalAccess() {
     },
   });
   if (!user) return NONE;
-  if (query.isError) return { ...NONE, ready: true, revision: "unverified" };
+  // A failed re-check keeps the last verified access; only a successful answer can change it.
+  if (query.isError) return query.data ?? { ...NONE, ready: true, revision: "unverified" };
   return query.data ?? NONE;
 }
 

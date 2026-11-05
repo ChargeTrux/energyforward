@@ -5,7 +5,7 @@ import { PlayCircle } from "lucide-react";
 import { usePortalUser as useAuth } from "@/components/admin/UserPreviewBoundary";
 import { isUserPreview } from "@/lib/admin-preview";
 import { supabase } from "@/integrations/supabase/client";
-import { usePortalAccess } from "@/components/PortalNav";
+import { usePortalAccess, PortalNav } from "@/components/PortalNav";
 
 export function EFFrame({ src, title }: { src: string; title: string }) {
   useEffect(() => {
@@ -63,6 +63,9 @@ export const InvestorPortal = () => {
   return <>
     <EFFrame src="/ef-assets/site/investor/index.html" title="energyforward · investor portal" />
     <PortalDrawer />
+    <div style={{ position: "fixed", bottom: 16, left: "50%", transform: "translateX(-50%)", zIndex: 90, background: "rgba(10,42,46,0.92)", border: "1px solid rgba(232,177,74,0.5)", borderRadius: 999, padding: "10px 22px", boxShadow: "0 8px 24px rgba(0,0,0,0.35)", maxWidth: "calc(100vw - 24px)" }}>
+      <PortalNav current="home" />
+    </div>
   </>;
 };
 export const ContactPage = () => <EFFrame src="/ef-assets/site/contact/index.html" title="energyforward · contact" />;
