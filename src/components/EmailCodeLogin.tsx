@@ -65,25 +65,25 @@ export function EmailCodeLogin({ defaultEmail, onSuccess, onPassword }: { defaul
   };
 
   return (
-    <form className="space-y-4 mt-6 text-foreground" onSubmit={(event) => { event.preventDefault(); void (sent ? verifyCode() : sendCode()); }}>
+    <form className="space-y-4 mt-6" style={{ color: "#EEEAE2" }} onSubmit={(event) => { event.preventDefault(); void (sent ? verifyCode() : sendCode()); }}>
       <div className="space-y-2">
         <Label htmlFor="portal-code-email">Email address</Label>
-        <Input id="portal-code-email" type="email" autoComplete="email" autoFocus value={email} disabled={sent || busy} onChange={(event) => setEmail(event.target.value)} required className="bg-background text-foreground" />
+        <Input id="portal-code-email" type="email" autoComplete="email" autoFocus value={email} disabled={sent || busy} onChange={(event) => setEmail(event.target.value)} required style={{ background: "rgba(10,42,46,0.55)", border: "1px solid rgba(238,234,226,0.18)", color: "#EEEAE2", borderRadius: 10, height: 46 }} />
       </div>
       {sent && <>
-        <p role="status" className="text-sm text-muted-foreground">If this email belongs to an existing account, a sign-in code has been sent. Check your inbox and spam folder.</p>
+        <p role="status" className="text-sm opacity-75">If this email belongs to an existing account, a sign-in code has been sent. Check your inbox and spam folder.</p>
         <div className="space-y-2">
           <Label htmlFor="portal-verification-code">Verification code</Label>
-          <Input id="portal-verification-code" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(event) => setCode(event.target.value)} maxLength={10} required disabled={busy} className="bg-background text-foreground" />
+          <Input id="portal-verification-code" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(event) => setCode(event.target.value)} maxLength={10} required disabled={busy} style={{ background: "rgba(10,42,46,0.55)", border: "1px solid rgba(238,234,226,0.18)", color: "#EEEAE2", borderRadius: 10, height: 46 }} />
         </div>
       </>}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      <Button type="submit" disabled={busy} className="w-full">{busy ? (sent ? "Verifying…" : "Sending code…") : (sent ? "Verify & open portal" : "Send sign-in code")}</Button>
+      <Button type="submit" disabled={busy} className="w-full rounded-full h-12 font-semibold" style={{ background: "#E8B14A", color: "#0A2A2E" }}>{busy ? (sent ? "Verifying…" : "Sending code…") : (sent ? "Verify & open portal" : "Send sign-in code")}</Button>
       {sent && <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" disabled={busy || cooldown > 0} onClick={() => void sendCode()}>{cooldown ? `Resend in ${cooldown}s` : "Resend code"}</Button>
         <Button type="button" variant="ghost" disabled={busy} onClick={() => { setSent(false); setCode(""); setError(""); }}>Change email</Button>
       </div>}
-      <Button type="button" variant="outline" className="w-full" disabled={busy} onClick={onPassword}>Sign in with password instead</Button>
+      <Button type="button" variant="ghost" className="w-full rounded-full h-12" style={{ border: "1px solid rgba(238,234,226,0.25)", color: "#EEEAE2" }} disabled={busy} onClick={onPassword}>Sign in with password instead</Button>
     </form>
   );
 }
