@@ -39,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .select("role")
             .eq("user_id", newSession.user.id);
           setIsAdmin(!!roles?.some((r) => r.role === "admin"));
+          setLoading(false);
 
           if (event === "SIGNED_IN" && !isUserPreview) {
             // SIGNED_IN can fire more than once for the same sign-in; record it only once
@@ -69,8 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setIsAdmin(false);
         setSessionId(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     supabase.auth.getSession().then(({ data: { session: existing } }) => {
@@ -82,9 +83,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .from("user_roles")
           .select("role")
           .eq("user_id", existing.user.id)
-          .then(({ data }) => setIsAdmin(!!data?.some((r) => r.role === "admin")));
+          .then(({ data }) => { setIsAdmin(!!data?.some((r) => r.role === "admin")); setLoading(false); });
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
