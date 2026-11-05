@@ -229,7 +229,8 @@ export default function AdminDashboard() {
   const [inviteName, setInviteName] = useState("");
   const [inviteMode, setInviteMode] = useState<"portal" | "link">("portal");
   const [linkKind, setLinkKind] = useState<Kind>("video");
-  const [linkItem, setLinkItem] = useState<{ id: string; name: string; profileId?: string } | null>(null);
+  const [linkProjectIds, setLinkProjectIds] = useState<string[]>([]);
+  const [linkVideoIds, setLinkVideoIds] = useState<string[]>([]);
   const [linkDocSel, setLinkDocSel] = useState<Record<string, Selection>>({});
   const [linkPersonal, setLinkPersonal] = useState(true);
   // Invite form: per-folder document picks (empty = whole folder).
@@ -959,6 +960,11 @@ export default function AdminDashboard() {
   );
   const inviteEmailState = inviteEmail;
   const inviteNameState = inviteName;
+  const allLinkPicks: { kind: Kind; id: string; name: string; profileId?: string }[] = [
+    ...projectCatalog.filter((p) => linkProjectIds.includes(p.id)).map((p) => ({ kind: "project" as Kind, id: p.id, name: p.name })),
+    ...videoCatalog.filter((v) => linkVideoIds.includes(v.id)).map((v) => ({ kind: "video" as Kind, id: v.id, name: v.name })),
+    ...linkDocPicks.map((d) => ({ kind: "document" as Kind, ...d })),
+  ];
   const createLinkFromInvite = async (send: boolean, who?: { email: string; name: string; collect?: string[] }): Promise<boolean> => {
     const inviteEmail = who ? who.email : inviteEmailState;
     const inviteName = who ? who.name : inviteNameState;
@@ -967,7 +973,7 @@ export default function AdminDashboard() {
       toast({ title: "Enter a valid email address", variant: "destructive" });
       return false;
     }
-    const picks = linkKind === "document" ? linkDocPicks : linkItem ? [linkItem] : [];
+    const picks = allLinkPicks;
     if (!picks.length) { toast({ title: "Pick a file, video or 3D page first", variant: "destructive" }); return false; }
     const first = (inviteName.trim().split(" ")[0] ?? "").trim();
     const last = inviteName.trim().split(" ").slice(1).join(" ");
@@ -977,8 +983,8 @@ export default function AdminDashboard() {
       const created: { id: string; slug: string }[] = [];
       for (const p of picks) {
         const r = await callShareLink("create", linkPersonal
-          ? { item_type: linkKind, item_id: p.id, item_name: p.name, profile_id: p.profileId, no_password: true, first_name: first, last_name: last, email: inviteEmail.trim() }
-          : { item_type: linkKind, item_id: p.id, item_name: p.name, profile_id: p.profileId, password: linkPassword.trim() });
+          ? { item_type: p.kind, item_id: p.id, item_name: p.name, profile_id: p.profileId, no_password: true, first_name: first, last_name: last, email: inviteEmail.trim() }
+          : { item_type: p.kind, item_id: p.id, item_name: p.name, profile_id: p.profileId, password: linkPassword.trim() });
         created.push(r);
       }
       const urls = created.map((r) => `https://energyforward.com/share/${r.slug}`);
@@ -998,7 +1004,7 @@ export default function AdminDashboard() {
       } else {
         toast({ title: `${created.length} link${created.length > 1 ? "s" : ""} copied — no email sent`, description: "Paste into your own email when you're ready (one link per line)." });
       }
-      setInviteEmail(""); setInviteName(""); setLinkItem(null); setLinkDocSel({}); setLinkPassword("");
+      setInviteEmail(""); setInviteName(""); setLinkProjectIds([]); setLinkVideoIds([]); setLinkDocSel({}); setLinkPassword("");
       await load();
       return true;
     } catch (e) {
@@ -1176,43 +1182,44 @@ export default function AdminDashboard() {
             )}
             {inviteMode === "link" && (
             <div className="md:col-span-12 ef-access-permissions text-sm space-y-3">
-              <h3 className="ef-subsection-title">2A · Choose material type</h3>
-              <div className="flex flex-wrap gap-4">
-                {(["project", "video", "document"] as Kind[]).map((k) => (
-                  <label key={k} className={`ef-material-choice ef-material-choice--${k} flex items-center gap-2 font-semibold`}>
-                    <input type="radio" name="invite-link-kind" checked={linkKind === k} onChange={() => { setLinkKind(k); setLinkItem(null); }} />
-                    {KIND_LABEL[k]}
-                  </label>
-                ))}
-              </div>
-              {linkKind === "document" ? (
-                <div className="ef-document-picker rounded p-2 max-h-72 overflow-y-auto space-y-3">
-                  {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up.</span>}
-                  {investorProfiles.map((p) => (
-                    <div key={p.id}>
-                      {investorProfiles.length > 1 && <div className="text-xs font-semibold uppercase mb-1">{p.name}</div>}
-                      <DriveSelectTree
-                        profileId={p.id}
-                        selection={linkDocSel[p.id] ?? new Map()}
-                        onChange={(next) => setLinkDocSel((s) => ({ ...s, [p.id]: next }))}
-                        filesOnly
-                      />
-                    </div>
-                  ))}
-                  <p className="text-xs text-muted-foreground">Tick as many files as you like — each one gets its own link. Open a folder to pick files inside it.</p>
-                </div>
-              ) : (
-                <div className="rounded border p-2 max-h-56 overflow-y-auto">
-                  {(linkKind === "video" ? videoCatalog : projectCatalog).length === 0 && <span className="text-muted-foreground">Nothing to pick yet.</span>}
-                  {(linkKind === "video" ? videoCatalog : projectCatalog).map((it) => (
-                    <label key={it.id} className="flex items-center gap-2 py-0.5">
-                      <input type="radio" name="invite-link-item" checked={linkItem?.id === it.id} onChange={() => setLinkItem(it)} />
-                      {it.name.replace(/\.[^.]+$/, "")}
+              <h3 className="ef-subsection-title">2A · Choose material — tick as many as you like</h3>
+              <div className="grid gap-4 md:grid-cols-3">
+                {([["project", "2A · Project 3D Demo", projectCatalog, linkProjectIds, setLinkProjectIds, "ef-section--invite"], ["video", "2B · Videos", videoCatalog, linkVideoIds, setLinkVideoIds, "ef-section--materials"]] as const).map(([k, title, list, sel, setSel, tone]) => (
+                  <fieldset key={k} className={`ef-permission-group ${tone}`}>
+                    <legend className="ef-subsection-title">{title}</legend>
+                    <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
+                      <input type="checkbox" checked={list.length > 0 && sel.length === list.length} onChange={(e) => setSel(e.target.checked ? list.map((i) => i.id) : [])} />
+                      Select all
                     </label>
-                  ))}
-                </div>
-              )}
-              <p>Selected: <strong>{linkKind === "document" ? (linkDocPicks.length ? `${linkDocPicks.length} file${linkDocPicks.length > 1 ? "s" : ""}` : "nothing yet") : linkItem ? linkItem.name : "nothing yet"}</strong></p>
+                    {list.length === 0 && <span className="text-muted-foreground">Nothing to pick yet.</span>}
+                    {list.map((it) => (
+                      <label key={it.id} className="flex items-center gap-2 ml-5">
+                        <input type="checkbox" checked={sel.includes(it.id)} onChange={(e) => { const on = e.target.checked; setSel((prev) => on ? [...prev, it.id] : prev.filter((x) => x !== it.id)); }} />
+                        <span className="min-w-0 break-words">{it.name.replace(/\.[^.]+$/, "")}</span>
+                      </label>
+                    ))}
+                  </fieldset>
+                ))}
+                <fieldset className="ef-permission-group ef-section--people">
+                  <legend className="ef-subsection-title">2C · Documents</legend>
+                  <div className="rounded border p-2 max-h-72 overflow-y-auto space-y-3">
+                    {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up.</span>}
+                    {investorProfiles.map((p) => (
+                      <div key={p.id}>
+                        {investorProfiles.length > 1 && <div className="text-xs font-semibold uppercase mb-1">{p.name}</div>}
+                        <DriveSelectTree
+                          profileId={p.id}
+                          selection={linkDocSel[p.id] ?? new Map()}
+                          onChange={(next) => setLinkDocSel((s) => ({ ...s, [p.id]: next }))}
+                          filesOnly
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Open a folder to pick files inside it.</p>
+                </fieldset>
+              </div>
+              <p>Selected: <strong>{allLinkPicks.length ? `${allLinkPicks.length} item${allLinkPicks.length > 1 ? "s" : ""} — one link each` : "nothing yet"}</strong></p>
               <h3 className="ef-subsection-title">2B · Choose link access</h3>
               <div className="flex flex-wrap gap-4">
                 <label className="flex items-center gap-2 font-semibold"><input type="radio" name="invite-link-mode" checked={linkPersonal} onChange={() => setLinkPersonal(true)} />Personal link <span className="font-normal text-xs text-muted-foreground">(no password — they type their email; expires in 2 weeks)</span></label>
