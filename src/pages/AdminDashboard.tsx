@@ -2426,13 +2426,13 @@ export default function AdminDashboard() {
               <div className="flex flex-wrap gap-2 justify-end">
                 {inviteMode === "link" ? (
                   <>
-                    <Button type="button" variant="outline" disabled={busy} onClick={() => void runBulkSame("link")}>Create links for {importRows.length} people (no email)</Button>
+                    <Button type="button" disabled={busy} className="ef-cta" onClick={() => void runBulkSame("link")}>Create links for {importRows.length} people (no email)</Button>
                     {linkPersonal && <Button type="button" disabled={busy} className="ef-cta" onClick={() => void runBulkSame("link_send")}>Create links &amp; send emails</Button>}
                   </>
                 ) : (
                   <>
-                    <Button type="button" variant="outline" disabled={busy} onClick={() => void runBulkSame("account")}>Create {importRows.length} accounts (no invite email)</Button>
-                    <Button type="button" variant="outline" disabled={busy} onClick={() => void copyPortalLink()}><Copy className="w-4 h-4 mr-2" />Copy portal sign-in link</Button>
+                    <Button type="button" disabled={busy} className="ef-cta" onClick={() => void runBulkSame("account")}>Create {importRows.length} accounts (no invite email)</Button>
+                    <Button type="button" disabled={busy} className="ef-cta" onClick={() => void copyPortalLink()}><Copy className="w-4 h-4 mr-2" />Copy portal sign-in link</Button>
                     <Button type="button" disabled={busy} className="ef-cta" onClick={() => void runBulkSame("invite")}>Create &amp; Invite all {importRows.length}</Button>
                   </>
                 )}
