@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { PortalNav } from "@/components/PortalNav";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -13,6 +14,12 @@ export default function PortalEntryPage() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSignedIn(!!data.session));
+    const { data } = supabase.auth.onAuthStateChange((_e, s) => setSignedIn(!!s));
+    return () => data.subscription.unsubscribe();
+  }, []);
 
   const enter = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +46,7 @@ export default function PortalEntryPage() {
     <div style={{ minHeight: "100vh", background: teal, color: pearl, fontFamily: "'General Sans', Arial, sans-serif", display: "flex", flexDirection: "column" }}>
       <header style={{ padding: "20px clamp(16px,4vw,56px)", borderBottom: "1px solid rgba(238,234,226,0.12)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
         <span style={{ fontFamily: display, fontWeight: 500, fontSize: 18 }}>energyforward<span style={{ color: amber }}>.</span></span>
-        <a href="/?public=1" style={{ fontFamily: mono, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: pearl, textDecoration: "none" }}>Home</a>
+        {signedIn ? <PortalNav current="shared" /> : <a href="/?public=1" style={{ fontFamily: mono, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: pearl, textDecoration: "none" }}>Home</a>}
       </header>
       <section style={{ textAlign: "center", padding: "28px clamp(16px,4vw,56px) 18px", maxWidth: 760, margin: "0 auto" }}>
         <h1 style={{ fontFamily: display, fontWeight: 500, fontSize: "clamp(24px,4vh,38px)", margin: "0 0 10px" }}>
