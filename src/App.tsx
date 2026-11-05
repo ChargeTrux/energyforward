@@ -54,6 +54,7 @@ function SignOutRoute({ onLogout }: { onLogout: () => Promise<void> | void }) {
 function AppContent() {
   const [showLogin, setShowLogin] = useState(false);
   const [prefillEmail, setPrefillEmail] = useState<string | undefined>(undefined);
+  const [loginMode, setLoginMode] = useState<"password" | "code">("password");
   const { session, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -102,6 +103,7 @@ function AppContent() {
     if (params.get("login") === "1" && !session) {
       const em = params.get("email") ?? undefined;
       setPrefillEmail(em);
+      setLoginMode(params.get("auth") === "code" ? "code" : "password");
       setShowLogin(true);
       params.delete("login");
       params.delete("email");
@@ -148,7 +150,7 @@ function AppContent() {
           .select('must_change_password')
           .eq('user_id', session.user.id)
           .maybeSingle();
-        if (profile?.must_change_password) {
+        if (profile?.must_change_password && searchParams.get("auth") !== "code") {
           navigate('/reset-password');
           return;
         }
@@ -231,6 +233,7 @@ function AppContent() {
         open={showLogin} 
         onOpenChange={setShowLogin}
         defaultEmail={prefillEmail}
+        defaultMode={loginMode}
       />
     </>
   );

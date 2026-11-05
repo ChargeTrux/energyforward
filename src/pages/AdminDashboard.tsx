@@ -5,7 +5,8 @@ import type React from "react";
 import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react";
 import { activityInRange, userAccessStatus, type ActivityPreset } from "@/lib/admin-activity";
 import { investorRoleChange, materialRoles } from "@/lib/portal-access-policy";
-import { removeSelectedAccess } from "@/lib/bulk-access";
+import { deleteSelectedAccounts, removeSelectedAccess } from "@/lib/bulk-access";
+import { PORTAL_SIGN_IN_URL } from "@/lib/portal-sign-in";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalUser as useAuth } from "@/components/admin/UserPreviewBoundary";
@@ -266,6 +267,14 @@ export default function AdminDashboard() {
     Record<string, { name: string; description: string; drive_url: string }>
   >({});
   const [busy, setBusy] = useState(false);
+  const [deletingUsers, setDeletingUsers] = useState(false);
+  const deletingUsersRef = useRef(false);
+  const copyPortalLink = async () => {
+    try {
+      await navigator.clipboard.writeText(PORTAL_SIGN_IN_URL);
+      toast({ title: "Portal link copied — no email sent", description: "They sign in with an email code and see their currently assigned materials." });
+    } catch { toast({ title: "Could not copy link", description: PORTAL_SIGN_IN_URL, variant: "destructive" }); }
+  };
   const [accessSearch, setAccessSearch] = useState("");
   const [accessStatusFilter, setAccessStatusFilter] = useState<"all" | "active" | "success" | "pending" | "neutral" | "issue" | "links">("all");
   const [accessSort, setAccessSort] = useState<"name" | "activity" | "status" | "added">("activity");
@@ -840,7 +849,7 @@ export default function AdminDashboard() {
       const list = rolesArr.length ? rolesArr.join(", ") : "no portal";
       toast(sendEmail
         ? { title: "Welcome email sent", description: `Invited ${email} (${list}).` }
-        : { title: "User created — no email sent", description: `${email} (${list}). Use "Send welcome invite with temporary password" in the Investor & user manager when ready.` });
+        : { title: "User created — no email sent", description: `${email} (${list}). Copy the portal link to share their assigned materials, or send a welcome invite when ready.` });
       setInviteEmail("");
       setInviteName("");
       setUseOwnPassword(false);
@@ -1008,9 +1017,23 @@ export default function AdminDashboard() {
   };
 
   const handleDelete = async (user_id: string, email: string) => {
+    if (deletingUsersRef.current) return;
     if (!window.confirm(`Permanently delete ${email}? This removes their account, all portal access, and any direct links made for them. This cannot be undone.`)) return;
-    await callAdmin("delete_user", { user_id });
-    await load();
+    await deleteUsers([user_id]);
+  };
+
+  const deleteUsers = async (ids: string[]) => {
+    if (deletingUsersRef.current || isUserPreview) return;
+    deletingUsersRef.current = true;
+    setDeletingUsers(true);
+    toast({ title: "Deleting selected users…" });
+    try {
+      const result = await deleteSelectedAccounts(ids, user?.id, async (id) => await callAdmin("delete_user", { user_id: id }) as { ok?: boolean } | null);
+      setSelectedInvitees(result.failed);
+      await load();
+      toast({ title: result.failed.length ? `${result.deleted.length} deleted; ${result.failed.length} failed` : `${result.deleted.length} ${result.deleted.length === 1 ? "user deleted" : "users deleted"}`, description: result.failed.length ? "Failed accounts remain selected. Check the error and retry." : "Accounts and their direct links were permanently removed. No emails sent.", variant: result.failed.length ? "destructive" : "default" });
+    } catch (error) { toast({ title: "Deletion failed", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" }); }
+    finally { deletingUsersRef.current = false; setDeletingUsers(false); }
   };
 
   const openEditName = (row: UserListRow) => {
@@ -1639,6 +1662,11 @@ export default function AdminDashboard() {
             >
               Send reset link to selected
             </Button>
+            <Button size="sm" variant="outline" disabled={busy || deletingUsers} onClick={() => void copyPortalLink()}><Copy className="w-4 h-4 mr-2" />Copy portal sign-in link</Button>
+            <Button size="sm" variant="destructive" disabled={!selectedInvitees.length || busy || deletingUsers || bulkApplying} onClick={() => {
+              if (!window.confirm(`Permanently delete ${selectedInvitees.length} selected users and their accounts, access and direct links? Unlike Remove access, this removes them from the user list and cannot be undone. No emails will be sent.`)) return;
+              void deleteUsers(selectedInvitees);
+            }}>{deletingUsers ? "Deleting users…" : "Delete selected users"}</Button>
           </div>
           {selectedInvitees.length > 0 && (
             <div className={`ef-bulk-access mb-4 rounded border p-3 text-sm ${bulkMode === "remove" ? "ef-bulk-access--remove" : ""}`} aria-busy={bulkApplying}>
@@ -1807,8 +1835,9 @@ export default function AdminDashboard() {
                       >
                         {u.is_active === false ? "Restore access" : "Suspend access"}
                       </Button>
-                      <Button size="sm" variant="destructive" onClick={() => handleDelete(u.user_id, u.email)}>
-                        Remove user
+                      <Button size="sm" variant="outline" disabled={busy || deletingUsers} onClick={() => void copyPortalLink()}><Copy className="w-4 h-4 mr-2" />Copy portal sign-in link</Button>
+                      <Button size="sm" variant="destructive" disabled={busy || deletingUsers || u.user_id === user?.id} onClick={() => handleDelete(u.user_id, u.email)}>
+                        {deletingUsers ? "Deleting…" : "Permanently delete user"}
                       </Button>
                     </div>
                     </section>
@@ -2228,8 +2257,9 @@ export default function AdminDashboard() {
                   createInvite(r, inviteEmail, inviteName, false);
                 }}
               >
-                Create only (no email)
+                Create account (no invite email)
               </Button>
+              <Button type="button" variant="outline" disabled={busy} className="mr-3" onClick={() => void copyPortalLink()}><Copy className="w-4 h-4 mr-2" />Copy portal sign-in link</Button>
               <Button type="submit" disabled={busy} className="ef-cta px-8">
                 Create &amp; Invite
               </Button>
@@ -2238,8 +2268,7 @@ export default function AdminDashboard() {
             </div>
           </form>
           <p className="text-xs text-muted-foreground mt-3">
-            A temporary password will be generated and the user will be required to
-            change it on first sign-in, unless you tick "Use my own password".
+            Create the account and assign all selected materials first. Copy portal sign-in link sends no invitation: the person enters their account email and verifies a sign-in code to see their current materials. The same portal link works when access changes. Create &amp; Invite sends a welcome email with a temporary password, unless you tick "Use my own password".
           </p>
         </CardContent>
         </TabsContent>
