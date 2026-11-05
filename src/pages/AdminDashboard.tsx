@@ -2438,9 +2438,8 @@ export default function AdminDashboard() {
                   </>
                 ) : (
                   <>
-                    <Button type="button" disabled={busy} className="ef-cta" onClick={() => void runBulkSame("account")}>Create {importRows.length} accounts (no invite email)</Button>
-                    <Button type="button" disabled={busy} className="ef-cta" onClick={() => void copyPortalLink()}><Copy className="w-4 h-4 mr-2" />Copy portal sign-in link</Button>
-                    <Button type="button" disabled={busy} className="ef-cta" onClick={() => void runBulkSame("invite")}>Create &amp; Invite all {importRows.length}</Button>
+                    <Button type="button" disabled={busy} className="ef-cta" onClick={() => void runBulkSame("invite")}>Create {importRows.length} {importRows.length === 1 ? "account" : "accounts"} (send the invite)</Button>
+                    <Button type="button" disabled={busy} className="ef-cta" onClick={async () => { await runBulkSame("account"); await copyPortalLink(); }}><Copy className="w-4 h-4 mr-2" />Create {importRows.length} {importRows.length === 1 ? "account" : "accounts"} (no invite, copy the link)</Button>
                   </>
                 )}
                 <Button
