@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 import type { AuthError } from "@supabase/supabase-js";
+import { EmailCodeLogin } from "@/components/EmailCodeLogin";
 
 // Validation schema
 const loginSchema = z.object({
@@ -38,9 +39,12 @@ interface LoginModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultEmail?: string;
+  defaultMode?: "password" | "code";
 }
 
-export function LoginModal({ open, onOpenChange, defaultEmail }: LoginModalProps) {
+export function LoginModal({ open, onOpenChange, defaultEmail, defaultMode = "password" }: LoginModalProps) {
+  const [mode, setMode] = useState(defaultMode);
+  useEffect(() => { if (open) setMode(defaultMode); }, [open, defaultMode]);
   const [email, setEmail] = useState(defaultEmail ?? "");
   const [password, setPassword] = useState("");
   useEffect(() => {
@@ -134,8 +138,8 @@ export function LoginModal({ open, onOpenChange, defaultEmail }: LoginModalProps
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="sm:max-w-md border-0 p-0 overflow-hidden"
-        style={{
+        className={mode === "code" ? "sm:max-w-md p-0 overflow-hidden bg-background text-foreground rounded-lg" : "sm:max-w-md border-0 p-0 overflow-hidden"}
+        style={mode === "code" ? undefined : {
           background: "rgba(14, 54, 59, 0.96)",
           color: "#EEEAE2",
           border: "1px solid rgba(238,234,226,0.12)",
@@ -148,7 +152,7 @@ export function LoginModal({ open, onOpenChange, defaultEmail }: LoginModalProps
           <DialogHeader>
             <DialogTitle
               className="text-center"
-              style={{
+              style={mode === "code" ? undefined : {
                 fontFamily: '"Cabinet Grotesk", sans-serif',
                 fontWeight: 700,
                 fontSize: 28,
@@ -157,7 +161,7 @@ export function LoginModal({ open, onOpenChange, defaultEmail }: LoginModalProps
                 letterSpacing: "-0.02em",
               }}
             >
-              login to energyforward<span style={{ color: "#E8B14A" }}>.</span>
+              {mode === "code" ? "EnergyForward portal" : <>login to energyforward<span style={{ color: "#E8B14A" }}>.</span></>}
             </DialogTitle>
             <p
               className="text-center mt-2"
@@ -173,7 +177,7 @@ export function LoginModal({ open, onOpenChange, defaultEmail }: LoginModalProps
             </p>
           </DialogHeader>
 
-          {showForgot ? (
+          {mode === "code" ? <EmailCodeLogin defaultEmail={defaultEmail} onSuccess={() => onOpenChange(false)} onPassword={() => { setMode("password"); setShowForgot(false); }} /> : showForgot ? (
             <div className="space-y-4 mt-6">
               <p style={{ fontSize: 14, color: "rgba(238,234,226,0.75)", textAlign: "center" }}>
                 Enter your email and we'll send you a link to set a new password.
@@ -197,6 +201,7 @@ export function LoginModal({ open, onOpenChange, defaultEmail }: LoginModalProps
             </div>
           ) : (
           <form onSubmit={handleSubmit} className="space-y-4 mt-6">
+            <Button type="button" variant="secondary" className="w-full" onClick={() => setMode("code")}>Sign in with an email code</Button>
             <div className="space-y-2">
               <Label
                 htmlFor="email"

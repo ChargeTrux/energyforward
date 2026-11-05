@@ -11,3 +11,22 @@ export async function removeSelectedAccess(
   if (data !== ids.length) throw new Error("Not all selected accounts were updated. Refresh and try again.");
   return data;
 }
+
+export async function deleteSelectedAccounts(
+  userIds: string[],
+  currentUserId: string | undefined,
+  deleteAccount: (id: string) => Promise<{ ok?: boolean } | null>,
+): Promise<{ deleted: string[]; failed: string[] }> {
+  const ids = [...new Set(userIds)];
+  if (!ids.length) throw new Error("Select at least one user.");
+  if (currentUserId && ids.includes(currentUserId)) throw new Error("You cannot delete your own account. Deselect it first.");
+  const deleted: string[] = [];
+  const failed: string[] = [];
+  for (const id of ids) {
+    try {
+      const result = await deleteAccount(id);
+      (result?.ok === true ? deleted : failed).push(id);
+    } catch { failed.push(id); }
+  }
+  return { deleted, failed };
+}

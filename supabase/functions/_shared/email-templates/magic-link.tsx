@@ -16,21 +16,26 @@ import {
 interface MagicLinkEmailProps {
   siteName: string
   confirmationUrl: string
+  token?: string
 }
 
 export const MagicLinkEmail = ({
   siteName,
   confirmationUrl,
+  token,
 }: MagicLinkEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Your login link for {siteName}</Preview>
+    <Preview>Your EnergyForward sign-in code</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Your login link</Heading>
+        <Heading style={h1}>Your EnergyForward sign-in code</Heading>
+        {token && <>
+          <Text style={text}>Enter this code in the portal to sign in:</Text>
+          <Text style={{ ...h1, fontSize: '32px' }}>{token}</Text>
+        </>}
         <Text style={text}>
-          Click the button below to log in to {siteName}. This link will expire
-          shortly.
+          You can also use the button below to sign in. This code and sign-in link expire shortly and can only be used once.
         </Text>
         <Button style={button} href={confirmationUrl}>
           Log In

@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { removeSelectedAccess } from "../../src/lib/bulk-access";
+import { deleteSelectedAccounts, removeSelectedAccess } from "../../src/lib/bulk-access";
 
 test("Remove access applies to both selected users without any material selections", async () => {
   const calls: string[][] = [];
@@ -21,5 +21,21 @@ test("an admin cannot accidentally revoke their own authority", async () => {
     called = true;
     return { data: 2, error: null };
   })).rejects.toThrow("You cannot remove your own access");
+  expect(called).toBe(false);
+});
+
+test("permanent deletion deletes both selected accounts", async () => {
+  const calls: string[] = [];
+  const result = await deleteSelectedAccounts(["person-1", "person-2"], "admin", async (id) => { calls.push(id); return { ok: true }; });
+  expect(calls).toEqual(["person-1", "person-2"]);
+  expect(result).toEqual({ deleted: ["person-1", "person-2"], failed: [] });
+});
+test("failed deletion keeps failed accounts selected without claiming they were deleted", async () => {
+  const result = await deleteSelectedAccounts(["person-1", "person-2"], "admin", async (id) => id === "person-1" ? { ok: true } : null);
+  expect(result).toEqual({ deleted: ["person-1"], failed: ["person-2"] });
+});
+test("permanent deletion rejects self-deletion before deleting anyone", async () => {
+  let called = false;
+  await expect(deleteSelectedAccounts(["person-1", "admin"], "admin", async () => { called = true; return { ok: true }; })).rejects.toThrow("You cannot delete your own account");
   expect(called).toBe(false);
 });
