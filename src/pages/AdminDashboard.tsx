@@ -2436,6 +2436,17 @@ export default function AdminDashboard() {
                 <h3 className="md:col-span-12 ef-subsection-title">Apply to everyone in this list — same choices as Invite one person</h3>
                 {renderAccessSections()}
               </div>
+              {bulkStatus && (
+                <div role="status" aria-live="polite" className="rounded-md border-2 border-primary bg-primary/10 p-3 text-sm font-semibold">
+                  <div className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Working… {bulkStatus.done} of {bulkStatus.total} done{bulkStatus.current ? ` — now: ${bulkStatus.current}` : ""}</div>
+                  <div className="mt-2 h-2 w-full rounded bg-muted overflow-hidden"><div className="h-full bg-primary transition-all" style={{ width: `${(bulkStatus.done / Math.max(1, bulkStatus.total)) * 100}%` }} /></div>
+                </div>
+              )}
+              {!bulkStatus && bulkDoneAction && importResults.length > 0 && (
+                <div role="status" className="rounded-md border-2 border-primary bg-primary/10 p-3 text-sm font-semibold">
+                  Finished: {importResults.filter((r) => r.ok).length} of {importResults.length} done.{bulkDoneAction === "account" ? " Use “Copy the sign-in link for all of them” to send one link by email." : ""}
+                </div>
+              )}
               <div className="flex flex-wrap gap-2 justify-end">
                 {inviteMode === "link" ? (
                   <>
