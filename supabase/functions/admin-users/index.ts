@@ -662,8 +662,11 @@ Deno.serve(async (req) => {
 
     if (action === "delete_user") {
       const { user_id } = body;
-      if (!user_id) return json({ error: "Missing user_id" }, 400);
+      if (typeof user_id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user_id)) return json({ error: "Invalid user_id" }, 400);
       if (user_id === userData.user.id) return json({ error: "Cannot delete yourself" }, 400);
+      const { data: target, error: targetError } = await admin.auth.admin.getUserById(user_id);
+      if (targetError && !/not.?found/i.test(targetError.message)) return json({ error: "Could not load the account before deletion. Please retry." }, 500);
+      const targetEmail = target?.user?.email;
       // Remove related rows first — some foreign keys don't cascade, which
       // would make the auth delete fail with a database error.
       const relatedTables = [
@@ -676,41 +679,35 @@ Deno.serve(async (req) => {
         "investor_profile_access",
         "page_access",
         "user_roles",
-        "profiles",
       ];
       for (const table of relatedTables) {
         const { error: delErr } = await admin.from(table).delete().eq("user_id", user_id);
-        if (delErr) console.error(`Cleanup ${table} failed:`, delErr.message);
+        if (delErr) {
+          console.error(`Cleanup ${table} failed:`, delErr.message);
+          return json({ error: "Account deletion stopped because related records could not be removed. The account remains; retry deletion." }, 500);
+        }
       }
-      const { data: target } = await admin.auth.admin.getUserById(user_id);
-      const targetEmail = target?.user?.email;
       // Removing a user also removes their direct share links (by account or
       // recipient email). Deleting a single link stays a separate action.
       const linkIds = new Set<string>();
-      const { data: linksByUser } = await admin.from("share_links").select("id").eq("user_id", user_id);
+      const { data: linksByUser, error: userLinksError } = await admin.from("share_links").select("id").eq("user_id", user_id);
+      if (userLinksError) return json({ error: "Could not load direct links for deletion. Please retry." }, 500);
       for (const l of linksByUser ?? []) linkIds.add(l.id as string);
       if (targetEmail) {
-        const { data: linksByEmail } = await admin.from("share_links").select("id").ilike("recipient_email", targetEmail);
+        const { data: linksByEmail, error: emailLinksError } = await admin.from("share_links").select("id").eq("recipient_email", targetEmail.toLowerCase());
+        if (emailLinksError) return json({ error: "Could not load recipient links for deletion. Please retry." }, 500);
         for (const l of linksByEmail ?? []) linkIds.add(l.id as string);
       }
       for (const id of linkIds) {
-        await admin.from("activity_locations").update({ share_link_id: null }).eq("share_link_id", id);
-        await admin.from("share_link_views").delete().eq("link_id", id);
-        await admin.from("share_links").delete().eq("id", id);
+        const { error: locationError } = await admin.from("activity_locations").update({ share_link_id: null }).eq("share_link_id", id);
+        if (locationError) return json({ error: "Could not detach link activity. Please retry deletion." }, 500);
+        const { error: viewError } = await admin.from("share_link_views").delete().eq("link_id", id);
+        if (viewError) return json({ error: "Could not remove link views. Please retry deletion." }, 500);
+        const { error: linkError } = await admin.from("share_links").delete().eq("id", id);
+        if (linkError) return json({ error: "Could not remove direct links. Please retry deletion." }, 500);
       }
       const { error } = await admin.auth.admin.deleteUser(user_id);
       if (error && !/not.?found/i.test(error.message)) return json({ error: error.message }, 400);
-      if (targetEmail) {
-        await admin.from("profiles").delete().ilike("email", targetEmail);
-        // Remove any leftover duplicate account with the same email
-        const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-        for (const u of list?.users ?? []) {
-          if ((u.email || "").toLowerCase() === targetEmail.toLowerCase()) {
-            for (const t of relatedTables) await admin.from(t).delete().eq("user_id", u.id);
-            await admin.auth.admin.deleteUser(u.id);
-          }
-        }
-      }
       const { data: still } = await admin.auth.admin.getUserById(user_id);
       if (still?.user) return json({ error: "Account could not be fully removed — please try again" }, 500);
       return json({ ok: true });

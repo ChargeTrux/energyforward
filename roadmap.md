@@ -1,7 +1,8 @@
 # Roadmap
 
-- [ ] Add reusable portal-link copying and optional email-code sign-in for existing accounts without automatic welcome invitations.
-- [ ] Investigate why two selected users remain after removal; distinguish revoking access from deleting accounts and fix any failed deletion flow.
+- [x] Add reusable portal-link copying and existing-account-only email-code sign-in; keep invitation optional and show code in the existing auth email template. Simulated code request/rejection checks and 14 regression tests passed; frontend publication pending.
+- [x] Distinguish Remove access (accounts remain) from permanent Delete selected users; add two-person deletion, failure retention, self-protection and immediate feedback; stop server deletion on cleanup failures.
+- [ ] Verify real email-code delivery and selected-user deletion (blocked: externally managed Supabase authenticated checks/settings are unavailable; no emails sent or real users deleted during testing).
 
 - [x] Fix bulk Remove access without material selections: one admin-checked transaction clears all selected accounts' role/material/page grants and disables direct links; red removal controls, clarified Apply label and progress/error feedback. Fifteen tests passed and build clean; no real accounts changed. Frontend publication pending.
 - [ ] Verify bulk removal with real selected users (blocked: external Supabase authenticated checks unavailable; simulated sign-in did not reach admin).
@@ -33,7 +34,7 @@
 - [x] Make password and personal share links directly visible to all admins; show loading errors rather than an empty list (both admin role checks and existing link visibility verified; build clean).
 - [ ] Verify shared-link controls while signed in as the second admin (blocked: authenticated end-to-end checks unavailable for external Supabase).
 
-- [ ] Use energyforward.com for all outgoing portal, invitation, and reset links; activate only after its domain connection is repaired (blocked: domain currently points elsewhere).
+- [ ] Use energyforward.com for all legacy outgoing portal, invitation, and reset links; domain connection is confirmed repaired on 2026-11-05, but older email flows still require separate review. The new copied portal link uses energyforward.com.
 
 - [x] Reduce protected video startup round trips without changing quality or text or sending emails; mocked range/access tests passed, deployed preflight caching and signed-out rejection verified. Real signed-in playback remains blocked by external authentication (see below).
 
