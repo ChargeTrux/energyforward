@@ -117,6 +117,7 @@ function InvestorVideosInner() {
   const [maxedId, setMaxedId] = useState<string | null>(null);
   useLiveRefresh(async () => {
     const res = await callFn("action=mine").catch(() => null);
+    if (!res || res.status >= 500) return; // transient failure: keep what is shown
     const body = await res?.json().catch(() => ({}));
     const next: Video[] = res?.ok ? body.videos ?? [] : [];
     videoEls.current.forEach((el, id) => {

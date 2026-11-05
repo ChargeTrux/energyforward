@@ -109,6 +109,7 @@ export default function ProjectRun() {
   useEffect(() => { document.title = "energyforward · project 3D demo"; }, []);
   useLiveRefresh(async () => {
     const res = await callFn("action=mine").catch(() => null);
+    if (!res || res.status >= 500) return; // transient failure: keep what is shown
     const body = await res?.json().catch(() => ({}));
     const next: Page[] = res?.ok ? body.pages ?? [] : [];
     setPages(next);
