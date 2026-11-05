@@ -957,20 +957,22 @@ export default function AdminDashboard() {
   const linkDocPicks = investorProfiles.flatMap((p) =>
     [...(linkDocSel[p.id] ?? new Map())].map(([id, picked]) => ({ id, name: picked.name, profileId: p.id })),
   );
+  const inviteEmailState = inviteEmail;
+  const inviteNameState = inviteName;
   const createLinkFromInvite = async (send: boolean, who?: { email: string; name: string }): Promise<boolean> => {
     const inviteEmail = who ? who.email : inviteEmailState;
     const inviteName = who ? who.name : inviteNameState;
     const quiet = !!who;
     if (!inviteEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail.trim())) {
       toast({ title: "Enter a valid email address", variant: "destructive" });
-      return;
+      return false;
     }
     const picks = linkKind === "document" ? linkDocPicks : linkItem ? [linkItem] : [];
-    if (!picks.length) { toast({ title: "Pick a file, video or 3D page first", variant: "destructive" }); return; }
+    if (!picks.length) { toast({ title: "Pick a file, video or 3D page first", variant: "destructive" }); return false; }
     const first = (inviteName.trim().split(" ")[0] ?? "").trim();
     const last = inviteName.trim().split(" ").slice(1).join(" ");
-    if (linkPersonal && !first) { toast({ title: "Enter at least a first name", variant: "destructive" }); return; }
-    if (!linkPersonal && linkPassword.trim().length < 6) { toast({ title: "Password needs at least 6 characters", variant: "destructive" }); return; }
+    if (linkPersonal && !first) { toast({ title: "Enter at least a first name", variant: "destructive" }); return false; }
+    if (!linkPersonal && linkPassword.trim().length < 6) { toast({ title: "Password needs at least 6 characters", variant: "destructive" }); return false; }
     try {
       const created: { id: string; slug: string }[] = [];
       for (const p of picks) {
@@ -980,6 +982,10 @@ export default function AdminDashboard() {
         created.push(r);
       }
       void navigator.clipboard.writeText(created.map((r) => `https://energyforward.com/share/${r.slug}`).join("\n"));
+      if (quiet) {
+        if (send && linkPersonal) for (const r of created) await callShareLink("send_email", { id: r.id });
+        return true;
+      }
       if (send && linkPersonal) {
         let sent = 0;
         for (const r of created) {
@@ -992,7 +998,12 @@ export default function AdminDashboard() {
       }
       setInviteEmail(""); setInviteName(""); setLinkItem(null); setLinkDocSel({}); setLinkPassword("");
       await load();
-    } catch (e) { toast({ title: "Could not create link", description: (e as Error).message, variant: "destructive" }); }
+      return true;
+    } catch (e) {
+      if (quiet) throw e;
+      toast({ title: "Could not create link", description: (e as Error).message, variant: "destructive" });
+      return false;
+    }
   };
 
   const renderAccessSections = () => (
