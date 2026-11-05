@@ -821,11 +821,12 @@ export default function AdminDashboard() {
     email = inviteEmail,
     fullName = inviteName,
     sendEmail = true,
-  ) => {
-    if (!email) return;
+    quiet = false,
+  ): Promise<boolean> => {
+    if (!email) return false;
     if (useOwnPassword && ownPassword.trim().length < 8) {
       toast({ title: "Password too short", description: "Your chosen password needs at least 8 characters.", variant: "destructive" });
-      return;
+      return false;
     }
     // Picking videos / 3D pages grants that section; investor portal stays independent.
     rolesArr = materialRoles(rolesArr, selectedVideoIds, selectedProjectIds) as PortalRole[];
@@ -846,6 +847,7 @@ export default function AdminDashboard() {
       investor_video_ids: rolesArr.includes("video") ? (selectedVideoIds.length ? selectedVideoIds : videoCatalog.map((v) => v.id)) : [],
       project_page_ids: rolesArr.includes("project") ? (selectedProjectIds.length ? selectedProjectIds : projectCatalog.map((pg) => pg.id)) : [],
     })) as { temp_password?: string } | null;
+    if (data && quiet) return true;
     if (data) {
       const list = rolesArr.length ? rolesArr.join(", ") : "no portal";
       toast(sendEmail
@@ -865,6 +867,7 @@ export default function AdminDashboard() {
       setInviteDocItems({});
       setSelectedVideoIds([]);
     }
+    return !!data;
   };
 
   const downloadImportTemplate = () => {
@@ -954,17 +957,22 @@ export default function AdminDashboard() {
   const linkDocPicks = investorProfiles.flatMap((p) =>
     [...(linkDocSel[p.id] ?? new Map())].map(([id, picked]) => ({ id, name: picked.name, profileId: p.id })),
   );
-  const createLinkFromInvite = async (send: boolean) => {
+  const inviteEmailState = inviteEmail;
+  const inviteNameState = inviteName;
+  const createLinkFromInvite = async (send: boolean, who?: { email: string; name: string; collect?: string[] }): Promise<boolean> => {
+    const inviteEmail = who ? who.email : inviteEmailState;
+    const inviteName = who ? who.name : inviteNameState;
+    const quiet = !!who;
     if (!inviteEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail.trim())) {
       toast({ title: "Enter a valid email address", variant: "destructive" });
-      return;
+      return false;
     }
     const picks = linkKind === "document" ? linkDocPicks : linkItem ? [linkItem] : [];
-    if (!picks.length) { toast({ title: "Pick a file, video or 3D page first", variant: "destructive" }); return; }
+    if (!picks.length) { toast({ title: "Pick a file, video or 3D page first", variant: "destructive" }); return false; }
     const first = (inviteName.trim().split(" ")[0] ?? "").trim();
     const last = inviteName.trim().split(" ").slice(1).join(" ");
-    if (linkPersonal && !first) { toast({ title: "Enter at least a first name", variant: "destructive" }); return; }
-    if (!linkPersonal && linkPassword.trim().length < 6) { toast({ title: "Password needs at least 6 characters", variant: "destructive" }); return; }
+    if (linkPersonal && !first) { toast({ title: "Enter at least a first name", variant: "destructive" }); return false; }
+    if (!linkPersonal && linkPassword.trim().length < 6) { toast({ title: "Password needs at least 6 characters", variant: "destructive" }); return false; }
     try {
       const created: { id: string; slug: string }[] = [];
       for (const p of picks) {
@@ -973,7 +981,13 @@ export default function AdminDashboard() {
           : { item_type: linkKind, item_id: p.id, item_name: p.name, profile_id: p.profileId, password: linkPassword.trim() });
         created.push(r);
       }
-      void navigator.clipboard.writeText(created.map((r) => `https://energyforward.com/share/${r.slug}`).join("\n"));
+      const urls = created.map((r) => `https://energyforward.com/share/${r.slug}`);
+      if (!quiet) void navigator.clipboard.writeText(urls.join("\n"));
+      if (quiet) {
+        who?.collect?.push(...urls.map((u) => `${inviteEmail.trim()}: ${u}`));
+        if (send && linkPersonal) for (const r of created) await callShareLink("send_email", { id: r.id });
+        return true;
+      }
       if (send && linkPersonal) {
         let sent = 0;
         for (const r of created) {
@@ -986,8 +1000,235 @@ export default function AdminDashboard() {
       }
       setInviteEmail(""); setInviteName(""); setLinkItem(null); setLinkDocSel({}); setLinkPassword("");
       await load();
-    } catch (e) { toast({ title: "Could not create link", description: (e as Error).message, variant: "destructive" }); }
+      return true;
+    } catch (e) {
+      if (quiet) throw e;
+      toast({ title: "Could not create link", description: (e as Error).message, variant: "destructive" });
+      return false;
+    }
   };
+
+  // Bulk import with exactly the same choices as "Invite one person".
+  const bulkImportRunning = useRef(false);
+  const runBulkSame = async (action: "account" | "invite" | "link" | "link_send") => {
+    if (!importRows.length || bulkImportRunning.current) return;
+    if (isUserPreview) { toast({ title: "Read-only preview", description: "Exit preview to make changes." }); return; }
+    if (inviteMode === "portal" && inviteAdmin && !window.confirm(`Give full admin access to all ${importRows.length} people?`)) return;
+    bulkImportRunning.current = true;
+    toast({ title: `Working on ${importRows.length} people…` });
+    const results: { email: string; ok: boolean; message: string }[] = [];
+    const links: string[] = [];
+    const roles: PortalRole[] = [];
+    if (inviteAdmin) roles.push("admin");
+    if (inviteInvestor) roles.push("investor");
+    if (inviteCustomer) roles.push("customer");
+    if (inviteVideo) roles.push("video");
+    if (inviteProject) roles.push("project");
+    try {
+      for (const row of importRows) {
+        const name = row.full_name || row.email.split("@")[0];
+        try {
+          const ok = action === "link" || action === "link_send"
+            ? await createLinkFromInvite(action === "link_send", { email: row.email, name, collect: links })
+            : await createInvite([...roles], row.email, row.full_name, action === "invite", true);
+          results.push({ email: row.email, ok, message: ok ? (action === "invite" || action === "link_send" ? "Done — email sent" : "Done — no email sent") : "Failed" });
+        } catch (e) { results.push({ email: row.email, ok: false, message: (e as Error).message }); }
+      }
+      setImportResults(results);
+      if (links.length) await navigator.clipboard.writeText(links.join("\n")).catch(() => undefined);
+      await Promise.all([load(), loadVideos(), loadProject()]);
+      const okCount = results.filter((r) => r.ok).length;
+      toast({ title: "Import finished", description: `${okCount} of ${results.length} people done.${links.length ? " All links copied (email: link, one per line)." : ""}` });
+    } finally { bulkImportRunning.current = false; }
+  };
+
+  const renderAccessSections = () => (
+    <>
+            <fieldset className="md:col-span-12 ef-form-group text-sm">
+              <legend>1 · Access type</legend>
+              <div className="ef-choice-row">
+              <label className="flex items-center gap-2 font-semibold">
+                <input type="radio" name="invite-mode" checked={inviteMode === "portal"} onChange={() => setInviteMode("portal")} />
+                Portal access <span className="font-normal text-xs text-muted-foreground">(they sign in with an account)</span>
+              </label>
+              <label className="flex items-center gap-2 font-semibold">
+                <input type="radio" name="invite-mode" checked={inviteMode === "link"} onChange={() => setInviteMode("link")} />
+                Direct link <span className="font-normal text-xs text-muted-foreground">(one file, video or 3D page — no account)</span>
+              </label>
+              </div>
+            </fieldset>
+            {inviteMode === "portal" && (
+            <div className="md:col-span-12 flex flex-wrap items-center gap-3 text-sm">
+              <label className="flex items-center gap-2 font-semibold">
+                <input type="checkbox" checked={useOwnPassword} onChange={(e) => setUseOwnPassword(e.target.checked)} />
+                Use my own password
+              </label>
+              {useOwnPassword && (
+                <Input
+                  className="max-w-xs"
+                  value={ownPassword}
+                  onChange={(e) => setOwnPassword(e.target.value)}
+                  placeholder="At least 8 characters"
+                  autoComplete="off"
+                  aria-label="Password to send"
+                />
+              )}
+              {useOwnPassword && <span className="text-xs text-muted-foreground">Sent in the welcome email; they won't be asked to change it.</span>}
+            </div>
+            )}
+            {inviteMode === "portal" && (
+            <div className="md:col-span-12 ef-access-permissions text-sm">
+              <h3 className="ef-subsection-title">2 · Portal &amp; material access</h3>
+              <div className="flex flex-wrap gap-6 pb-3 mb-3 border-b">
+                <label className="flex items-center gap-2 font-semibold">
+                  <input type="checkbox" checked={inviteAdmin} onChange={(e) => setInviteAdmin(e.target.checked)} />
+                  Full admin access
+                </label>
+                <label className="flex items-center gap-2 font-semibold">
+                  <input type="checkbox" checked={inviteInvestor} onChange={(e) => setInviteInvestor(e.target.checked)} />
+                  Investor portal <span className="font-normal text-xs text-muted-foreground">(portal pages only)</span>
+                </label>
+                <label className="flex items-center gap-2 font-semibold">
+                  <input type="checkbox" checked={inviteCustomer} onChange={(e) => setInviteCustomer(e.target.checked)} />
+                  Customer portal
+                </label>
+              </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <fieldset className="ef-permission-group ef-section--invite">
+                  <legend className="ef-subsection-title">2A · Project 3D Demo</legend>
+                  <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
+                    <input type="checkbox" checked={inviteProject} onChange={(e) => { setInviteProject(e.target.checked); setSelectedProjectIds(e.target.checked ? projectCatalog.map((pg) => pg.id) : []); }} />
+                    Project 3D Demo
+                  </label>
+                  {projectCatalog.length === 0 && <span className="text-muted-foreground">{projectCatalogMsg}</span>}
+                  {projectCatalog.map((pg) => (
+                    <label key={pg.id} className={`flex items-center gap-2 ml-5 ${!inviteProject ? "opacity-50 cursor-not-allowed" : ""}`} title={!inviteProject ? "Enable Project 3D Demo first" : undefined}>
+                      <input
+                        type="checkbox"
+                        disabled={!inviteProject}
+                        checked={selectedProjectIds.includes(pg.id)}
+                        onChange={(e) => {
+                          const on = e.target.checked;
+                          setSelectedProjectIds((prev) => on ? [...prev, pg.id] : prev.filter((id) => id !== pg.id));
+                        }}
+                      />
+                      <span className="min-w-0 break-words">{pg.name}</span>
+                    </label>
+                  ))}
+                </fieldset>
+                <fieldset className="ef-permission-group ef-section--materials">
+                  <legend className="ef-subsection-title">2B · Videos</legend>
+                  <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
+                    <input type="checkbox" checked={inviteVideo} onChange={(e) => { setInviteVideo(e.target.checked); setSelectedVideoIds(e.target.checked ? videoCatalog.map((v) => v.id) : []); }} />
+                    Videos
+                  </label>
+                  {videoCatalog.length === 0 && <span className="text-muted-foreground">{videoCatalogMsg}</span>}
+                  {videoCatalog.map((v) => (
+                    <label key={v.id} className={`flex items-center gap-2 ml-5 ${!inviteVideo ? "opacity-50 cursor-not-allowed" : ""}`} title={!inviteVideo ? "Enable Videos first" : undefined}>
+                      <input
+                        type="checkbox"
+                        disabled={!inviteVideo}
+                        checked={selectedVideoIds.includes(v.id)}
+                        onChange={(e) => {
+                          const on = e.target.checked;
+                          setSelectedVideoIds((prev) => on ? [...prev, v.id] : prev.filter((id) => id !== v.id));
+                        }}
+                      />
+                      <span className="min-w-0 break-words">{v.name.replace(/\.[^.]+$/, "")}</span>
+                    </label>
+                  ))}
+                </fieldset>
+                <fieldset className="ef-permission-group ef-section--people">
+                  <legend className="ef-subsection-title">2C · Documents</legend>
+                  {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up</span>}
+                  {investorProfiles.map((p) => {
+                    const on = selectedProfileIds.includes(p.id);
+                    const sel = inviteDocItems[p.id] ?? new Map();
+                    return (
+                    <div key={p.id}>
+                      <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
+                        <input
+                          type="checkbox"
+                          checked={on}
+                          onChange={(e) => {
+                            setSelectedProfileIds((prev) => e.target.checked ? [...prev, p.id] : prev.filter((id) => id !== p.id));
+                            if (!e.target.checked) setInviteDocItems((s) => ({ ...s, [p.id]: new Map() }));
+                          }}
+                        />
+                        Documents (Data Room){on && !sel.size ? " — whole folder" : ""}
+                      </label>
+                      <div className="ml-5 rounded border p-2 max-h-72 overflow-y-auto">
+                        <p className="text-xs text-muted-foreground mb-1">Ticking a folder ticks everything inside it; untick single files to leave them out. Nothing ticked = the whole folder.</p>
+                        <DriveSelectTree
+                          profileId={p.id}
+                          selection={on ? sel : new Map()}
+                          onChange={(next) => setInviteDocItems((s) => ({ ...s, [p.id]: next }))}
+                          disabled={!on}
+                          disabledHint="Tick Documents (Data Room) first"
+                        />
+                      </div>
+                    </div>
+                    );
+                  })}
+                </fieldset>
+              </div>
+            </div>
+            )}
+            {inviteMode === "link" && (
+            <div className="md:col-span-12 ef-access-permissions text-sm space-y-3">
+              <h3 className="ef-subsection-title">2A · Choose material type</h3>
+              <div className="flex flex-wrap gap-4">
+                {(["project", "video", "document"] as Kind[]).map((k) => (
+                  <label key={k} className={`ef-material-choice ef-material-choice--${k} flex items-center gap-2 font-semibold`}>
+                    <input type="radio" name="invite-link-kind" checked={linkKind === k} onChange={() => { setLinkKind(k); setLinkItem(null); }} />
+                    {KIND_LABEL[k]}
+                  </label>
+                ))}
+              </div>
+              {linkKind === "document" ? (
+                <div className="ef-document-picker rounded p-2 max-h-72 overflow-y-auto space-y-3">
+                  {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up.</span>}
+                  {investorProfiles.map((p) => (
+                    <div key={p.id}>
+                      {investorProfiles.length > 1 && <div className="text-xs font-semibold uppercase mb-1">{p.name}</div>}
+                      <DriveSelectTree
+                        profileId={p.id}
+                        selection={linkDocSel[p.id] ?? new Map()}
+                        onChange={(next) => setLinkDocSel((s) => ({ ...s, [p.id]: next }))}
+                        filesOnly
+                      />
+                    </div>
+                  ))}
+                  <p className="text-xs text-muted-foreground">Tick as many files as you like — each one gets its own link. Open a folder to pick files inside it.</p>
+                </div>
+              ) : (
+                <div className="rounded border p-2 max-h-56 overflow-y-auto">
+                  {(linkKind === "video" ? videoCatalog : projectCatalog).length === 0 && <span className="text-muted-foreground">Nothing to pick yet.</span>}
+                  {(linkKind === "video" ? videoCatalog : projectCatalog).map((it) => (
+                    <label key={it.id} className="flex items-center gap-2 py-0.5">
+                      <input type="radio" name="invite-link-item" checked={linkItem?.id === it.id} onChange={() => setLinkItem(it)} />
+                      {it.name.replace(/\.[^.]+$/, "")}
+                    </label>
+                  ))}
+                </div>
+              )}
+              <p>Selected: <strong>{linkKind === "document" ? (linkDocPicks.length ? `${linkDocPicks.length} file${linkDocPicks.length > 1 ? "s" : ""}` : "nothing yet") : linkItem ? linkItem.name : "nothing yet"}</strong></p>
+              <h3 className="ef-subsection-title">2B · Choose link access</h3>
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="invite-link-mode" checked={linkPersonal} onChange={() => setLinkPersonal(true)} />Personal link <span className="font-normal text-xs text-muted-foreground">(no password — they type their email; expires in 2 weeks)</span></label>
+                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="invite-link-mode" checked={!linkPersonal} onChange={() => setLinkPersonal(false)} />Link with password</label>
+              </div>
+              {!linkPersonal && (
+                <div className="max-w-xs">
+                  <Label htmlFor="invite-link-pw">Password</Label>
+                  <Input id="invite-link-pw" value={linkPassword} onChange={(e) => setLinkPassword(e.target.value)} placeholder="At least 6 characters" autoComplete="off" />
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">No account is created and no email is sent unless you click "Create link &amp; send email". The person appears in the Investor & user manager under "Link access".</p>
+            </div>
+            )}
+    </>
+  );
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2067,189 +2308,7 @@ export default function AdminDashboard() {
                 placeholder="user@example.com"
               />
             </div>
-            <fieldset className="md:col-span-12 ef-form-group text-sm">
-              <legend>1 · Access type</legend>
-              <div className="ef-choice-row">
-              <label className="flex items-center gap-2 font-semibold">
-                <input type="radio" name="invite-mode" checked={inviteMode === "portal"} onChange={() => setInviteMode("portal")} />
-                Portal access <span className="font-normal text-xs text-muted-foreground">(they sign in with an account)</span>
-              </label>
-              <label className="flex items-center gap-2 font-semibold">
-                <input type="radio" name="invite-mode" checked={inviteMode === "link"} onChange={() => setInviteMode("link")} />
-                Direct link <span className="font-normal text-xs text-muted-foreground">(one file, video or 3D page — no account)</span>
-              </label>
-              </div>
-            </fieldset>
-            {inviteMode === "portal" && (
-            <div className="md:col-span-12 flex flex-wrap items-center gap-3 text-sm">
-              <label className="flex items-center gap-2 font-semibold">
-                <input type="checkbox" checked={useOwnPassword} onChange={(e) => setUseOwnPassword(e.target.checked)} />
-                Use my own password
-              </label>
-              {useOwnPassword && (
-                <Input
-                  className="max-w-xs"
-                  value={ownPassword}
-                  onChange={(e) => setOwnPassword(e.target.value)}
-                  placeholder="At least 8 characters"
-                  autoComplete="off"
-                  aria-label="Password to send"
-                />
-              )}
-              {useOwnPassword && <span className="text-xs text-muted-foreground">Sent in the welcome email; they won't be asked to change it.</span>}
-            </div>
-            )}
-            {inviteMode === "portal" && (
-            <div className="md:col-span-12 ef-access-permissions text-sm">
-              <h3 className="ef-subsection-title">2 · Portal &amp; material access</h3>
-              <div className="flex flex-wrap gap-6 pb-3 mb-3 border-b">
-                <label className="flex items-center gap-2 font-semibold">
-                  <input type="checkbox" checked={inviteAdmin} onChange={(e) => setInviteAdmin(e.target.checked)} />
-                  Full admin access
-                </label>
-                <label className="flex items-center gap-2 font-semibold">
-                  <input type="checkbox" checked={inviteInvestor} onChange={(e) => setInviteInvestor(e.target.checked)} />
-                  Investor portal <span className="font-normal text-xs text-muted-foreground">(portal pages only)</span>
-                </label>
-                <label className="flex items-center gap-2 font-semibold">
-                  <input type="checkbox" checked={inviteCustomer} onChange={(e) => setInviteCustomer(e.target.checked)} />
-                  Customer portal
-                </label>
-              </div>
-              <div className="grid gap-4 md:grid-cols-3">
-                <fieldset className="ef-permission-group ef-section--invite">
-                  <legend className="ef-subsection-title">2A · Project 3D Demo</legend>
-                  <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
-                    <input type="checkbox" checked={inviteProject} onChange={(e) => { setInviteProject(e.target.checked); setSelectedProjectIds(e.target.checked ? projectCatalog.map((pg) => pg.id) : []); }} />
-                    Project 3D Demo
-                  </label>
-                  {projectCatalog.length === 0 && <span className="text-muted-foreground">{projectCatalogMsg}</span>}
-                  {projectCatalog.map((pg) => (
-                    <label key={pg.id} className={`flex items-center gap-2 ml-5 ${!inviteProject ? "opacity-50 cursor-not-allowed" : ""}`} title={!inviteProject ? "Enable Project 3D Demo first" : undefined}>
-                      <input
-                        type="checkbox"
-                        disabled={!inviteProject}
-                        checked={selectedProjectIds.includes(pg.id)}
-                        onChange={(e) => {
-                          const on = e.target.checked;
-                          setSelectedProjectIds((prev) => on ? [...prev, pg.id] : prev.filter((id) => id !== pg.id));
-                        }}
-                      />
-                      <span className="min-w-0 break-words">{pg.name}</span>
-                    </label>
-                  ))}
-                </fieldset>
-                <fieldset className="ef-permission-group ef-section--materials">
-                  <legend className="ef-subsection-title">2B · Videos</legend>
-                  <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
-                    <input type="checkbox" checked={inviteVideo} onChange={(e) => { setInviteVideo(e.target.checked); setSelectedVideoIds(e.target.checked ? videoCatalog.map((v) => v.id) : []); }} />
-                    Videos
-                  </label>
-                  {videoCatalog.length === 0 && <span className="text-muted-foreground">{videoCatalogMsg}</span>}
-                  {videoCatalog.map((v) => (
-                    <label key={v.id} className={`flex items-center gap-2 ml-5 ${!inviteVideo ? "opacity-50 cursor-not-allowed" : ""}`} title={!inviteVideo ? "Enable Videos first" : undefined}>
-                      <input
-                        type="checkbox"
-                        disabled={!inviteVideo}
-                        checked={selectedVideoIds.includes(v.id)}
-                        onChange={(e) => {
-                          const on = e.target.checked;
-                          setSelectedVideoIds((prev) => on ? [...prev, v.id] : prev.filter((id) => id !== v.id));
-                        }}
-                      />
-                      <span className="min-w-0 break-words">{v.name.replace(/\.[^.]+$/, "")}</span>
-                    </label>
-                  ))}
-                </fieldset>
-                <fieldset className="ef-permission-group ef-section--people">
-                  <legend className="ef-subsection-title">2C · Documents</legend>
-                  {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up</span>}
-                  {investorProfiles.map((p) => {
-                    const on = selectedProfileIds.includes(p.id);
-                    const sel = inviteDocItems[p.id] ?? new Map();
-                    return (
-                    <div key={p.id}>
-                      <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
-                        <input
-                          type="checkbox"
-                          checked={on}
-                          onChange={(e) => {
-                            setSelectedProfileIds((prev) => e.target.checked ? [...prev, p.id] : prev.filter((id) => id !== p.id));
-                            if (!e.target.checked) setInviteDocItems((s) => ({ ...s, [p.id]: new Map() }));
-                          }}
-                        />
-                        Documents (Data Room){on && !sel.size ? " — whole folder" : ""}
-                      </label>
-                      <div className="ml-5 rounded border p-2 max-h-72 overflow-y-auto">
-                        <p className="text-xs text-muted-foreground mb-1">Ticking a folder ticks everything inside it; untick single files to leave them out. Nothing ticked = the whole folder.</p>
-                        <DriveSelectTree
-                          profileId={p.id}
-                          selection={on ? sel : new Map()}
-                          onChange={(next) => setInviteDocItems((s) => ({ ...s, [p.id]: next }))}
-                          disabled={!on}
-                          disabledHint="Tick Documents (Data Room) first"
-                        />
-                      </div>
-                    </div>
-                    );
-                  })}
-                </fieldset>
-              </div>
-            </div>
-            )}
-            {inviteMode === "link" && (
-            <div className="md:col-span-12 ef-access-permissions text-sm space-y-3">
-              <h3 className="ef-subsection-title">2A · Choose material type</h3>
-              <div className="flex flex-wrap gap-4">
-                {(["project", "video", "document"] as Kind[]).map((k) => (
-                  <label key={k} className={`ef-material-choice ef-material-choice--${k} flex items-center gap-2 font-semibold`}>
-                    <input type="radio" name="invite-link-kind" checked={linkKind === k} onChange={() => { setLinkKind(k); setLinkItem(null); }} />
-                    {KIND_LABEL[k]}
-                  </label>
-                ))}
-              </div>
-              {linkKind === "document" ? (
-                <div className="ef-document-picker rounded p-2 max-h-72 overflow-y-auto space-y-3">
-                  {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up.</span>}
-                  {investorProfiles.map((p) => (
-                    <div key={p.id}>
-                      {investorProfiles.length > 1 && <div className="text-xs font-semibold uppercase mb-1">{p.name}</div>}
-                      <DriveSelectTree
-                        profileId={p.id}
-                        selection={linkDocSel[p.id] ?? new Map()}
-                        onChange={(next) => setLinkDocSel((s) => ({ ...s, [p.id]: next }))}
-                        filesOnly
-                      />
-                    </div>
-                  ))}
-                  <p className="text-xs text-muted-foreground">Tick as many files as you like — each one gets its own link. Open a folder to pick files inside it.</p>
-                </div>
-              ) : (
-                <div className="rounded border p-2 max-h-56 overflow-y-auto">
-                  {(linkKind === "video" ? videoCatalog : projectCatalog).length === 0 && <span className="text-muted-foreground">Nothing to pick yet.</span>}
-                  {(linkKind === "video" ? videoCatalog : projectCatalog).map((it) => (
-                    <label key={it.id} className="flex items-center gap-2 py-0.5">
-                      <input type="radio" name="invite-link-item" checked={linkItem?.id === it.id} onChange={() => setLinkItem(it)} />
-                      {it.name.replace(/\.[^.]+$/, "")}
-                    </label>
-                  ))}
-                </div>
-              )}
-              <p>Selected: <strong>{linkKind === "document" ? (linkDocPicks.length ? `${linkDocPicks.length} file${linkDocPicks.length > 1 ? "s" : ""}` : "nothing yet") : linkItem ? linkItem.name : "nothing yet"}</strong></p>
-              <h3 className="ef-subsection-title">2B · Choose link access</h3>
-              <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="invite-link-mode" checked={linkPersonal} onChange={() => setLinkPersonal(true)} />Personal link <span className="font-normal text-xs text-muted-foreground">(no password — they type their email; expires in 2 weeks)</span></label>
-                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="invite-link-mode" checked={!linkPersonal} onChange={() => setLinkPersonal(false)} />Link with password</label>
-              </div>
-              {!linkPersonal && (
-                <div className="max-w-xs">
-                  <Label htmlFor="invite-link-pw">Password</Label>
-                  <Input id="invite-link-pw" value={linkPassword} onChange={(e) => setLinkPassword(e.target.value)} placeholder="At least 6 characters" autoComplete="off" />
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground">No account is created and no email is sent unless you click "Create link &amp; send email". The person appears in the Investor & user manager under "Link access".</p>
-            </div>
-            )}
+            {renderAccessSections()}
             <div className="md:col-span-12 flex justify-end">
               {inviteMode === "link" ? (
                 <>
@@ -2360,21 +2419,23 @@ export default function AdminDashboard() {
                   </TableBody>
                 </Table>
               </div>
-              <fieldset className="rounded border p-3 space-y-2 text-sm" disabled={busy}>
-                <legend className="font-semibold px-1">Apply to everyone in this list</legend>
-                <label className="flex items-center gap-2"><input type="checkbox" checked={importOpts.investor} onChange={(e) => setImportOpts((o) => ({ ...o, investor: e.target.checked }))} /> Investor portal</label>
-                <label className="flex items-center gap-2"><input type="checkbox" checked={importOpts.project} onChange={(e) => setImportOpts((o) => ({ ...o, project: e.target.checked }))} /> Project 3D Demo (all models)</label>
-                <label className="flex items-center gap-2"><input type="checkbox" checked={importOpts.video} onChange={(e) => setImportOpts((o) => ({ ...o, video: e.target.checked }))} /> Videos (all videos)</label>
-                <p className="text-xs text-muted-foreground">Documents and individual items can be given afterwards with the Investor &amp; user manager.</p>
-                <p className="font-semibold pt-1">How they sign in</p>
-                <label className="flex items-center gap-2"><input type="radio" name="import-signin" checked={importOpts.signIn === "code"} onChange={() => setImportOpts((o) => ({ ...o, signIn: "code" }))} /> Email only, no password — copy the portal sign-in link to send them (no email sent)</label>
-                <label className="flex items-center gap-2"><input type="radio" name="import-signin" checked={importOpts.signIn === "welcome"} onChange={() => setImportOpts((o) => ({ ...o, signIn: "welcome" }))} /> Send each a welcome invite with a temporary password</label>
-                <label className="flex items-center gap-2"><input type="radio" name="import-signin" checked={importOpts.signIn === "none"} onChange={() => setImportOpts((o) => ({ ...o, signIn: "none" }))} /> Just create the accounts (decide later)</label>
-              </fieldset>
-              <div className="flex gap-2">
-                <Button type="button" onClick={runBulkImport} disabled={busy}>
-                  Import {importRows.length} people
-                </Button>
+              <div className="grid md:grid-cols-12 gap-x-5 gap-y-5 items-end">
+                <h3 className="md:col-span-12 ef-subsection-title">Apply to everyone in this list — same choices as Invite one person</h3>
+                {renderAccessSections()}
+              </div>
+              <div className="flex flex-wrap gap-2 justify-end">
+                {inviteMode === "link" ? (
+                  <>
+                    <Button type="button" variant="outline" disabled={busy} onClick={() => void runBulkSame("link")}>Create links for {importRows.length} people (no email)</Button>
+                    {linkPersonal && <Button type="button" disabled={busy} className="ef-cta" onClick={() => void runBulkSame("link_send")}>Create links &amp; send emails</Button>}
+                  </>
+                ) : (
+                  <>
+                    <Button type="button" variant="outline" disabled={busy} onClick={() => void runBulkSame("account")}>Create {importRows.length} accounts (no invite email)</Button>
+                    <Button type="button" variant="outline" disabled={busy} onClick={() => void copyPortalLink()}><Copy className="w-4 h-4 mr-2" />Copy portal sign-in link</Button>
+                    <Button type="button" disabled={busy} className="ef-cta" onClick={() => void runBulkSame("invite")}>Create &amp; Invite all {importRows.length}</Button>
+                  </>
+                )}
                 <Button
                   type="button"
                   variant="ghost"
