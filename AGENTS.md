@@ -1,6 +1,6 @@
 # Architecture rules
 
-- Reusable portal links use existing-account-only Supabase email OTP and the existing grant-based routing; authentication never grants material access, because copying a portal URL must not bypass authorization or create accounts.
+- Personal portal entry links (`/enter/:slug`, `portal-entry` Edge Function) admit only listed, active existing accounts by typed email, expire, and can be disabled. Reusable portal links use existing-account-only sign-in and the existing grant-based routing; authentication never grants material access, because copying a portal URL must not bypass authorization or create accounts.
 - Keep permanent selected-account deletion separate from bulk access revocation and retain failed selections, because revocation preserves accounts and partial deletion must not claim complete success.
 
 - Keep admin presentation scoped to the dashboard with global semantic color tokens, explicit section tones, numbered user-management headings, aligned notification controls, labelled writing surfaces, and native selection controls grouped by fieldsets; keep per-person sharing in user management and invitations without a duplicate standalone panel, because one clear workflow avoids confusion; visual changes must not alter authorization or share-link operations.
