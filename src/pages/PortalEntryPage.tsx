@@ -33,19 +33,39 @@ export default function PortalEntryPage() {
     } finally { setBusy(false); }
   };
 
+  const mono = "'JetBrains Mono', monospace";
+  const display = "'Cabinet Grotesk', Arial, sans-serif";
   return (
-    <div style={{ minHeight: "100vh", background: teal, color: pearl, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: "Arial, Helvetica, sans-serif" }}>
-      <form onSubmit={enter} style={{ width: "100%", maxWidth: 420 }}>
-        <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 8 }}>EnergyForward portal</h1>
-        <p style={{ opacity: 0.85, marginBottom: 20 }}>Shared personally with you. Type the email address this link was sent to.</p>
-        <label htmlFor="entry-email" style={{ display: "block", fontWeight: 700, marginBottom: 6 }}>Your email</label>
-        <input id="entry-email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)}
-          style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: `1px solid ${amber}`, background: "#fff", color: teal, marginBottom: 14 }} />
-        {error && <p role="alert" style={{ color: amber, marginBottom: 12 }}>{error}</p>}
-        <button type="submit" disabled={busy} style={{ width: "100%", padding: "11px 12px", borderRadius: 6, border: 0, background: amber, color: teal, fontWeight: 700, cursor: "pointer" }}>
-          {busy ? "Opening…" : "Open my portal"}
-        </button>
-      </form>
+    <div style={{ minHeight: "100vh", background: teal, color: pearl, fontFamily: "'General Sans', Arial, sans-serif", display: "flex", flexDirection: "column" }}>
+      <header style={{ padding: "20px clamp(16px,4vw,56px)", borderBottom: "1px solid rgba(238,234,226,0.12)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+        <span style={{ fontFamily: display, fontWeight: 500, fontSize: 18 }}>energyforward<span style={{ color: amber }}>.</span></span>
+        <a href="/?public=1" style={{ fontFamily: mono, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: pearl, textDecoration: "none" }}>Home</a>
+      </header>
+      <section style={{ textAlign: "center", padding: "28px clamp(16px,4vw,56px) 18px", maxWidth: 760, margin: "0 auto" }}>
+        <h1 style={{ fontFamily: display, fontWeight: 500, fontSize: "clamp(24px,4vh,38px)", margin: "0 0 10px" }}>
+          Welcome to EnergyForward<span style={{ color: amber }}>.</span>
+        </h1>
+        <p style={{ fontSize: 16, lineHeight: 1.5, margin: 0 }}>
+          Energy Forward is building the delivery infrastructure for the next era of energy—connecting technology, operations and execution to move critical projects from ambition to reality.
+        </p>
+      </section>
+      <main style={{ flex: 1, display: "flex", justifyContent: "center", padding: "0 clamp(12px,3vw,40px) 24px" }}>
+        <form onSubmit={enter} style={{ width: "100%", maxWidth: 420, alignSelf: "flex-start", border: "1px solid rgba(238,234,226,0.16)", borderRadius: 16, padding: "30px 28px", background: "rgba(238,234,226,0.03)", textAlign: "center" }}>
+          <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: amber, marginBottom: 10 }}>Shared personally with you</div>
+          <div style={{ fontFamily: display, fontWeight: 500, fontSize: 22, lineHeight: 1.25, marginBottom: 18 }}>Your EnergyForward portal</div>
+          <p style={{ margin: "0 0 20px", fontSize: 14.5, lineHeight: 1.55, opacity: 0.85 }}>
+            This link was made just for you. Enter the email address it was sent to, and your portal will open with the sections you have been given.
+          </p>
+          <label htmlFor="entry-email" style={{ display: "block", fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.7, marginBottom: 8, textAlign: "left" }}>Your email address</label>
+          <input id="entry-email" type="email" required autoFocus autoComplete="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)}
+            style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid rgba(238,234,226,0.3)", background: "rgba(0,0,0,0.2)", color: pearl, fontSize: 15 }} />
+          <button type="submit" disabled={busy}
+            style={{ marginTop: 16, width: "100%", padding: "12px 14px", borderRadius: 10, border: "none", background: amber, color: teal, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
+            {busy ? "Opening…" : "Open my portal"}
+          </button>
+          {error && <p role="alert" style={{ color: "#f4b5a3", marginTop: 14, marginBottom: 0, fontSize: 14 }}>{error}</p>}
+        </form>
+      </main>
     </div>
   );
 }
