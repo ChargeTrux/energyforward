@@ -25,7 +25,7 @@ test("single and bulk account invitation requests send personal entry emails wit
         query[method] = () => query;
       }
       query.insert = (value: Record<string, unknown>) => { if (table === "portal_entry_links") links.push(value); return query; };
-      query.upsert = (value: Record<string, unknown>) => { if (table === "profiles") profiles.push(value); return query; };
+      query.upsert = (value: Record<string, unknown>) => { if (table === "profiles") profiles.push(value); if (table === "portal_account_entries") links.push(value); return query; };
       query.update = () => query;
       query.then = (resolve: (value: unknown) => unknown) => Promise.resolve({ data: table === "user_roles" ? [{ role: "admin" }] : [], error: null }).then(resolve);
       return query;
@@ -53,12 +53,12 @@ test("single and bulk account invitation requests send personal entry emails wit
       expect(response.status).toBe(200);
       expect((await response.json()).temp_password).toBeUndefined();
     }
-    expect(links.map((link) => link.emails)).toEqual([["one@example.com"], ["two@example.com"]]);
+    expect(links.map((link) => link.user_id)).toEqual(["user-1", "user-2"]);
     expect(links.map((link) => link.mode)).toEqual(["personal", "personal"]);
     expect(profiles.map((profile) => profile.must_change_password)).toEqual([false, false]);
     expect(messages).toHaveLength(2);
     messages.forEach((message, index) => {
-      expect(message.html.includes(`https://energyforward.com/enter/${links[index].slug}`)).toBe(true);
+      expect(message.html.includes("https://energyforward.com/enter/portal")).toBe(true);
       expect(message.html.includes("Temporary Password")).toBe(false);
     });
     const request = (body: Record<string, unknown>) => {

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { PortalNav } from "@/components/PortalNav";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 
 const teal = "#0A2A2E";
 const amber = "#E8B14A";
@@ -17,6 +18,8 @@ export default function PortalEntryPage() {
   const [signedIn, setSignedIn] = useState(false);
   const [mode, setMode] = useState<"personal" | "password">("personal");
   const [password, setPassword] = useState("");
+  const [credentialChecked, setCredentialChecked] = useState(false);
+  const generic = slug === "portal";
   useEffect(() => {
     fetch(base, { method: "POST", headers: { "Content-Type": "application/json", apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string }, body: JSON.stringify({ action: "info", slug }) })
       .then((r) => r.json().then((b) => ({ ok: r.ok, b })))
@@ -37,7 +40,14 @@ export default function PortalEntryPage() {
     setBusy(true);
     setError("");
     try {
-      if (mode === "password") {
+      if (generic && !credentialChecked) {
+        const { data, error: checkError } = await supabase.functions.invoke("portal-entry", { body: { action: "credential", slug, email } });
+        if (checkError || !data?.mode) { setError(data?.error ?? "This email can't open the portal. Check the spelling or ask EnergyForward for access."); return; }
+        setCredentialChecked(true);
+        setMode(data.mode);
+        if (data.mode === "password") return;
+      }
+      if (!generic && mode === "password") {
         const { error: pErr } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (pErr) setError("Email or password is not correct.");
         else navigate("/investor/welcome", { replace: true });
@@ -46,14 +56,22 @@ export default function PortalEntryPage() {
       const r = await fetch(base, {
         method: "POST",
         headers: { "Content-Type": "application/json", apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string },
-        body: JSON.stringify({ action: "enter", slug, email }),
+        body: JSON.stringify({ action: "enter", slug, email, ...(generic && mode === "password" ? { password } : {}) }),
       });
       const b = await r.json().catch(() => ({}));
-      if (!r.ok || !b.token_hash) { setError(b.error ?? "This link is not available."); return; }
+      if (!r.ok) { setError(b.error ?? "This link is not available."); return; }
+      if (b.session) {
+        const { error: sessionError } = await supabase.auth.setSession(b.session);
+        if (sessionError) setError("Could not sign you in. Please try again.");
+        else navigate("/investor/welcome", { replace: true });
+        return;
+      }
+      if (!b.token_hash) { setError("This link is not available."); return; }
       const { error: vErr } = await supabase.auth.verifyOtp({ token_hash: b.token_hash, type: "magiclink" });
       if (vErr) setError("Could not sign you in. Please try again.");
       else navigate("/investor/welcome", { replace: true });
-    } finally { setBusy(false); }
+    } catch { setError("Could not connect. Please try again."); }
+    finally { setBusy(false); }
   };
 
   const mono = "'JetBrains Mono', monospace";
@@ -77,20 +95,19 @@ export default function PortalEntryPage() {
           <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: amber, marginBottom: 10 }}>Shared personally with you</div>
           <div style={{ fontFamily: display, fontWeight: 500, fontSize: 22, lineHeight: 1.25, marginBottom: 18 }}>Your EnergyForward portal</div>
           <p style={{ margin: "0 0 20px", fontSize: 14.5, lineHeight: 1.55, opacity: 0.85 }}>
-            This link was made just for you. Enter the email address it was sent to, and your portal will open with the sections you have been given.
+            Enter your email address to open the sections you have been given.
           </p>
           <label htmlFor="entry-email" style={{ display: "block", fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.7, marginBottom: 8, textAlign: "left" }}>Your email address</label>
-          <input id="entry-email" type="email" required autoFocus autoComplete="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)}
+          <input id="entry-email" type="email" required autoFocus autoComplete="email" placeholder="you@example.com" value={email} onChange={(e) => { setEmail(e.target.value); setCredentialChecked(false); if (generic) { setMode("personal"); setPassword(""); } }}
             style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid rgba(238,234,226,0.3)", background: "rgba(0,0,0,0.2)", color: pearl, fontSize: 15 }} />
           {mode === "password" && (<>
             <label htmlFor="entry-password" style={{ display: "block", fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.7, margin: "14px 0 8px", textAlign: "left" }}>Your password</label>
             <input id="entry-password" type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)}
               style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid rgba(238,234,226,0.3)", background: "rgba(0,0,0,0.2)", color: pearl, fontSize: 15 }} />
           </>)}
-          <button type="submit" disabled={busy}
-            style={{ marginTop: 16, width: "100%", padding: "12px 14px", borderRadius: 10, border: "none", background: amber, color: teal, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
-            {busy ? "Opening…" : "Open my portal"}
-          </button>
+          <Button type="submit" disabled={busy} variant="energy" className="mt-4 w-full">
+            {busy ? "Opening…" : generic && !credentialChecked ? "Continue" : "Open my portal"}
+          </Button>
           {error && <p role="alert" style={{ color: "#f4b5a3", marginTop: 14, marginBottom: 0, fontSize: 14 }}>{error}</p>}
         </form>
       </main>
