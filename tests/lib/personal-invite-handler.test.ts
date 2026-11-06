@@ -5,10 +5,19 @@ test("single and bulk account invitation requests send personal entry emails wit
   const links: Array<Record<string, unknown>> = [];
   const messages: Array<{ html: string; to: string[] }> = [];
   const profiles: Array<Record<string, unknown>> = [];
+  const accounts = new Map<string, string>();
+  let creations = 0;
+  let passwordUpdates = 0;
+  let rejectEmail = false;
   const client = {
     auth: {
       getUser: async () => ({ data: { user: { id: "test-admin" } } }),
-      admin: { listUsers: async () => ({ data: { users: [] } }), createUser: async () => ({ data: { user: { id: "test-user" } } }) },
+      admin: {
+        listUsers: async () => ({ data: { users: [...accounts].map(([email, id]) => ({ email, id })) } }),
+        createUser: async ({ email }: { email: string }) => { creations++; accounts.set(email, `user-${creations}`); return { data: { user: { id: `user-${creations}` } } }; },
+        updateUserById: async () => { passwordUpdates++; return { error: null }; },
+        generateLink: async () => ({ data: { properties: { action_link: "https://test.invalid/recovery", hashed_token: "test-hash" } }, error: null }),
+      },
     },
     from: (table: string) => {
       const query: Record<string, unknown> = {};
@@ -29,7 +38,7 @@ test("single and bulk account invitation requests send personal entry emails wit
   globals.Deno = { env: { get: () => "test-placeholder" }, serve: (fn: typeof handler) => { handler = fn; } };
   globalThis.fetch = (async (_input, init) => {
     messages.push(JSON.parse(String(init?.body)));
-    return new Response(JSON.stringify({ id: "test-message" }), { status: 200 });
+    return new Response(JSON.stringify(rejectEmail ? { message: "Sender rejected" } : { id: "test-message" }), { status: rejectEmail ? 403 : 200 });
   }) as typeof fetch;
   try {
     await import("../../supabase/functions/admin-users/index.ts");
@@ -52,6 +61,25 @@ test("single and bulk account invitation requests send personal entry emails wit
       expect(message.html.includes(`https://energyforward.com/enter/${links[index].slug}`)).toBe(true);
       expect(message.html.includes("Temporary Password")).toBe(false);
     });
+    const request = (body: Record<string, unknown>) => {
+      if (!handler) throw new Error("Missing handler");
+      return handler(new Request("https://test.invalid", { method: "POST", headers: { Authorization: "Bearer test-token", "Content-Type": "application/json" }, body: JSON.stringify(body) }));
+    };
+    const repeated = await request({ action: "invite", email: " ONE@EXAMPLE.COM ", roles: ["investor"], send_email: false });
+    expect((await repeated.json()).already_existed).toBe(true);
+    expect(creations).toBe(2);
+    expect(passwordUpdates).toBe(0);
+    const bulk = await request({ action: "bulk_import", people: [{ email: "one@example.com" }, { email: "two@example.com" }] });
+    expect((await bulk.json()).results.every((result: { message: string }) => result.message.includes("Existing account"))).toBe(true);
+    expect(creations).toBe(2);
+    expect(passwordUpdates).toBe(0);
+    const reset = await request({ action: "send_reset", email: "one@example.com" });
+    expect((await reset.json()).email_sent).toBe(true);
+    expect(messages.at(-1)?.html.includes("https://energyforward.com/reset-password?token_hash=test-hash")).toBe(true);
+    rejectEmail = true;
+    const failedReset = await request({ action: "send_reset", email: "one@example.com" });
+    expect(failedReset.status).toBe(502);
+    expect((await failedReset.json()).error).toContain("Sender rejected");
   } finally {
     globalThis.fetch = originalFetch;
     globals.Deno = originalDeno;
