@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Match single/bulk invitation forms: remove Access type, rename Access level, move custom password into three exclusive credential choices, and verify without sending emails.
+- [x] Match single/bulk invitation forms: remove Access type, rename Access level, move custom password into three exclusive credential choices. Eleven tests and isolated desktop/phone form checks passed; no emails sent. Real-account sign-in remains unverified with external Supabase; publication pending.
 
 - [x] Add reusable portal-link copying and existing-account-only email-code sign-in; keep invitation optional and show code in the existing auth email template. Simulated code request/rejection checks and 14 regression tests passed; frontend publication pending.
 - [x] Distinguish Remove access (accounts remain) from permanent Delete selected users; add two-person deletion, failure retention, self-protection and immediate feedback; stop server deletion on cleanup failures.
