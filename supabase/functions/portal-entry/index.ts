@@ -36,21 +36,32 @@ Deno.serve(async (req) => {
       const emails = [...new Set(body.emails.map(norm))].filter((e) => EMAIL_RE.test(e) && e.length <= 255);
       if (!emails.length) return json({ error: "No valid emails" }, 400);
       const slug = makeSlug();
-      const { error } = await admin.from("portal_entry_links").insert({ slug, emails, created_by: u.user.id });
+      const { error } = await admin.from("portal_entry_links").insert({ slug, emails, created_by: u.user.id, mode: body.mode === "password" ? "password" : "personal" });
       if (error) return json({ error: error.message }, 500);
       return json({ ok: true, slug });
+    }
+
+    if (action === "info") {
+      const slug = typeof body.slug === "string" ? body.slug.slice(0, 64) : "";
+      const { data: link } = await admin.from("portal_entry_links").select("enabled, expires_at, mode").eq("slug", slug).maybeSingle();
+      if (!link || !link.enabled) return json({ error: "This link is no longer active." }, 410);
+      if (new Date(link.expires_at).getTime() < Date.now()) return json({ error: "This link has expired. Ask EnergyForward for a new one." }, 410);
+      return json({ ok: true, mode: link.mode ?? "personal" });
     }
 
     if (action === "enter") {
       const slug = typeof body.slug === "string" ? body.slug.slice(0, 64) : "";
       const email = norm(body.email);
       if (!slug || !EMAIL_RE.test(email)) return json({ error: DENIED }, 400);
-      const { data: link } = await admin.from("portal_entry_links").select("emails, enabled, expires_at").eq("slug", slug).maybeSingle();
+      const { data: link } = await admin.from("portal_entry_links").select("emails, enabled, expires_at, mode").eq("slug", slug).maybeSingle();
       if (!link || !link.enabled) return json({ error: "This link is no longer active." }, 410);
       if (new Date(link.expires_at).getTime() < Date.now()) return json({ error: "This link has expired. Ask EnergyForward for a new one." }, 410);
+      if (link.mode === "password") return json({ error: "This link needs your password." }, 400);
       if (!(link.emails as string[]).includes(email)) return json({ error: DENIED }, 403);
       const { data: prof } = await admin.from("profiles").select("user_id, is_active").ilike("email", email).maybeSingle();
       if (!prof || prof.is_active === false) return json({ error: DENIED }, 403);
+      // Personal (no-password) people must never be asked to set a password.
+      await admin.from("profiles").update({ must_change_password: false }).eq("user_id", prof.user_id);
       const { data: gen, error: genErr } = await admin.auth.admin.generateLink({ type: "magiclink", email });
       const hashed = gen?.properties?.hashed_token;
       if (genErr || !hashed) return json({ error: "Could not sign you in. Please try again." }, 500);
