@@ -474,6 +474,41 @@ export type Database = {
         }
         Relationships: []
       }
+      portal_account_entries: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          expires_at: string
+          mode: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          expires_at?: string
+          mode?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          expires_at?: string
+          mode?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_account_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       portal_entry_links: {
         Row: {
           created_at: string
@@ -706,6 +741,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_deleted_portal_account: {
+        Args: { _email: string; _user_id: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
