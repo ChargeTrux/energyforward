@@ -105,7 +105,7 @@ export default function PortalEntryPage() {
             <input id="entry-password" type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)}
               style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid rgba(238,234,226,0.3)", background: "rgba(0,0,0,0.2)", color: pearl, fontSize: 15 }} />
           </>)}
-          <Button type="submit" disabled={busy} variant="energy" className="mt-4 w-full">
+          <Button type="submit" disabled={busy} className="mt-4 w-full font-bold" style={{ background: amber, color: teal }}>
             {busy ? "Opening…" : generic && !credentialChecked ? "Continue" : "Open my portal"}
           </Button>
           {error && <p role="alert" style={{ color: "#f4b5a3", marginTop: 14, marginBottom: 0, fontSize: 14 }}>{error}</p>}

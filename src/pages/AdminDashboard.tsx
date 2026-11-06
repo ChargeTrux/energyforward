@@ -1291,8 +1291,8 @@ export default function AdminDashboard() {
     try {
       const result = await deleteSelectedAccounts(ids, user?.id, async (id) => await callAdmin("delete_user", { user_id: id }) as { ok?: boolean } | null);
       setSelectedInvitees(result.failed);
-      await load();
-      toast({ title: result.failed.length ? `${result.deleted.length} deleted; ${result.failed.length} failed` : `${result.deleted.length} ${result.deleted.length === 1 ? "user deleted" : "users deleted"}`, description: result.failed.length ? "Failed accounts remain selected. Check the error and retry." : "Accounts and their direct links were permanently removed. No emails sent.", variant: result.failed.length ? "destructive" : "default" });
+      await Promise.all([load(), loadPortalLinks()]);
+      toast({ title: result.failed.length ? `${result.deleted.length} deleted; ${result.failed.length} failed` : `${result.deleted.length} ${result.deleted.length === 1 ? "user deleted" : "users deleted"}`, description: result.failed.length ? "Failed accounts remain selected. Check the error and retry." : "Accounts, links, activity and portal-entry records were permanently removed. No emails sent.", variant: result.failed.length ? "destructive" : "default" });
     } catch (error) { toast({ title: "Deletion failed", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" }); }
     finally { deletingUsersRef.current = false; setDeletingUsers(false); }
   };
