@@ -1,7 +1,5 @@
-export const portalLinkExpired = (expiresAt: string, now = Date.now()) => {
-  const expiry = Date.parse(expiresAt);
-  return !Number.isFinite(expiry) || expiry <= now;
-};
+import { portalLinkExpired } from "../../supabase/functions/_shared/portal-expiry";
+export { portalLinkExpired };
 
 export function portalLinkStatus(expiresAt: string, enabled: boolean, now = Date.now()) {
   if (!enabled) return { label: "Link turned off", warning: true };

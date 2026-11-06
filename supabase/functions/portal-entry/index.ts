@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { defaultPortalExpiry, portalLinkExpired } from "../_shared/portal-expiry.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,8 +21,10 @@ const DENIED = "This email can't open this link. Check the spelling or ask Energ
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
-    const URL_ = Deno.env.get("SUPABASE_URL")!;
-    const admin = createClient(URL_, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const URL_ = Deno.env.get("SUPABASE_URL");
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!URL_ || !key) return json({ error: "Service unavailable" }, 500);
+    const admin = createClient(URL_, key);
     const body = await req.json().catch(() => ({}));
     const action = body?.action;
 
@@ -36,7 +39,7 @@ Deno.serve(async (req) => {
       const emails = [...new Set(body.emails.map(norm))].filter((e) => EMAIL_RE.test(e) && e.length <= 255);
       if (!emails.length) return json({ error: "No valid emails" }, 400);
       const slug = makeSlug();
-      const { error } = await admin.from("portal_entry_links").insert({ slug, emails, created_by: u.user.id, mode: body.mode === "password" ? "password" : "personal" });
+      const { error } = await admin.from("portal_entry_links").insert({ slug, emails, expires_at: defaultPortalExpiry(), created_by: u.user.id, mode: body.mode === "password" ? "password" : "personal" });
       if (error) return json({ error: error.message }, 500);
       return json({ ok: true, slug });
     }
@@ -45,7 +48,7 @@ Deno.serve(async (req) => {
       const slug = typeof body.slug === "string" ? body.slug.slice(0, 64) : "";
       const { data: link } = await admin.from("portal_entry_links").select("enabled, expires_at, mode").eq("slug", slug).maybeSingle();
       if (!link || !link.enabled) return json({ error: "This link is no longer active." }, 410);
-      if (new Date(link.expires_at).getTime() < Date.now()) return json({ error: "This link has expired. Ask EnergyForward for a new one." }, 410);
+      if (portalLinkExpired(link.expires_at)) return json({ error: "This link has expired. Ask EnergyForward to extend it." }, 410);
       return json({ ok: true, mode: link.mode ?? "personal" });
     }
 
@@ -55,7 +58,7 @@ Deno.serve(async (req) => {
       if (!slug || !EMAIL_RE.test(email)) return json({ error: DENIED }, 400);
       const { data: link } = await admin.from("portal_entry_links").select("emails, enabled, expires_at, mode").eq("slug", slug).maybeSingle();
       if (!link || !link.enabled) return json({ error: "This link is no longer active." }, 410);
-      if (new Date(link.expires_at).getTime() < Date.now()) return json({ error: "This link has expired. Ask EnergyForward for a new one." }, 410);
+      if (portalLinkExpired(link.expires_at)) return json({ error: "This link has expired. Ask EnergyForward to extend it." }, 410);
       if (link.mode === "password") return json({ error: "This link needs your password." }, 400);
       if (!(link.emails as string[]).includes(email)) return json({ error: DENIED }, 403);
       const { data: prof } = await admin.from("profiles").select("user_id, is_active").ilike("email", email).maybeSingle();

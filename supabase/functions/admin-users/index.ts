@@ -1,4 +1,5 @@
 import { findExistingAccount, normalizeAccountEmail } from "../_shared/account-lookup.ts";
+import { defaultPortalExpiry } from "../_shared/portal-expiry.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
   welcomeEmail,
@@ -91,9 +92,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!SUPABASE_URL || !SERVICE_KEY || !ANON_KEY) return json({ error: "Service unavailable" }, 500);
 
     // Verify caller is an admin
     const authHeader = req.headers.get("Authorization") ?? "";
@@ -197,7 +199,7 @@ Deno.serve(async (req) => {
       if (body.replace_access === true) {
         const keep = (v: unknown) => (Array.isArray(v) ? (v as unknown[]).filter((x): x is string => typeof x === "string") : []);
         const replace = async (table: string, col: string, ids: string[]) => {
-          const q = admin.from(table).delete().eq("user_id", newUserId!);
+          const q = admin.from(table).delete().eq("user_id", newUserId);
           await (ids.length ? q.not(col, "in", `(${ids.map((i) => `"${i.replace(/"/g, "")}"`).join(",")})`) : q);
         };
         await replace("project_page_access", "file_id", keep(body.project_page_ids));
@@ -278,7 +280,7 @@ Deno.serve(async (req) => {
           );
         }
       }
-      grantedProfiles = await grantedDocFolders(admin, newUserId!);
+      grantedProfiles = await grantedDocFolders(admin, newUserId);
 
       // Send branded welcome email with credentials.
       const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
@@ -301,6 +303,7 @@ Deno.serve(async (req) => {
             emails: [email.trim().toLowerCase()],
             created_by: userData.user.id,
             mode: "personal",
+            expires_at: defaultPortalExpiry(),
           });
           if (linkError) return json({ error: "Account created, but its invitation link could not be created. No email sent." }, 500);
           loginDestination = `https://energyforward.com/enter/${slug}`;

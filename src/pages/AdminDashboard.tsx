@@ -2384,6 +2384,7 @@ export default function AdminDashboard() {
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
+                      {!importResults && <TableHead>Account status</TableHead>}
                       {importResults && <TableHead>Result</TableHead>}
                     </TableRow>
                   </TableHeader>
