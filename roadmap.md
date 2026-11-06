@@ -1,5 +1,9 @@
 # Roadmap
 
+- [x] Show Copy the link only after successful no-invite creation in both invitation forms; hide it after invitation-email creation. Isolated single/bulk browser flows passed with all requests intercepted; no actual emails or accounts created; frontend publication pending.
+
+- [x] Gate single/bulk credentials and creation on selected access; add simple custom-password guidance, live length validation and show/hide control. Twelve access/credential/email tests and isolated desktop/phone form checks passed; no accounts created or emails sent. Frontend publication pending; actual inbox delivery remains unverified.
+
 - [x] Match single/bulk customized-level welcome emails to email-only credentials, omit passwords, and use personal portal entry links; admin-users deployed, seven credential/template/handler tests passed with intercepted emails and sample accounts only. Actual inbox delivery remains unverified with external authentication.
 
 - [x] Match single/bulk invitation actions: left aligned, send-invite first, no-invite second, separate orange copy-link button after successful no-email creation. Isolated browser flow and 12 regression tests passed; no real accounts or emails used; preview only.
