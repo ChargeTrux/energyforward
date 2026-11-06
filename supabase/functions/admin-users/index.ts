@@ -620,46 +620,11 @@ Deno.serve(async (req) => {
       if (user_id === userData.user.id) return json({ error: "Cannot delete yourself" }, 400);
       const { data: target, error: targetError } = await admin.auth.admin.getUserById(user_id);
       if (targetError && !/not.?found/i.test(targetError.message)) return json({ error: "Could not load the account before deletion. Please retry." }, 500);
-      const targetEmail = target?.user?.email;
-      // Remove related rows first — some foreign keys don't cascade, which
-      // would make the auth delete fail with a database error.
-      const relatedTables = [
-        "page_views",
-        "login_sessions",
-        "investor_video_access",
-        "project_page_access",
-        "content_views",
-        "investor_document_access",
-        "investor_profile_access",
-        "page_access",
-        "user_roles",
-      ];
-      for (const table of relatedTables) {
-        const { error: delErr } = await admin.from(table).delete().eq("user_id", user_id);
-        if (delErr) {
-          console.error(`Cleanup ${table} failed:`, delErr.message);
-          return json({ error: "Account deletion stopped because related records could not be removed. The account remains; retry deletion." }, 500);
-        }
-      }
-      // Removing a user also removes their direct share links (by account or
-      // recipient email). Deleting a single link stays a separate action.
-      const linkIds = new Set<string>();
-      const { data: linksByUser, error: userLinksError } = await admin.from("share_links").select("id").eq("user_id", user_id);
-      if (userLinksError) return json({ error: "Could not load direct links for deletion. Please retry." }, 500);
-      for (const l of linksByUser ?? []) linkIds.add(l.id as string);
-      if (targetEmail) {
-        const { data: linksByEmail, error: emailLinksError } = await admin.from("share_links").select("id").ilike("recipient_email", targetEmail.toLowerCase().replace(/[\\%_]/g, (c) => `\\${c}`));
-        if (emailLinksError) return json({ error: "Could not load recipient links for deletion. Please retry." }, 500);
-        for (const l of linksByEmail ?? []) linkIds.add(l.id as string);
-      }
-      for (const id of linkIds) {
-        const { error: locationError } = await admin.from("activity_locations").update({ share_link_id: null }).eq("share_link_id", id);
-        if (locationError) return json({ error: "Could not detach link activity. Please retry deletion." }, 500);
-        const { error: viewError } = await admin.from("share_link_views").delete().eq("link_id", id);
-        if (viewError) return json({ error: "Could not remove link views. Please retry deletion." }, 500);
-        const { error: linkError } = await admin.from("share_links").delete().eq("id", id);
-        if (linkError) return json({ error: "Could not remove direct links. Please retry deletion." }, 500);
-      }
+      const { data: profile, error: profileError } = await admin.from("profiles").select("email").eq("user_id", user_id).maybeSingle();
+      if (profileError) return json({ error: "Could not load account records. Please retry deletion." }, 500);
+      const targetEmail = normalizeAccountEmail(target?.user?.email ?? profile?.email ?? "");
+      const { error: cleanupError } = await admin.rpc("cleanup_deleted_portal_account", { _user_id: user_id, _email: targetEmail });
+      if (cleanupError) return json({ error: "Account deletion stopped because related records could not be removed. Please retry deletion." }, 500);
       const { error } = await admin.auth.admin.deleteUser(user_id);
       if (error && !/not.?found/i.test(error.message)) return json({ error: error.message }, 400);
       const { data: still } = await admin.auth.admin.getUserById(user_id);
