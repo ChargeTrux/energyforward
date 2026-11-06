@@ -65,7 +65,7 @@ export default function PortalEntryPage() {
         {signedIn ? <PortalNav current="shared" /> : <a href="/?public=1" style={{ fontFamily: mono, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: pearl, textDecoration: "none" }}>Home</a>}
       </header>
       <section style={{ textAlign: "center", padding: "28px clamp(16px,4vw,56px) 18px", maxWidth: 760, margin: "0 auto" }}>
-        <h1 style={{ fontFamily: display, fontWeight: 500, fontSize: "clamp(24px,4vh,38px)", margin: "0 0 10px" }}>
+        <h1 className="text-primary-foreground" style={{ fontFamily: display, fontWeight: 500, fontSize: "clamp(24px,4vh,38px)", margin: "0 0 10px" }}>
           Welcome to EnergyForward<span style={{ color: amber }}>.</span>
         </h1>
         <p style={{ fontSize: 16, lineHeight: 1.5, margin: 0 }}>
