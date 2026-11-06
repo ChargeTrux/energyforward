@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { defaultPortalExpiry, portalLinkExpired } from "../_shared/portal-expiry.ts";
+import { portalLinkExpired } from "../_shared/portal-expiry.ts";
 import { GENERIC_PORTAL_SLUG, ensurePortalAccountEntry } from "../_shared/portal-account-entry.ts";
 
 const corsHeaders = {
@@ -12,11 +12,6 @@ const json = (body: unknown, status = 200) =>
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const norm = (e: unknown) => (typeof e === "string" ? e.trim().toLowerCase() : "");
-const makeSlug = () => {
-  const b = new Uint8Array(18);
-  crypto.getRandomValues(b);
-  return btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-};
 const DENIED = "This email can't open this link. Check the spelling or ask EnergyForward for access.";
 
 Deno.serve(async (req) => {

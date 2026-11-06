@@ -1,5 +1,4 @@
 import { findExistingAccount, normalizeAccountEmail } from "../_shared/account-lookup.ts";
-import { defaultPortalExpiry } from "../_shared/portal-expiry.ts";
 import { GENERIC_PORTAL_URL, ensurePortalAccountEntry } from "../_shared/portal-account-entry.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
@@ -293,9 +292,7 @@ Deno.serve(async (req) => {
         if (Array.isArray(roles) && roles.includes("video")) portals.push("Video");
         if (Array.isArray(roles) && roles.includes("project")) portals.push("Project 3D Demo");
         if (Array.isArray(roles) && roles.includes("customer")) portals.push("Customer");
-        const requestOrigin = APP_ORIGIN;
-        const loginParams = `?login=1&email=${encodeURIComponent(email)}`;
-        let loginDestination = GENERIC_PORTAL_URL;
+        const loginDestination = GENERIC_PORTAL_URL;
         if (false) {
           // (disabled) Existing user — send a password reset link instead of a temp password.
           try {
@@ -442,8 +439,8 @@ Deno.serve(async (req) => {
         const { error: pwErr } = await admin.auth.admin.updateUserById(uid, { password: tempPassword, ban_duration: "none" });
         if (pwErr) { results.push({ user_id: uid, email, ok: false, message: pwErr.message }); continue; }
         await admin.from("profiles").update({ must_change_password: !customPwd }).eq("user_id", uid);
-        const loginParams = `?login=1&email=${encodeURIComponent(email)}`;
-        const loginUrl = `${origin}${landingPath(portals, !!grantedProfiles?.length)}${loginParams}`;
+        await ensurePortalAccountEntry(admin, uid, "password", true);
+        const loginUrl = GENERIC_PORTAL_URL;
         const tpl = welcomeEmail({ name: fullName, email, tempPassword, loginUrl, portals, investorProfiles: grantedProfiles, permanentPassword: !!customPwd });
         const r = await sendBrandedEmail(RESEND_API_KEY, { to: email, subject: tpl.subject, html: tpl.html, from: tpl.from, replyTo: tpl.replyTo });
         if (r.ok) await admin.from("profiles").update({ invite_sent_at: new Date().toISOString(), is_active: true }).eq("user_id", uid);
