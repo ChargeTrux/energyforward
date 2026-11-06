@@ -180,7 +180,7 @@ Deno.serve(async (req) => {
           user_id: newUserId,
           email,
           full_name: full_name ?? "",
-          must_change_password: !customPwd,
+          must_change_password: !customPwd && body.no_password_change !== true,
           is_active: true,
         },
         { onConflict: "user_id" },

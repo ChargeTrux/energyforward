@@ -482,6 +482,7 @@ export type Database = {
           enabled: boolean
           expires_at: string
           id: string
+          mode: string
           slug: string
           updated_at: string
         }
@@ -492,6 +493,7 @@ export type Database = {
           enabled?: boolean
           expires_at?: string
           id?: string
+          mode?: string
           slug: string
           updated_at?: string
         }
@@ -502,6 +504,7 @@ export type Database = {
           enabled?: boolean
           expires_at?: string
           id?: string
+          mode?: string
           slug?: string
           updated_at?: string
         }
