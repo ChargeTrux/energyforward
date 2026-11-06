@@ -7,6 +7,7 @@ import { activityInRange, userAccessStatus, type ActivityPreset } from "@/lib/ad
 import { investorRoleChange, materialRoles } from "@/lib/portal-access-policy";
 import { deleteSelectedAccounts, removeSelectedAccess } from "@/lib/bulk-access";
 import { PORTAL_SIGN_IN_URL } from "@/lib/portal-sign-in";
+import { inviteCredentialOptions, portalCredentialMode, type InviteCredential } from "@/lib/invite-credentials";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalUser as useAuth } from "@/components/admin/UserPreviewBoundary";
@@ -228,7 +229,6 @@ export default function AdminDashboard() {
   const [recentLoginCount, setRecentLoginCount] = useState(0);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
-  const [inviteMode, setInviteMode] = useState<"portal" | "link">("portal");
   const [linkKind, setLinkKind] = useState<Kind>("video");
   const [linkProjectIds, setLinkProjectIds] = useState<string[]>([]);
   const [linkVideoIds, setLinkVideoIds] = useState<string[]>([]);
@@ -237,7 +237,8 @@ export default function AdminDashboard() {
   // Invite form: per-folder document picks (empty = whole folder).
   const [inviteDocItems, setInviteDocItems] = useState<Record<string, Selection>>({});
   const [linkPassword, setLinkPassword] = useState("");
-  const [useOwnPassword, setUseOwnPassword] = useState(false);
+  const [credentialType, setCredentialType] = useState<InviteCredential>("password");
+  const useOwnPassword = credentialType === "custom";
   const [ownPassword, setOwnPassword] = useState("");
   const [inviteInvestor, setInviteInvestor] = useState(false);
   const [inviteCustomer, setInviteCustomer] = useState(false);
@@ -272,8 +273,8 @@ export default function AdminDashboard() {
   const [busy, setBusy] = useState(false);
   const [deletingUsers, setDeletingUsers] = useState(false);
   const deletingUsersRef = useRef(false);
-  // "password" = normal sign-in page; "personal" = email-only link limited to these people.
-  const [portalSignIn, setPortalSignIn] = useState<"password" | "personal">("password");
+  // Both password credential choices use the same password-checked portal entry.
+  const portalSignIn = portalCredentialMode(credentialType);
   const [createdEmails, setCreatedEmails] = useState<string[]>([]);
   const copySignInLink = async (emails: string[]) => {
     if (!emails.length) return copyPortalLink();
@@ -850,8 +851,7 @@ export default function AdminDashboard() {
       send_email: sendEmail,
       email,
       full_name: fullName,
-      ...(useOwnPassword ? { custom_password: ownPassword.trim() } : {}),
-      ...(portalSignIn === "personal" ? { no_password_change: true } : {}),
+      ...inviteCredentialOptions(credentialType, ownPassword),
       roles: rolesArr,
       app_origin: window.location.origin,
       replace_access: true,
@@ -866,14 +866,14 @@ export default function AdminDashboard() {
     })) as { temp_password?: string } | null;
     if (data && quiet) return true;
     if (data) {
+      setCreatedEmails([email.trim().toLowerCase()]);
       const list = rolesArr.length ? rolesArr.join(", ") : "no portal";
       toast(sendEmail
         ? { title: "Welcome email sent", description: `Invited ${email} (${list}).` }
         : { title: "User created — no email sent", description: `${email} (${list}). Copy the portal link to share their assigned materials, or send a welcome invite when ready.` });
       setInviteEmail("");
       setInviteName("");
-      setUseOwnPassword(false);
-      setOwnPassword("");
+
       setInviteInvestor(false);
       setInviteCustomer(false);
       setInviteVideo(false);
@@ -1037,7 +1037,7 @@ export default function AdminDashboard() {
   const runBulkSame = async (action: "account" | "invite" | "link" | "link_send") => {
     if (!importRows.length || bulkImportRunning.current) return;
     if (isUserPreview) { toast({ title: "Read-only preview", description: "Exit preview to make changes." }); return; }
-    if (inviteMode === "portal" && inviteAdmin && !window.confirm(`Give full admin access to all ${importRows.length} people?`)) return;
+    if (inviteAdmin && !window.confirm(`Give full admin access to all ${importRows.length} people?`)) return;
     bulkImportRunning.current = true;
     setBulkDoneAction(null);
     setBulkStatus({ done: 0, total: importRows.length, current: "" });
@@ -1072,41 +1072,8 @@ export default function AdminDashboard() {
 
   const renderAccessSections = () => (
     <>
-            <fieldset className="md:col-span-12 ef-form-group text-sm">
-              <legend>1 · Access type</legend>
-              <div className="ef-choice-row">
-              <label className="flex items-center gap-2 font-semibold">
-                <input type="radio" name="invite-mode" checked={inviteMode === "portal"} onChange={() => setInviteMode("portal")} />
-                Portal access <span className="font-normal text-xs text-muted-foreground">(they sign in with an account)</span>
-              </label>
-              <label className="flex items-center gap-2 font-semibold">
-                <input type="radio" name="invite-mode" checked={inviteMode === "link"} onChange={() => setInviteMode("link")} />
-                Direct link <span className="font-normal text-xs text-muted-foreground">(one file, video or 3D page — no account)</span>
-              </label>
-              </div>
-            </fieldset>
-            {inviteMode === "portal" && (
-            <div className="md:col-span-12 flex flex-wrap items-center gap-3 text-sm">
-              <label className="flex items-center gap-2 font-semibold">
-                <input type="checkbox" checked={useOwnPassword} onChange={(e) => setUseOwnPassword(e.target.checked)} />
-                Use my own password
-              </label>
-              {useOwnPassword && (
-                <Input
-                  className="max-w-xs"
-                  value={ownPassword}
-                  onChange={(e) => setOwnPassword(e.target.value)}
-                  placeholder="At least 8 characters"
-                  autoComplete="off"
-                  aria-label="Password to send"
-                />
-              )}
-              {useOwnPassword && <span className="text-xs text-muted-foreground">Sent in the welcome email; they won't be asked to change it.</span>}
-            </div>
-            )}
-            {inviteMode === "portal" && (
             <div className="md:col-span-12 ef-access-permissions text-sm">
-              <h3 className="ef-subsection-title">2 · Portal &amp; material access</h3>
+              <h3 className="ef-subsection-title">1 · Access level</h3>
               <div className="flex flex-wrap gap-6 pb-3 mb-3 border-b">
                 <label className="flex items-center gap-2 font-semibold">
                   <input type="checkbox" checked={inviteAdmin} onChange={(e) => setInviteAdmin(e.target.checked)} />
@@ -1123,7 +1090,7 @@ export default function AdminDashboard() {
               </div>
               <div className="grid gap-4 md:grid-cols-3">
                 <fieldset className="ef-permission-group ef-section--invite">
-                  <legend className="ef-subsection-title">2A · Project 3D Demo</legend>
+                  <legend className="ef-subsection-title">1A · Project 3D Demo</legend>
                   <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
                     <input type="checkbox" checked={inviteProject} onChange={(e) => { setInviteProject(e.target.checked); setSelectedProjectIds(e.target.checked ? projectCatalog.map((pg) => pg.id) : []); }} />
                     Project 3D Demo
@@ -1145,7 +1112,7 @@ export default function AdminDashboard() {
                   ))}
                 </fieldset>
                 <fieldset className="ef-permission-group ef-section--materials">
-                  <legend className="ef-subsection-title">2B · Videos</legend>
+                  <legend className="ef-subsection-title">1B · Videos</legend>
                   <label className={`flex items-center gap-2 text-xs font-semibold uppercase mb-1 `}>
                     <input type="checkbox" checked={inviteVideo} onChange={(e) => { setInviteVideo(e.target.checked); setSelectedVideoIds(e.target.checked ? videoCatalog.map((v) => v.id) : []); }} />
                     Videos
@@ -1167,7 +1134,7 @@ export default function AdminDashboard() {
                   ))}
                 </fieldset>
                 <fieldset className="ef-permission-group ef-section--people">
-                  <legend className="ef-subsection-title">2C · Documents</legend>
+                  <legend className="ef-subsection-title">1C · Documents</legend>
                   {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up</span>}
                   {investorProfiles.map((p) => {
                     const on = selectedProfileIds.includes(p.id);
@@ -1201,77 +1168,37 @@ export default function AdminDashboard() {
                 </fieldset>
               </div>
             </div>
-            )}
-            {inviteMode === "portal" && (
             <fieldset className="md:col-span-12 ef-form-group ef-section--invite text-sm">
-              <legend className="ef-subsection-title">2B · Choose link access</legend>
-              <div className="ef-choice-row">
-                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="portal-sign-in" checked={portalSignIn === "personal"} onChange={() => setPortalSignIn("personal")} />Personal link <span className="font-normal text-xs text-muted-foreground">(no password — they only type their email; expires in 2 weeks)</span></label>
-                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="portal-sign-in" checked={portalSignIn === "password"} onChange={() => setPortalSignIn("password")} />Link with password <span className="font-normal text-xs text-muted-foreground">(email + password)</span></label>
+              <legend className="ef-subsection-title">2B · Credential type</legend>
+              <div className="flex flex-col gap-4">
+                <label className="flex items-start gap-2 font-semibold">
+                  <input type="radio" name="portal-sign-in" className="mt-1" checked={credentialType === "personal"} onChange={() => setCredentialType("personal")} />
+                  <span>Customized level <span className="font-normal text-xs text-muted-foreground">(no password — they only type their email; expires in 2 weeks)</span></span>
+                </label>
+                <label className="flex items-start gap-2 font-semibold">
+                  <input type="radio" name="portal-sign-in" className="mt-1" checked={credentialType === "password"} onChange={() => setCredentialType("password")} />
+                  <span>Email and password credential <span className="font-normal text-xs text-muted-foreground">(link with password)</span></span>
+                </label>
+                <label className="flex items-start gap-2 font-semibold">
+                  <input type="radio" name="portal-sign-in" className="mt-1" checked={credentialType === "custom"} onChange={() => setCredentialType("custom")} />
+                  <span>Use a customized password</span>
+                </label>
+                {useOwnPassword && (
+                  <div className="max-w-sm ml-5 space-y-2">
+                    <Label htmlFor="invite-custom-password">Customized password</Label>
+                    <Input id="invite-custom-password" type="password" value={ownPassword} onChange={(e) => setOwnPassword(e.target.value)} placeholder="At least 8 characters" autoComplete="new-password" />
+                    <p className="text-xs text-muted-foreground">Sent only when you send the welcome invite; they won't be asked to change it.</p>
+                  </div>
+                )}
               </div>
             </fieldset>
-            )}
-            {inviteMode === "link" && (
-            <div className="md:col-span-12 ef-access-permissions text-sm space-y-3">
-              <h3 className="ef-subsection-title">2A · Choose material — tick as many as you like</h3>
-              <div className="grid gap-4 md:grid-cols-3">
-                {([["project", "2A · Project 3D Demo", projectCatalog, linkProjectIds, setLinkProjectIds, "ef-section--invite"], ["video", "2B · Videos", videoCatalog, linkVideoIds, setLinkVideoIds, "ef-section--materials"]] as const).map(([k, title, list, sel, setSel, tone]) => (
-                  <fieldset key={k} className={`ef-permission-group ${tone}`}>
-                    <legend className="ef-subsection-title">{title}</legend>
-                    <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
-                      <input type="checkbox" checked={list.length > 0 && sel.length === list.length} onChange={(e) => setSel(e.target.checked ? list.map((i) => i.id) : [])} />
-                      Select all
-                    </label>
-                    {list.length === 0 && <span className="text-muted-foreground">Nothing to pick yet.</span>}
-                    {list.map((it) => (
-                      <label key={it.id} className="flex items-center gap-2 ml-5">
-                        <input type="checkbox" checked={sel.includes(it.id)} onChange={(e) => { const on = e.target.checked; setSel((prev) => on ? [...prev, it.id] : prev.filter((x) => x !== it.id)); }} />
-                        <span className="min-w-0 break-words">{it.name.replace(/\.[^.]+$/, "")}</span>
-                      </label>
-                    ))}
-                  </fieldset>
-                ))}
-                <fieldset className="ef-permission-group ef-section--people">
-                  <legend className="ef-subsection-title">2C · Documents</legend>
-                  <div className="rounded border p-2 max-h-72 overflow-y-auto space-y-3">
-                    {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up.</span>}
-                    {investorProfiles.map((p) => (
-                      <div key={p.id}>
-                        {investorProfiles.length > 1 && <div className="text-xs font-semibold uppercase mb-1">{p.name}</div>}
-                        <DriveSelectTree
-                          profileId={p.id}
-                          selection={linkDocSel[p.id] ?? new Map()}
-                          onChange={(next) => setLinkDocSel((s) => ({ ...s, [p.id]: next }))}
-                          filesOnly
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted-foreground">Open a folder to pick files inside it.</p>
-                </fieldset>
-              </div>
-              <p>Selected: <strong>{allLinkPicks.length ? `${allLinkPicks.length} item${allLinkPicks.length > 1 ? "s" : ""} — one link each` : "nothing yet"}</strong></p>
-              <h3 className="ef-subsection-title">2B · Choose link access</h3>
-              <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="invite-link-mode" checked={linkPersonal} onChange={() => setLinkPersonal(true)} />Personal link <span className="font-normal text-xs text-muted-foreground">(no password — they type their email; expires in 2 weeks)</span></label>
-                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="invite-link-mode" checked={!linkPersonal} onChange={() => setLinkPersonal(false)} />Link with password</label>
-              </div>
-              {!linkPersonal && (
-                <div className="max-w-xs">
-                  <Label htmlFor="invite-link-pw">Password</Label>
-                  <Input id="invite-link-pw" value={linkPassword} onChange={(e) => setLinkPassword(e.target.value)} placeholder="At least 6 characters" autoComplete="off" />
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground">No account is created and no email is sent unless you click "Create link &amp; send email". The person appears in the Investor & user manager under "Link access".</p>
-            </div>
-            )}
+
     </>
   );
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail) return;
-    if (inviteMode === "link") { await createLinkFromInvite(false); return; }
     if (inviteAdmin) {
       setConfirmAdminInvite(true);
       return;
@@ -2348,19 +2275,6 @@ export default function AdminDashboard() {
             </div>
             {renderAccessSections()}
             <div className="md:col-span-12 flex justify-end">
-              {inviteMode === "link" ? (
-                <>
-                  <Button type="submit" variant="outline" disabled={busy || !inviteEmail} className="mr-3">
-                    Create link (no email)
-                  </Button>
-                  {linkPersonal && (
-                    <Button type="button" disabled={busy || !inviteEmail} className="ef-cta px-8" onClick={() => void createLinkFromInvite(true)}>
-                      Create link &amp; send email
-                    </Button>
-                  )}
-                </>
-              ) : (
-                <>
               <Button
                 type="button"
                 variant="outline"
@@ -2386,12 +2300,10 @@ export default function AdminDashboard() {
               <Button type="submit" disabled={busy} className="ef-cta px-8">
                 Create &amp; Invite
               </Button>
-                </>
-              )}
             </div>
           </form>
           <p className="text-xs text-muted-foreground mt-3">
-            Create account (no invite) sends no email; then use Copy the sign-in link. With a personal link they only type their email; otherwise they sign in with email and password. Create &amp; Invite sends a welcome email with a temporary password, unless you tick "Use my own password".
+            Create account (no invite) sends no email; then use Copy the sign-in link. With Customized level they only type their email; otherwise they sign in with email and password. Create &amp; Invite sends a welcome email with a temporary password, unless you select "Use a customized password".
           </p>
         </CardContent>
         </TabsContent>
@@ -2470,18 +2382,12 @@ export default function AdminDashboard() {
                   <div className="mt-2 h-2 w-full rounded bg-muted overflow-hidden"><div className="h-full bg-primary transition-all" style={{ width: `${(bulkStatus.done / Math.max(1, bulkStatus.total)) * 100}%` }} /></div>
                 </div>
               )}
-              {!bulkStatus && bulkDoneAction && importResults.length > 0 && (
+              {!bulkStatus && bulkDoneAction && importResults && importResults.length > 0 && (
                 <div role="status" className="rounded-md border-2 border-primary bg-primary/10 p-3 text-sm font-semibold">
                   Finished: {importResults.filter((r) => r.ok).length} of {importResults.length} done.{bulkDoneAction === "account" ? " Use “Copy the sign-in link for all of them” to send one link by email." : ""}
                 </div>
               )}
               <div className="flex flex-wrap gap-2 justify-end">
-                {inviteMode === "link" ? (
-                  <>
-                    <Button type="button" disabled={busy} className="ef-cta" onClick={() => void runBulkSame("link")}>Create links for {importRows.length} people (no email)</Button>
-                    {linkPersonal && <Button type="button" disabled={busy} className="ef-cta" onClick={() => void runBulkSame("link_send")}>Create links &amp; send emails</Button>}
-                  </>
-                ) : (
                   <>
                     <Button type="button" disabled={busy} className="ef-cta" onClick={() => void runBulkSame("invite")}>Create {importRows.length} {importRows.length === 1 ? "account" : "accounts"} (send the invite)</Button>
                     <Button type="button" disabled={busy || !!bulkStatus} className="ef-cta" onClick={() => void runBulkSame("account")}>Create {importRows.length} {importRows.length === 1 ? "account" : "accounts"} (no invite)</Button>
@@ -2489,7 +2395,6 @@ export default function AdminDashboard() {
                       <Button type="button" className="bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-lg ring-2 ring-orange-300 animate-pulse" onClick={() => void copySignInLink(importResults.filter((r) => r.ok).map((r) => r.email.trim().toLowerCase()))}><Copy className="w-4 h-4 mr-2" />Copy the sign-in link for all of them</Button>
                     )}
                   </>
-                )}
                 <Button
                   type="button"
                   variant="ghost"
