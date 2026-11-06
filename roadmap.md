@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Restore public homepage section tabs and verify anchored scrolling on desktop and phone without changing portal menus.
+- [x] Restore public homepage section tabs without changing portal menus; desktop/phone checks verified section scrolling, active tabs and return to Home, with no page overflow. Preview only.
 
 - [x] Use energyforward.com for admin reset links, require email-service acceptance and show failures; expose per-user portal links with two-day expiry warnings and editable dates preserving the URL; check existing accounts before single/bulk creation and report updates separately. Eighteen tests and isolated desktop/phone expiry, copying, reset-feedback and invitation checks passed; admin-users and portal-entry deployed. No real emails sent or accounts changed; actual inbox delivery remains unverified and frontend publication pending.
 
