@@ -1,3 +1,5 @@
+import { findExistingAccount, normalizeAccountEmail } from "../_shared/account-lookup.ts";
+import { defaultPortalExpiry } from "../_shared/portal-expiry.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
   welcomeEmail,
@@ -18,7 +20,7 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-const APP_ORIGIN = "https://energyforward-launchpad.lovable.app";
+const APP_ORIGIN = "https://energyforward.com";
 const getResetRedirectUrl = () => `${APP_ORIGIN}/reset-password`;
 
 // Readable temporary password: no look-alike characters (0/O, 1/l/I), grouped
@@ -90,9 +92,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!SUPABASE_URL || !SERVICE_KEY || !ANON_KEY) return json({ error: "Service unavailable" }, 500);
 
     // Verify caller is an admin
     const authHeader = req.headers.get("Authorization") ?? "";
@@ -117,7 +120,8 @@ Deno.serve(async (req) => {
     const { action } = body;
 
     if (action === "invite") {
-      const { email, full_name, role, roles, investor_profile_ids, investor_video_ids, app_origin } = body;
+      const { full_name, role, roles, investor_profile_ids, investor_video_ids, app_origin } = body;
+      const email = typeof body.email === "string" ? normalizeAccountEmail(body.email) : "";
       const sendEmail = body.send_email !== false;
       if (!email || typeof email !== "string") return json({ error: "Invalid email" }, 400);
 
@@ -127,51 +131,25 @@ Deno.serve(async (req) => {
       const emailOnly = body.no_password_change === true && !customPwd;
       const tempPassword = customPwd || makeTempPassword();
 
-      let newUserId: string | undefined;
-      let userAlreadyExisted = false;
-      const { data, error } = await admin.auth.admin.createUser({
-        email,
-        password: tempPassword,
-        email_confirm: true,
-        user_metadata: { full_name: full_name ?? "" },
-      });
-      if (error) {
-        // If the user already exists, look them up and proceed by adding
-        // the requested roles + sending a password-reset welcome instead
-        // of failing the whole invite.
-        const msg = (error.message || "").toLowerCase();
-        const alreadyExists =
-          msg.includes("already") ||
-          msg.includes("registered") ||
-          msg.includes("exists") ||
-          msg.includes("duplicate");
-        if (!alreadyExists) return json({ error: error.message }, 400);
-        userAlreadyExisted = true;
-        // Find existing user id via profiles, fall back to listUsers.
-        const { data: prof } = await admin
-          .from("profiles")
-          .select("user_id")
-          .eq("email", email)
-          .maybeSingle();
-        newUserId = (prof as { user_id?: string } | null)?.user_id;
-        if (!newUserId) {
-          const { data: list } = await admin.auth.admin.listUsers({
-            page: 1,
-            perPage: 200,
-          });
-          newUserId = list?.users?.find(
-            (u) => (u.email || "").toLowerCase() === email.toLowerCase(),
-          )?.id;
-        }
-        if (!newUserId) return json({ error: error.message }, 400);
-        // Make the temp password in the welcome email actually work.
-        const { error: pwErr } = await admin.auth.admin.updateUserById(newUserId, {
-          password: tempPassword,
-          ban_duration: "none",
+      let newUserId = await findExistingAccount(admin, email);
+      let userAlreadyExisted = Boolean(newUserId);
+      if (!newUserId) {
+        const { data, error } = await admin.auth.admin.createUser({
+          email, password: tempPassword, email_confirm: true,
+          user_metadata: { full_name: full_name ?? "" },
         });
-        if (pwErr) return json({ error: pwErr.message }, 400);
-      } else {
-        newUserId = data.user?.id;
+        if (error) {
+          // Resolve a concurrent creation safely rather than creating twice.
+          newUserId = await findExistingAccount(admin, email);
+          if (!newUserId) return json({ error: error.message }, 400);
+          userAlreadyExisted = true;
+        } else newUserId = data.user?.id;
+      }
+      // An explicit password invitation/custom-password choice may reset credentials;
+      // merely updating an existing person's access must preserve their password.
+      if (newUserId && userAlreadyExisted && (customPwd || (sendEmail && !emailOnly))) {
+        const { error } = await admin.auth.admin.updateUserById(newUserId, { password: tempPassword });
+        if (error) return json({ error: error.message }, 400);
       }
       if (!newUserId) return json({ error: "User creation failed" }, 500);
 
@@ -181,8 +159,8 @@ Deno.serve(async (req) => {
           user_id: newUserId,
           email,
           full_name: full_name ?? "",
-          must_change_password: !customPwd && body.no_password_change !== true,
-          is_active: true,
+          ...(!userAlreadyExisted || emailOnly || customPwd || sendEmail ? { must_change_password: !customPwd && !emailOnly } : {}),
+          ...(!userAlreadyExisted ? { is_active: true } : {}),
         },
         { onConflict: "user_id" },
       );
@@ -221,7 +199,7 @@ Deno.serve(async (req) => {
       if (body.replace_access === true) {
         const keep = (v: unknown) => (Array.isArray(v) ? (v as unknown[]).filter((x): x is string => typeof x === "string") : []);
         const replace = async (table: string, col: string, ids: string[]) => {
-          const q = admin.from(table).delete().eq("user_id", newUserId!);
+          const q = admin.from(table).delete().eq("user_id", newUserId);
           await (ids.length ? q.not(col, "in", `(${ids.map((i) => `"${i.replace(/"/g, "")}"`).join(",")})`) : q);
         };
         await replace("project_page_access", "file_id", keep(body.project_page_ids));
@@ -302,25 +280,18 @@ Deno.serve(async (req) => {
           );
         }
       }
-      grantedProfiles = await grantedDocFolders(admin, newUserId!);
+      grantedProfiles = await grantedDocFolders(admin, newUserId);
 
       // Send branded welcome email with credentials.
       const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+      if (sendEmail && !RESEND_API_KEY) return json({ error: "Access saved, but email sending is not configured. No invitation sent." }, 503);
       if (RESEND_API_KEY && sendEmail) {
         const portals: string[] = [];
         if (role === "investor" || (Array.isArray(roles) && roles.includes("investor"))) portals.push("Investor");
         if (Array.isArray(roles) && roles.includes("video")) portals.push("Video");
         if (Array.isArray(roles) && roles.includes("project")) portals.push("Project 3D Demo");
         if (Array.isArray(roles) && roles.includes("customer")) portals.push("Customer");
-        const requestOrigin = (() => {
-          const raw = typeof app_origin === "string" ? app_origin : req.headers.get("origin");
-          try {
-            const parsed = new URL(raw ?? EF_PORTAL_URL);
-            return `${parsed.protocol}//${parsed.host}`;
-          } catch {
-            return new URL(EF_PORTAL_URL).origin;
-          }
-        })();
+        const requestOrigin = APP_ORIGIN;
         const loginParams = `?login=1&email=${encodeURIComponent(email)}`;
         let loginDestination = `${requestOrigin}${landingPath(portals, !!grantedProfiles?.length)}${loginParams}`;
         if (emailOnly) {
@@ -332,6 +303,7 @@ Deno.serve(async (req) => {
             emails: [email.trim().toLowerCase()],
             created_by: userData.user.id,
             mode: "personal",
+            expires_at: defaultPortalExpiry(),
           });
           if (linkError) return json({ error: "Account created, but its invitation link could not be created. No email sent." }, 500);
           loginDestination = `https://energyforward.com/enter/${slug}`;
@@ -417,50 +389,24 @@ Deno.serve(async (req) => {
           results.push({ email: email || "(missing)", ok: false, message: "Invalid email" });
           continue;
         }
-        const tempPassword = makeTempPassword();
-        const { data, error } = await admin.auth.admin.createUser({
-          email,
-          password: tempPassword,
-          email_confirm: true,
-          user_metadata: { full_name: fullName },
-        });
-        let userId = data.user?.id;
-        if (error) {
-          const msg = (error.message || "").toLowerCase();
-          const alreadyExists =
-            msg.includes("already") || msg.includes("registered") ||
-            msg.includes("exists") || msg.includes("duplicate");
-          if (!alreadyExists) {
-            results.push({ email, ok: false, message: error.message });
-            continue;
-          }
-          const { data: prof } = await admin
-            .from("profiles")
-            .select("user_id")
-            .eq("email", email)
-            .maybeSingle();
-          userId = (prof as { user_id?: string } | null)?.user_id;
-          if (!userId) {
-            const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-            userId = list?.users?.find(
-              (u) => (u.email || "").toLowerCase() === email.toLowerCase(),
-            )?.id;
-          }
-          if (!userId) {
-            results.push({ email, ok: false, message: "Already exists, could not look up" });
-            continue;
-          }
-          results.push({ email, ok: true, message: "Already existed — added to list", user_id: userId });
-        } else {
-          results.push({ email, ok: true, message: "Created", user_id: userId });
+        let userId = await findExistingAccount(admin, email);
+        const existed = Boolean(userId);
+        if (!userId) {
+          const { data, error } = await admin.auth.admin.createUser({
+            email, password: makeTempPassword(), email_confirm: true,
+            user_metadata: { full_name: fullName },
+          });
+          if (error) { results.push({ email, ok: false, message: error.message }); continue; }
+          userId = data.user?.id;
         }
+        if (!userId) { results.push({ email, ok: false, message: "Account not found" }); continue; }
+        results.push({ email, ok: true, message: existed ? "Existing account — updated, not recreated" : "Created", user_id: userId });
         await admin.from("profiles").upsert(
           {
             user_id: userId,
             email,
             full_name: fullName,
-            must_change_password: !emailCodeOnly,
-            is_active: true,
+            ...(!existed ? { must_change_password: !emailCodeOnly, is_active: true } : {}),
           },
           { onConflict: "user_id" },
         );
@@ -601,8 +547,8 @@ Deno.serve(async (req) => {
     }
 
     if (action === "send_reset") {
-      const { email } = body;
-      if (!email) return json({ error: "Missing email" }, 400);
+      const email = typeof body.email === "string" ? normalizeAccountEmail(body.email) : "";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: "Enter a valid email" }, 400);
       // Always use the production app URL — never the caller's origin
       // (which may be localhost or a preview URL when admins reset from dev).
       const redirectTo = getResetRedirectUrl();
@@ -662,8 +608,12 @@ Deno.serve(async (req) => {
         from: tpl.from,
         replyTo: tpl.replyTo,
       });
-      if (!r.ok) return json({ error: r.error }, 502);
-      return json({ ok: true });
+      if (!r.ok || !r.id) {
+        console.error("Reset email rejected:", r.error ?? "No delivery receipt returned");
+        return json({ error: r.error ?? "Email service did not accept the reset email. Please retry." }, 502);
+      }
+      console.log("Reset email accepted", { message_id: r.id });
+      return json({ ok: true, email_sent: true, message_id: r.id });
     }
 
     if (action === "set_password") {

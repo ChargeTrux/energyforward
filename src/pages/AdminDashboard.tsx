@@ -1,5 +1,7 @@
 import { ActivityAlertToggle, callShareLink, KIND_LABEL, type Kind, type LinkRow } from "@/components/admin/ShareLinksPanel";
 import { UserShareLinks } from "@/components/admin/UserShareLinks";
+import { UserPortalLinks, type PortalEntryLink } from "@/components/admin/UserPortalLinks";
+import { portalLinkStatus } from "@/lib/portal-link-expiry";
 import { ActivityMap } from "@/components/admin/ActivityMap";
 import type React from "react";
 import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react";
@@ -222,6 +224,18 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [shareLinks, setShareLinks] = useState<LinkRow[]>([]);
+  const [portalLinks, setPortalLinks] = useState<PortalEntryLink[]>([]);
+  const [portalLinksError, setPortalLinksError] = useState(false);
+  const loadPortalLinks = async () => {
+    const all: PortalEntryLink[] = [];
+    for (let start = 0; ; start += 1000) {
+      const { data, error } = await supabase.from("portal_entry_links").select("id,slug,emails,enabled,expires_at,mode").order("created_at", { ascending: false }).range(start, start + 999);
+      if (error) { setPortalLinksError(true); return; }
+      all.push(...(data ?? []));
+      if ((data ?? []).length < 1000) break;
+    }
+    setPortalLinks(all); setPortalLinksError(false);
+  };
   const [signups, setSignups] = useState<SignupRow[]>([]);
   const [activity, setActivity] = useState<ActivityRow[]>([]);
   const [contacts, setContacts] = useState<ContactSubmissionRow[]>([]);
@@ -286,6 +300,7 @@ export default function AdminDashboard() {
     const { data, error } = await supabase.functions.invoke("portal-entry", { body: { action: "create", emails, mode: portalSignIn } });
     if (error || !data?.slug) { toast({ title: "Could not create the link", description: (data as { error?: string })?.error ?? error?.message, variant: "destructive" }); return; }
     const url = `https://energyforward.com/enter/${data.slug}`;
+    await loadPortalLinks();
     try {
       await navigator.clipboard.writeText(url);
       toast({ title: portalSignIn === "personal" ? "Personal portal link copied — no email sent" : "Portal link (with password) copied — no email sent", description: `Works for ${emails.length} ${emails.length === 1 ? "person" : "people"}${portalSignIn === "personal" ? " by typing their email" : " with their email and password"}. Expires in 2 weeks.` });
@@ -376,6 +391,7 @@ export default function AdminDashboard() {
   }, []);
 
   const load = async () => {
+    void loadPortalLinks();
     if (!namesSynced && !isUserPreview) {
       namesSynced = true;
       // Pull current Drive folder names into the portal, then refresh.
@@ -817,7 +833,7 @@ export default function AdminDashboard() {
       });
       return null;
     }
-    toast({ title: "Done" });
+    if (action !== "send_reset") toast({ title: "Done" });
     // Refresh every access list so ticks under each heading match what was just saved.
     await Promise.all([load(), loadVideos(), loadProject()]);
     return data;
@@ -831,7 +847,8 @@ export default function AdminDashboard() {
     setResetPending(email);
     toast({ title: "Sending reset email…", description: email });
     try {
-      await callAdmin("send_reset", { email });
+      const result = await callAdmin("send_reset", { email });
+      if (result?.email_sent) toast({ title: "Reset email accepted for delivery", description: `Sent to ${email}. Ask them to check their inbox and spam folder.` });
     } finally {
       setResetPending(null);
     }
@@ -872,14 +889,15 @@ export default function AdminDashboard() {
       // A ticked heading means everything under it, even if the list loaded late.
       investor_video_ids: rolesArr.includes("video") ? (selectedVideoIds.length ? selectedVideoIds : videoCatalog.map((v) => v.id)) : [],
       project_page_ids: rolesArr.includes("project") ? (selectedProjectIds.length ? selectedProjectIds : projectCatalog.map((pg) => pg.id)) : [],
-    })) as { temp_password?: string } | null;
+    })) as { temp_password?: string; already_existed?: boolean; email_sent?: boolean } | null;
+    lastInviteExisted.current = data?.already_existed === true;
     if (data && quiet) return true;
     if (data) {
       setCreatedEmails(sendEmail ? [] : [email.trim().toLowerCase()]);
       const list = rolesArr.length ? rolesArr.join(", ") : "no portal";
       toast(sendEmail
-        ? { title: "Welcome email sent", description: `Invited ${email} (${list}).` }
-        : { title: "User created — no email sent", description: `${email} (${list}). Copy the portal link to share their assigned materials, or send a welcome invite when ready.` });
+        ? { title: "Welcome email sent", description: `${data.already_existed ? "Existing account updated and invited" : "Invited"} ${email} (${list}).` }
+        : { title: data.already_existed ? "Existing account updated — not recreated" : "User created — no email sent", description: `${email} (${list}). No email sent. Copy the portal link when ready.` });
       setInviteEmail("");
       setInviteName("");
 
@@ -1041,6 +1059,7 @@ export default function AdminDashboard() {
 
   // Bulk import with exactly the same choices as "Invite one person".
   const bulkImportRunning = useRef(false);
+  const lastInviteExisted = useRef(false);
   const [bulkStatus, setBulkStatus] = useState<{ done: number; total: number; current: string } | null>(null);
   const [bulkDoneAction, setBulkDoneAction] = useState<string | null>(null);
   const runBulkSame = async (action: "account" | "invite" | "link" | "link_send") => {
@@ -1061,14 +1080,18 @@ export default function AdminDashboard() {
     if (inviteVideo) roles.push("video");
     if (inviteProject) roles.push("project");
     try {
+      const seen = new Set<string>();
       for (const row of importRows) {
+        const normalized = row.email.trim().toLowerCase();
+        if (seen.has(normalized)) { results.push({ email: row.email, ok: false, message: "Duplicate in list — skipped" }); continue; }
+        seen.add(normalized);
         const name = row.full_name || row.email.split("@")[0];
         setBulkStatus({ done: results.length, total: importRows.length, current: row.email });
         try {
           const ok = action === "link" || action === "link_send"
             ? await createLinkFromInvite(action === "link_send", { email: row.email, name, collect: links })
             : await createInvite([...roles], row.email, row.full_name, action === "invite", true);
-          results.push({ email: row.email, ok, message: ok ? (action === "invite" || action === "link_send" ? "Done — email sent" : "Done — no email sent") : "Failed" });
+          results.push({ email: row.email, ok, message: ok ? `${lastInviteExisted.current ? "Existing account updated" : "Created"} — ${action === "invite" || action === "link_send" ? "email sent" : "no email sent"}` : "Failed" });
         } catch (e) { results.push({ email: row.email, ok: false, message: (e as Error).message }); }
       }
       setImportResults(results);
@@ -1925,6 +1948,8 @@ export default function AdminDashboard() {
                   projectAccess.some((a) => a.user_id === u.user_id && a.file_id === pg.id),
                 );
                 const userLinks = linksForUser(u.user_id, u.email);
+                const userPortalLinks = portalLinks.filter((link) => link.emails.some((email) => email.trim().toLowerCase() === u.email.trim().toLowerCase()));
+                const expiryWarnings = userPortalLinks.map((link) => portalLinkStatus(link.expires_at, link.enabled)).filter((status) => status.warning);
                 return (
                   <div key={u.user_id} className={`ef-access-user ef-access-user--${status.tone}`}>
                     <div className="ef-access-summary">
@@ -1938,6 +1963,7 @@ export default function AdminDashboard() {
                           <span className="block font-semibold">{u.full_name || "—"}</span>
                           <span className="block text-xs text-muted-foreground">{u.email}</span>
                           <span className="block mt-1 text-xs text-muted-foreground">{getRoleLabel(u)} · {folders.length} folders · {vids.length} videos{u.is_project ? ` · Project Run (${projPages.length})` : ""}{userLinks.length > 0 ? ` · ${userLinks.length} direct link${userLinks.length > 1 ? "s" : ""}` : ""}</span>
+                          {expiryWarnings.map((warning, index) => <span key={index} className="block text-xs font-semibold text-destructive">{warning.label}</span>)}
                         </span>
                         <span className="ef-access-indicator">
                           <span className={`ef-user-status ef-user-status--${status.tone}`} title={status.tone === "active" ? `Activity recorded: ${formatCompact(recentActivity.get(u.user_id) ?? "")} (within five minutes)` : lastLogins.get(u.user_id) ? `Last successful sign-in: ${formatCompact(lastLogins.get(u.user_id) ?? "")}` : status.label}><i aria-hidden="true" />{status.label}</span>
@@ -1949,6 +1975,7 @@ export default function AdminDashboard() {
                       </Button>
                     </div>
                     <div id={`access-${u.user_id}`} hidden={!expanded}>
+                    {portalLinksError ? <p role="alert" className="text-destructive p-3">Could not load portal links. <Button variant="outline" size="sm" onClick={() => void loadPortalLinks()}>Retry</Button></p> : <UserPortalLinks links={userPortalLinks} onChanged={loadPortalLinks} />}
                     <section className="ef-user-section ef-section--activity">
                       <h3 className="ef-subsection-title">1 · Admin notifications</h3>
                       <ActivityAlertToggle userId={u.user_id} />
@@ -2287,6 +2314,7 @@ export default function AdminDashboard() {
                 onChange={(e) => setInviteEmail(e.target.value)}
                 placeholder="user@example.com"
               />
+              {profiles.some((profile) => profile.email.trim().toLowerCase() === inviteEmail.trim().toLowerCase()) && <p className="mt-2 text-sm font-semibold text-foreground">This account already exists. Its access will be updated; no duplicate account will be created.</p>}
             </div>
             {renderAccessSections()}
             <div className="ef-invite-actions md:col-span-12 flex flex-wrap justify-start gap-2">
@@ -2357,6 +2385,7 @@ export default function AdminDashboard() {
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
+                      {!importResults && <TableHead>Account status</TableHead>}
                       {importResults && <TableHead>Result</TableHead>}
                     </TableRow>
                   </TableHeader>
@@ -2369,6 +2398,7 @@ export default function AdminDashboard() {
                         <TableRow key={r.email}>
                           <TableCell>{r.full_name || "—"}</TableCell>
                           <TableCell>{r.email}</TableCell>
+                          {!importResults && <TableCell>{profiles.some((profile) => profile.email.trim().toLowerCase() === r.email.trim().toLowerCase()) ? "Existing account — will update, not recreate" : "New account"}</TableCell>}
                           {importResults && (
                             <TableCell>
                               {res ? (
