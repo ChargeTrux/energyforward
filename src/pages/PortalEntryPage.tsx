@@ -15,6 +15,14 @@ export default function PortalEntryPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
+  const [mode, setMode] = useState<"personal" | "password">("personal");
+  const [password, setPassword] = useState("");
+  useEffect(() => {
+    fetch(base, { method: "POST", headers: { "Content-Type": "application/json", apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string }, body: JSON.stringify({ action: "info", slug }) })
+      .then((r) => r.json().then((b) => ({ ok: r.ok, b })))
+      .then(({ ok, b }) => { if (!ok) setError(b.error ?? "This link is not available."); else if (b.mode === "password") setMode("password"); })
+      .catch(() => {});
+  }, [slug]);
   const navigate = useNavigate();
   useEffect(() => { if (signedIn) navigate("/investor/welcome", { replace: true }); }, [signedIn, navigate]);
   useEffect(() => {
@@ -29,6 +37,12 @@ export default function PortalEntryPage() {
     setBusy(true);
     setError("");
     try {
+      if (mode === "password") {
+        const { error: pErr } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+        if (pErr) setError("Email or password is not correct.");
+        else navigate("/investor/welcome", { replace: true });
+        return;
+      }
       const r = await fetch(base, {
         method: "POST",
         headers: { "Content-Type": "application/json", apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string },
@@ -68,6 +82,11 @@ export default function PortalEntryPage() {
           <label htmlFor="entry-email" style={{ display: "block", fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.7, marginBottom: 8, textAlign: "left" }}>Your email address</label>
           <input id="entry-email" type="email" required autoFocus autoComplete="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)}
             style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid rgba(238,234,226,0.3)", background: "rgba(0,0,0,0.2)", color: pearl, fontSize: 15 }} />
+          {mode === "password" && (<>
+            <label htmlFor="entry-password" style={{ display: "block", fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.7, margin: "14px 0 8px", textAlign: "left" }}>Your password</label>
+            <input id="entry-password" type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)}
+              style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid rgba(238,234,226,0.3)", background: "rgba(0,0,0,0.2)", color: pearl, fontSize: 15 }} />
+          </>)}
           <button type="submit" disabled={busy}
             style={{ marginTop: 16, width: "100%", padding: "12px 14px", borderRadius: 10, border: "none", background: amber, color: teal, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
             {busy ? "Opening…" : "Open my portal"}

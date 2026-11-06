@@ -276,14 +276,14 @@ export default function AdminDashboard() {
   const [portalSignIn, setPortalSignIn] = useState<"password" | "personal">("password");
   const [createdEmails, setCreatedEmails] = useState<string[]>([]);
   const copySignInLink = async (emails: string[]) => {
-    if (portalSignIn === "password" || !emails.length) return copyPortalLink();
+    if (!emails.length) return copyPortalLink();
     if (isUserPreview) { toast({ title: "Read-only preview", description: "Exit preview to make changes." }); return; }
-    const { data, error } = await supabase.functions.invoke("portal-entry", { body: { action: "create", emails } });
+    const { data, error } = await supabase.functions.invoke("portal-entry", { body: { action: "create", emails, mode: portalSignIn } });
     if (error || !data?.slug) { toast({ title: "Could not create the link", description: (data as { error?: string })?.error ?? error?.message, variant: "destructive" }); return; }
     const url = `https://energyforward.com/enter/${data.slug}`;
     try {
       await navigator.clipboard.writeText(url);
-      toast({ title: "Personal portal link copied — no email sent", description: `Works for ${emails.length} ${emails.length === 1 ? "person" : "people"} by typing their email. Expires in 2 weeks.` });
+      toast({ title: portalSignIn === "personal" ? "Personal portal link copied — no email sent" : "Portal link (with password) copied — no email sent", description: `Works for ${emails.length} ${emails.length === 1 ? "person" : "people"}${portalSignIn === "personal" ? " by typing their email" : " with their email and password"}. Expires in 2 weeks.` });
     } catch { toast({ title: "Copy this link", description: url }); }
   };
   const copyPortalLink = async () => {
@@ -2380,7 +2380,7 @@ export default function AdminDashboard() {
                 Create account (no invite)
               </Button>
               {createdEmails.length === 1 && (
-                <Button type="button" disabled={busy} className="ef-cta mr-3" onClick={() => void copySignInLink(createdEmails)}><Copy className="w-4 h-4 mr-2" />Copy the sign-in link</Button>
+                <Button type="button" disabled={busy} className="bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-lg ring-2 ring-orange-300 animate-pulse mr-3" onClick={() => void copySignInLink(createdEmails)}><Copy className="w-4 h-4 mr-2" />Copy the sign-in link</Button>
               )}
               <Button type="submit" disabled={busy} className="ef-cta px-8">
                 Create &amp; Invite
@@ -2485,7 +2485,7 @@ export default function AdminDashboard() {
                     <Button type="button" disabled={busy} className="ef-cta" onClick={() => void runBulkSame("invite")}>Create {importRows.length} {importRows.length === 1 ? "account" : "accounts"} (send the invite)</Button>
                     <Button type="button" disabled={busy || !!bulkStatus} className="ef-cta" onClick={() => void runBulkSame("account")}>Create {importRows.length} {importRows.length === 1 ? "account" : "accounts"} (no invite)</Button>
                     {bulkDoneAction === "account" && !bulkStatus && (
-                      <Button type="button" className="ef-cta" onClick={() => void copySignInLink(importResults.filter((r) => r.ok).map((r) => r.email.trim().toLowerCase()))}><Copy className="w-4 h-4 mr-2" />Copy the sign-in link for all of them</Button>
+                      <Button type="button" className="bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-lg ring-2 ring-orange-300 animate-pulse" onClick={() => void copySignInLink(importResults.filter((r) => r.ok).map((r) => r.email.trim().toLowerCase()))}><Copy className="w-4 h-4 mr-2" />Copy the sign-in link for all of them</Button>
                     )}
                   </>
                 )}
