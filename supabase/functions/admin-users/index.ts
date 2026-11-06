@@ -1,5 +1,6 @@
 import { findExistingAccount, normalizeAccountEmail } from "../_shared/account-lookup.ts";
 import { defaultPortalExpiry } from "../_shared/portal-expiry.ts";
+import { GENERIC_PORTAL_URL, ensurePortalAccountEntry } from "../_shared/portal-account-entry.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
   welcomeEmail,
@@ -281,6 +282,7 @@ Deno.serve(async (req) => {
         }
       }
       grantedProfiles = await grantedDocFolders(admin, newUserId);
+      await ensurePortalAccountEntry(admin, newUserId, emailOnly ? "personal" : "password", true);
 
       // Send branded welcome email with credentials.
       const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
@@ -293,21 +295,7 @@ Deno.serve(async (req) => {
         if (Array.isArray(roles) && roles.includes("customer")) portals.push("Customer");
         const requestOrigin = APP_ORIGIN;
         const loginParams = `?login=1&email=${encodeURIComponent(email)}`;
-        let loginDestination = `${requestOrigin}${landingPath(portals, !!grantedProfiles?.length)}${loginParams}`;
-        if (emailOnly) {
-          // Same expiring, listed-account entry mechanism as the copied personal link.
-          const bytes = crypto.getRandomValues(new Uint8Array(18));
-          const slug = btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-          const { error: linkError } = await admin.from("portal_entry_links").insert({
-            slug,
-            emails: [email.trim().toLowerCase()],
-            created_by: userData.user.id,
-            mode: "personal",
-            expires_at: defaultPortalExpiry(),
-          });
-          if (linkError) return json({ error: "Account created, but its invitation link could not be created. No email sent." }, 500);
-          loginDestination = `https://energyforward.com/enter/${slug}`;
-        }
+        let loginDestination = GENERIC_PORTAL_URL;
         if (false) {
           // (disabled) Existing user — send a password reset link instead of a temp password.
           try {
