@@ -833,7 +833,7 @@ export default function AdminDashboard() {
       });
       return null;
     }
-    toast({ title: "Done" });
+    if (action !== "send_reset") toast({ title: "Done" });
     // Refresh every access list so ticks under each heading match what was just saved.
     await Promise.all([load(), loadVideos(), loadProject()]);
     return data;
@@ -2314,6 +2314,7 @@ export default function AdminDashboard() {
                 onChange={(e) => setInviteEmail(e.target.value)}
                 placeholder="user@example.com"
               />
+              {profiles.some((profile) => profile.email.trim().toLowerCase() === inviteEmail.trim().toLowerCase()) && <p className="mt-2 text-sm font-semibold text-foreground">This account already exists. Its access will be updated; no duplicate account will be created.</p>}
             </div>
             {renderAccessSections()}
             <div className="ef-invite-actions md:col-span-12 flex flex-wrap justify-start gap-2">

@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Repair reset-email feedback/destination; expose per-user portal links with expiry warnings and editable dates; check existing accounts before single/bulk creation and report updates separately. Never send real test emails or create test accounts.
+- [x] Use energyforward.com for admin reset links, require email-service acceptance and show failures; expose per-user portal links with two-day expiry warnings and editable dates preserving the URL; check existing accounts before single/bulk creation and report updates separately. Eighteen tests and isolated desktop/phone expiry, copying, reset-feedback and invitation checks passed; admin-users and portal-entry deployed. No real emails sent or accounts changed; actual inbox delivery remains unverified and frontend publication pending.
 
 - [x] Show Copy the link only after successful no-invite creation in both invitation forms; hide it after invitation-email creation. Isolated single/bulk browser flows passed with all requests intercepted; no actual emails or accounts created; frontend publication pending.
 
