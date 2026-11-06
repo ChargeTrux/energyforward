@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Match single/bulk invitation actions: left aligned, send-invite first, no-invite second, separate copy-link button after successful no-email creation.
+
 - [x] Match single/bulk invitation forms: remove Access type, rename Access level, move custom password into three exclusive credential choices. Eleven tests and isolated desktop/phone form checks passed; no emails sent. Real-account sign-in remains unverified with external Supabase; publication pending.
 
 - [x] Add reusable portal-link copying and existing-account-only email-code sign-in; keep invitation optional and show code in the existing auth email template. Simulated code request/rejection checks and 14 regression tests passed; frontend publication pending.
