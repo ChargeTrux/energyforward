@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Show Copy the link only after successful no-invite creation in both invitation forms; hide it after invitation-email creation.
+- [x] Show Copy the link only after successful no-invite creation in both invitation forms; hide it after invitation-email creation. Isolated single/bulk browser flows passed with all requests intercepted; no actual emails or accounts created; frontend publication pending.
 
 - [x] Gate single/bulk credentials and creation on selected access; add simple custom-password guidance, live length validation and show/hide control. Twelve access/credential/email tests and isolated desktop/phone form checks passed; no accounts created or emails sent. Frontend publication pending; actual inbox delivery remains unverified.
 
