@@ -845,6 +845,7 @@ export default function AdminDashboard() {
     quiet = false,
   ): Promise<boolean> => {
     if (!email) return false;
+    if (!quiet) setCreatedEmails([]);
     if (!accessSelected) {
       toast({ title: "Select access first", description: "Choose at least one access level in Section 1.", variant: "destructive" });
       return false;
@@ -874,7 +875,7 @@ export default function AdminDashboard() {
     })) as { temp_password?: string } | null;
     if (data && quiet) return true;
     if (data) {
-      setCreatedEmails([email.trim().toLowerCase()]);
+      setCreatedEmails(sendEmail ? [] : [email.trim().toLowerCase()]);
       const list = rolesArr.length ? rolesArr.join(", ") : "no portal";
       toast(sendEmail
         ? { title: "Welcome email sent", description: `Invited ${email} (${list}).` }
