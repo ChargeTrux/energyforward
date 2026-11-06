@@ -50,6 +50,29 @@ a { color: inherit; text-decoration: none; }
   color: var(--pearl);
 }
 .nav-right { display: flex; align-items: center; gap: 28px; }
+.section-nav {
+  display: flex; align-items: center; gap: 16px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px; letter-spacing: 0;
+}
+.section-nav a {
+  white-space: nowrap; padding: 8px 0;
+  color: var(--pearl); border-bottom: 2px solid transparent;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+.section-nav a:hover, .section-nav a[aria-current="location"] {
+  color: var(--amber); border-bottom-color: var(--amber);
+}
+.section-nav a:focus-visible { outline: 2px solid var(--amber); outline-offset: 4px; }
+section[id] { scroll-margin-top: 120px; }
+@media (max-width: 1200px) {
+  .nav { flex-wrap: wrap; gap: 12px; background: var(--teal); }
+  .section-nav { order: 3; width: 100%; overflow-x: auto; gap: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html, body { scroll-behavior: auto; }
+  .section-nav a { transition: none; }
+}
 .nav-meta {
   display: flex; align-items: center; gap: 10px;
   font-family: "JetBrains Mono", ui-monospace, monospace;
