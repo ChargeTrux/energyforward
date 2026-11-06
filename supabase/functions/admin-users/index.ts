@@ -124,6 +124,7 @@ Deno.serve(async (req) => {
       // Admin may set a lasting password; otherwise a temporary one is generated.
       const customPwd = typeof body.custom_password === "string" ? body.custom_password.trim() : "";
       if (customPwd && (customPwd.length < 8 || customPwd.length > 72)) return json({ error: "Password must be 8–72 characters" }, 400);
+      const emailOnly = body.no_password_change === true && !customPwd;
       const tempPassword = customPwd || makeTempPassword();
 
       let newUserId: string | undefined;
@@ -321,7 +322,20 @@ Deno.serve(async (req) => {
           }
         })();
         const loginParams = `?login=1&email=${encodeURIComponent(email)}`;
-        const loginDestination = `${requestOrigin}${landingPath(portals, !!grantedProfiles?.length)}${loginParams}`;
+        let loginDestination = `${requestOrigin}${landingPath(portals, !!grantedProfiles?.length)}${loginParams}`;
+        if (emailOnly) {
+          // Same expiring, listed-account entry mechanism as the copied personal link.
+          const bytes = crypto.getRandomValues(new Uint8Array(18));
+          const slug = btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+          const { error: linkError } = await admin.from("portal_entry_links").insert({
+            slug,
+            emails: [email.trim().toLowerCase()],
+            created_by: userData.user.id,
+            mode: "personal",
+          });
+          if (linkError) return json({ error: "Account created, but its invitation link could not be created. No email sent." }, 500);
+          loginDestination = `https://energyforward.com/enter/${slug}`;
+        }
         if (false) {
           // (disabled) Existing user — send a password reset link instead of a temp password.
           try {
@@ -361,6 +375,7 @@ Deno.serve(async (req) => {
             portals,
             investorProfiles: grantedProfiles,
             permanentPassword: !!customPwd,
+            emailOnly,
           });
           const r = await sendBrandedEmail(RESEND_API_KEY, {
             to: email,
@@ -369,7 +384,7 @@ Deno.serve(async (req) => {
             from: tpl.from,
             replyTo: tpl.replyTo,
           });
-          if (!r.ok) console.error("Welcome email failed:", r.error);
+          if (!r.ok) return json({ error: "Account created, but the welcome email could not be sent. Please try again." }, 502);
           else await admin.from("profiles").update({ invite_sent_at: new Date().toISOString() }).eq("user_id", newUserId);
         }
       }
@@ -377,7 +392,7 @@ Deno.serve(async (req) => {
       return json({
         ok: true,
         user_id: newUserId,
-        temp_password: tempPassword,
+        temp_password: emailOnly ? undefined : tempPassword,
         email_sent: !!(RESEND_API_KEY && sendEmail),
         already_existed: userAlreadyExisted,
       });
