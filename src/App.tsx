@@ -201,7 +201,8 @@ function AppContent() {
     path === "/contact" ||
     path === "/admin" ||
     path === "/reset-password" ||
-    path.startsWith("/share/");
+    path.startsWith("/share/") ||
+    path.startsWith("/enter/");
 
   return (
     <>
