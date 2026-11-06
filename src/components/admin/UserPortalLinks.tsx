@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { isUserPreview } from "@/lib/admin-preview";
 import { localDateTime, portalLinkStatus } from "@/lib/portal-link-expiry";
 
-export type PortalEntryLink = { id: string; slug: string; emails: string[]; enabled: boolean; expires_at: string; mode: string };
+export type PortalEntryLink = { id: string; user_id: string; slug: string; emails: string[]; enabled: boolean; expires_at: string; mode: string };
 
 export function UserPortalLinks({ links, onChanged }: { links: PortalEntryLink[]; onChanged: () => Promise<void> }) {
   const { toast } = useToast();
@@ -23,7 +23,7 @@ export function UserPortalLinks({ links, onChanged }: { links: PortalEntryLink[]
     }
     setSaving(link.id);
     try {
-      const { data, error } = await supabase.from("portal_entry_links").update({ expires_at: expiry.toISOString(), updated_at: new Date().toISOString() }).eq("id", link.id).select("id").single();
+      const { data, error } = await supabase.from("portal_account_entries").update({ expires_at: expiry.toISOString(), updated_at: new Date().toISOString() }).eq("user_id", link.user_id).select("user_id").single();
       if (error || !data) throw new Error(error?.message ?? "The link could not be updated.");
       await onChanged();
       toast({ title: "Expiry updated — same link, no email sent" });
@@ -31,14 +31,14 @@ export function UserPortalLinks({ links, onChanged }: { links: PortalEntryLink[]
     finally { setSaving(null); }
   };
   return <section className="ef-user-section ef-section--share">
-    <h3 className="ef-subsection-title">Portal sign-in links</h3>
-    {links.length === 0 && <p className="text-sm text-muted-foreground">No personal portal links saved for this person.</p>}
+    <h3 className="ef-subsection-title">Portal link &amp; expiration</h3>
+    {links.length === 0 && <p className="text-sm text-muted-foreground">No portal entry configured for this person.</p>}
     {links.map((link) => {
       const status = portalLinkStatus(link.expires_at, link.enabled);
       const url = `https://energyforward.com/enter/${link.slug}`;
       return <div key={link.id} className="border-b py-3 space-y-2">
         <p className={`text-sm font-semibold ${status.warning ? "text-destructive" : "text-foreground"}`}>{status.label} · {link.mode === "personal" ? "Email only, no password" : "Email and password"}</p>
-        <p className="text-xs text-muted-foreground">Expires {new Date(link.expires_at).toLocaleString()}{link.emails.length > 1 ? ` · Shared with ${link.emails.length} people; date changes apply to everyone on this link.` : ""}</p>
+        <p className="text-xs text-muted-foreground">Expires {new Date(link.expires_at).toLocaleString()} · This date applies only to this person.</p>
         <div className="flex flex-wrap items-end gap-2">
           <div><Label htmlFor={`expiry-${link.id}`}>Expiration date</Label><Input id={`expiry-${link.id}`} type="datetime-local" value={dates[link.id] ?? localDateTime(link.expires_at)} onChange={(e) => setDates((current) => ({ ...current, [link.id]: e.target.value }))} disabled={isUserPreview || saving === link.id} /></div>
           <Button size="sm" disabled={isUserPreview || saving === link.id || !dates[link.id]} onClick={() => void save(link)}><Save className="mr-2 h-4 w-4" />{saving === link.id ? "Saving…" : "Update expiration"}</Button>

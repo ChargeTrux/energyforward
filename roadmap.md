@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Use one generic portal URL with per-account credentials/expiry; remove orphaned portal recipients and fully clean permanent account deletion; test without real emails or account deletion.
+- [x] Use one generic portal URL with per-account credentials/expiry; remove orphaned portal recipients and fully clean permanent account deletion. Nine sample-data tests and simulated desktop/phone credential checks passed; services deployed, no real emails sent or real accounts deleted.
 
 - [x] Restore public homepage section tabs without changing portal menus; desktop/phone checks verified section scrolling, active tabs and return to Home, with no page overflow. Preview only.
 

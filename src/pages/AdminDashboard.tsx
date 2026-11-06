@@ -229,9 +229,9 @@ export default function AdminDashboard() {
   const loadPortalLinks = async () => {
     const all: PortalEntryLink[] = [];
     for (let start = 0; ; start += 1000) {
-      const { data, error } = await supabase.from("portal_entry_links").select("id,slug,emails,enabled,expires_at,mode").order("created_at", { ascending: false }).range(start, start + 999);
+      const { data, error } = await supabase.from("portal_account_entries").select("user_id,enabled,expires_at,mode").order("created_at", { ascending: false }).range(start, start + 999);
       if (error) { setPortalLinksError(true); return; }
-      all.push(...(data ?? []));
+      all.push(...(data ?? []).map((entry) => ({ ...entry, id: entry.user_id, slug: "portal", emails: [] })));
       if ((data ?? []).length < 1000) break;
     }
     setPortalLinks(all); setPortalLinksError(false);
@@ -1291,8 +1291,8 @@ export default function AdminDashboard() {
     try {
       const result = await deleteSelectedAccounts(ids, user?.id, async (id) => await callAdmin("delete_user", { user_id: id }) as { ok?: boolean } | null);
       setSelectedInvitees(result.failed);
-      await load();
-      toast({ title: result.failed.length ? `${result.deleted.length} deleted; ${result.failed.length} failed` : `${result.deleted.length} ${result.deleted.length === 1 ? "user deleted" : "users deleted"}`, description: result.failed.length ? "Failed accounts remain selected. Check the error and retry." : "Accounts and their direct links were permanently removed. No emails sent.", variant: result.failed.length ? "destructive" : "default" });
+      await Promise.all([load(), loadPortalLinks()]);
+      toast({ title: result.failed.length ? `${result.deleted.length} deleted; ${result.failed.length} failed` : `${result.deleted.length} ${result.deleted.length === 1 ? "user deleted" : "users deleted"}`, description: result.failed.length ? "Failed accounts remain selected. Check the error and retry." : "Accounts, links, activity and portal-entry records were permanently removed. No emails sent.", variant: result.failed.length ? "destructive" : "default" });
     } catch (error) { toast({ title: "Deletion failed", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" }); }
     finally { deletingUsersRef.current = false; setDeletingUsers(false); }
   };
@@ -1948,7 +1948,7 @@ export default function AdminDashboard() {
                   projectAccess.some((a) => a.user_id === u.user_id && a.file_id === pg.id),
                 );
                 const userLinks = linksForUser(u.user_id, u.email);
-                const userPortalLinks = portalLinks.filter((link) => link.emails.some((email) => email.trim().toLowerCase() === u.email.trim().toLowerCase()));
+                const userPortalLinks = portalLinks.filter((link) => link.user_id === u.user_id);
                 const expiryWarnings = userPortalLinks.map((link) => portalLinkStatus(link.expires_at, link.enabled)).filter((status) => status.warning);
                 return (
                   <div key={u.user_id} className={`ef-access-user ef-access-user--${status.tone}`}>
