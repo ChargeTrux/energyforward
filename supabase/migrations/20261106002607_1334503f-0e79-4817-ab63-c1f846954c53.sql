@@ -1,0 +1,1 @@
+ALTER TABLE public.portal_entry_links ADD COLUMN IF NOT EXISTS mode text NOT NULL DEFAULT 'personal' CHECK (mode IN ('personal','password'));
