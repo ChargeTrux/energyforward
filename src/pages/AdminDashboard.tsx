@@ -851,6 +851,7 @@ export default function AdminDashboard() {
       email,
       full_name: fullName,
       ...(useOwnPassword ? { custom_password: ownPassword.trim() } : {}),
+      ...(portalSignIn === "personal" ? { no_password_change: true } : {}),
       roles: rolesArr,
       app_origin: window.location.origin,
       replace_access: true,
@@ -939,7 +940,7 @@ export default function AdminDashboard() {
   const runBulkImport = async () => {
     if (importRows.length === 0) return;
     if (isUserPreview) { toast({ title: "Read-only preview", description: "Exit preview to make changes." }); return; }
-    const data = (await callAdmin("bulk_import", { people: importRows, email_code_only: importOpts.signIn !== "welcome" })) as {
+    const data = (await callAdmin("bulk_import", { people: importRows, email_code_only: importOpts.signIn !== "welcome" || portalSignIn === "personal" })) as {
       imported?: number;
       total?: number;
       results?: { email: string; ok: boolean; message: string; user_id?: string }[];
