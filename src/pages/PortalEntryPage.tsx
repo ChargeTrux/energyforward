@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { PortalNav } from "@/components/PortalNav";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
 const teal = "#0A2A2E";
@@ -15,6 +15,8 @@ export default function PortalEntryPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
+  const navigate = useNavigate();
+  useEffect(() => { if (signedIn) navigate("/investor/welcome", { replace: true }); }, [signedIn, navigate]);
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSignedIn(!!data.session));
     const { data } = supabase.auth.onAuthStateChange((_e, s) => setSignedIn(!!s));
@@ -36,7 +38,7 @@ export default function PortalEntryPage() {
       if (!r.ok || !b.token_hash) { setError(b.error ?? "This link is not available."); return; }
       const { error: vErr } = await supabase.auth.verifyOtp({ token_hash: b.token_hash, type: "magiclink" });
       if (vErr) setError("Could not sign you in. Please try again.");
-      // On success the app sends them to their portal.
+      else navigate("/investor/welcome", { replace: true });
     } finally { setBusy(false); }
   };
 
