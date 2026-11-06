@@ -2274,12 +2274,14 @@ export default function AdminDashboard() {
               />
             </div>
             {renderAccessSections()}
-            <div className="md:col-span-12 flex justify-end">
+            <div className="ef-invite-actions md:col-span-12 flex flex-wrap justify-start gap-2">
+              <Button type="submit" disabled={busy} className="ef-cta">
+                Create and send the invite email
+              </Button>
               <Button
                 type="button"
-                variant="outline"
                 disabled={busy || !inviteEmail}
-                className="mr-3"
+                className="ef-cta"
                 onClick={() => {
                   if (inviteAdmin && !window.confirm(`Create ${inviteEmail} with full admin access? No email will be sent.`)) return;
                   const r: PortalRole[] = [];
@@ -2292,18 +2294,15 @@ export default function AdminDashboard() {
                   void createInvite(r, inviteEmail, inviteName, false).then((ok) => setCreatedEmails(ok ? [em] : []));
                 }}
               >
-                Create account (no invite)
+                Create account (no invite email)
               </Button>
               {createdEmails.length === 1 && (
-                <Button type="button" disabled={busy} className="bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-lg ring-2 ring-orange-300 animate-pulse mr-3" onClick={() => void copySignInLink(createdEmails)}><Copy className="w-4 h-4 mr-2" />Copy the sign-in link</Button>
+                <Button type="button" disabled={busy} className="ef-copy-link" onClick={() => void copySignInLink(createdEmails)}><Copy className="w-4 h-4 mr-2" />Copy the link</Button>
               )}
-              <Button type="submit" disabled={busy} className="ef-cta px-8">
-                Create &amp; Invite
-              </Button>
             </div>
           </form>
           <p className="text-xs text-muted-foreground mt-3">
-            Create account (no invite) sends no email; then use Copy the sign-in link. With Customized level they only type their email; otherwise they sign in with email and password. Create &amp; Invite sends a welcome email with a temporary password, unless you select "Use a customized password".
+            Create account (no invite email) sends no email. Create and send the invite email sends the welcome invite.
           </p>
         </CardContent>
         </TabsContent>
@@ -2384,15 +2383,15 @@ export default function AdminDashboard() {
               )}
               {!bulkStatus && bulkDoneAction && importResults && importResults.length > 0 && (
                 <div role="status" className="rounded-md border-2 border-primary bg-primary/10 p-3 text-sm font-semibold">
-                  Finished: {importResults.filter((r) => r.ok).length} of {importResults.length} done.{bulkDoneAction === "account" ? " Use “Copy the sign-in link for all of them” to send one link by email." : ""}
+                  Finished: {importResults.filter((r) => r.ok).length} of {importResults.length} done.
                 </div>
               )}
-              <div className="flex flex-wrap gap-2 justify-end">
+              <div className="ef-invite-actions flex flex-wrap gap-2 justify-start">
                   <>
-                    <Button type="button" disabled={busy} className="ef-cta" onClick={() => void runBulkSame("invite")}>Create {importRows.length} {importRows.length === 1 ? "account" : "accounts"} (send the invite)</Button>
-                    <Button type="button" disabled={busy || !!bulkStatus} className="ef-cta" onClick={() => void runBulkSame("account")}>Create {importRows.length} {importRows.length === 1 ? "account" : "accounts"} (no invite)</Button>
-                    {bulkDoneAction === "account" && !bulkStatus && (
-                      <Button type="button" className="bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-lg ring-2 ring-orange-300 animate-pulse" onClick={() => void copySignInLink(importResults.filter((r) => r.ok).map((r) => r.email.trim().toLowerCase()))}><Copy className="w-4 h-4 mr-2" />Copy the sign-in link for all of them</Button>
+                    <Button type="button" disabled={busy} className="ef-cta" onClick={() => void runBulkSame("invite")}>Create {importRows.length} {importRows.length === 1 ? "account" : "accounts"} (send the invite email)</Button>
+                    <Button type="button" disabled={busy || !!bulkStatus} className="ef-cta" onClick={() => void runBulkSame("account")}>Create {importRows.length} {importRows.length === 1 ? "account" : "accounts"} (no invite email)</Button>
+                    {bulkDoneAction === "account" && !bulkStatus && importResults?.some((r) => r.ok) && (
+                      <Button type="button" disabled={busy} className="ef-copy-link" onClick={() => void copySignInLink((importResults ?? []).filter((r) => r.ok).map((r) => r.email.trim().toLowerCase()))}><Copy className="w-4 h-4 mr-2" />Copy the link</Button>
                     )}
                   </>
                 <Button

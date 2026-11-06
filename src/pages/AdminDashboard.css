@@ -99,6 +99,23 @@
   border: none !important;
 }
 .ef-admin .ef-cta:hover { background: #6fc7b3 !important; }
+.ef-admin .ef-copy-link {
+  background: hsl(var(--admin-status-warning)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  font-weight: 700;
+  border: 2px solid hsl(var(--admin-status-warning)) !important;
+  box-shadow: 0 2px 8px hsl(var(--admin-status-warning) / 0.25);
+}
+.ef-admin .ef-copy-link:hover:not(:disabled) { filter: brightness(1.08); }
+.ef-admin .ef-invite-actions button {
+  max-width: 100%;
+  min-height: 40px;
+  height: auto;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  white-space: normal;
+  letter-spacing: 0;
+}
 .ef-admin .ef-ghost-btn {
   background: transparent !important; color: var(--ef-pearl) !important;
   border: 1px solid var(--ef-border) !important;
