@@ -229,7 +229,6 @@ export default function AdminDashboard() {
   const [recentLoginCount, setRecentLoginCount] = useState(0);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
-  const inviteMode: "portal" | "link" = "portal";
   const [linkKind, setLinkKind] = useState<Kind>("video");
   const [linkProjectIds, setLinkProjectIds] = useState<string[]>([]);
   const [linkVideoIds, setLinkVideoIds] = useState<string[]>([]);
@@ -1038,7 +1037,7 @@ export default function AdminDashboard() {
   const runBulkSame = async (action: "account" | "invite" | "link" | "link_send") => {
     if (!importRows.length || bulkImportRunning.current) return;
     if (isUserPreview) { toast({ title: "Read-only preview", description: "Exit preview to make changes." }); return; }
-    if (inviteMode === "portal" && inviteAdmin && !window.confirm(`Give full admin access to all ${importRows.length} people?`)) return;
+    if (inviteAdmin && !window.confirm(`Give full admin access to all ${importRows.length} people?`)) return;
     bulkImportRunning.current = true;
     setBulkDoneAction(null);
     setBulkStatus({ done: 0, total: importRows.length, current: "" });
@@ -1073,7 +1072,6 @@ export default function AdminDashboard() {
 
   const renderAccessSections = () => (
     <>
-            {inviteMode === "portal" && (
             <div className="md:col-span-12 ef-access-permissions text-sm">
               <h3 className="ef-subsection-title">1 · Access level</h3>
               <div className="flex flex-wrap gap-6 pb-3 mb-3 border-b">
@@ -1170,8 +1168,6 @@ export default function AdminDashboard() {
                 </fieldset>
               </div>
             </div>
-            )}
-            {inviteMode === "portal" && (
             <fieldset className="md:col-span-12 ef-form-group ef-section--invite text-sm">
               <legend className="ef-subsection-title">2B · Credential type</legend>
               <div className="flex flex-col gap-4">
@@ -1196,68 +1192,13 @@ export default function AdminDashboard() {
                 )}
               </div>
             </fieldset>
-            )}
-            {inviteMode === "link" && (
-            <div className="md:col-span-12 ef-access-permissions text-sm space-y-3">
-              <h3 className="ef-subsection-title">2A · Choose material — tick as many as you like</h3>
-              <div className="grid gap-4 md:grid-cols-3">
-                {([["project", "1A · Project 3D Demo", projectCatalog, linkProjectIds, setLinkProjectIds, "ef-section--invite"], ["video", "1B · Videos", videoCatalog, linkVideoIds, setLinkVideoIds, "ef-section--materials"]] as const).map(([k, title, list, sel, setSel, tone]) => (
-                  <fieldset key={k} className={`ef-permission-group ${tone}`}>
-                    <legend className="ef-subsection-title">{title}</legend>
-                    <label className="flex items-center gap-2 text-xs font-semibold uppercase mb-1">
-                      <input type="checkbox" checked={list.length > 0 && sel.length === list.length} onChange={(e) => setSel(e.target.checked ? list.map((i) => i.id) : [])} />
-                      Select all
-                    </label>
-                    {list.length === 0 && <span className="text-muted-foreground">Nothing to pick yet.</span>}
-                    {list.map((it) => (
-                      <label key={it.id} className="flex items-center gap-2 ml-5">
-                        <input type="checkbox" checked={sel.includes(it.id)} onChange={(e) => { const on = e.target.checked; setSel((prev) => on ? [...prev, it.id] : prev.filter((x) => x !== it.id)); }} />
-                        <span className="min-w-0 break-words">{it.name.replace(/\.[^.]+$/, "")}</span>
-                      </label>
-                    ))}
-                  </fieldset>
-                ))}
-                <fieldset className="ef-permission-group ef-section--people">
-                  <legend className="ef-subsection-title">1C · Documents</legend>
-                  <div className="rounded border p-2 max-h-72 overflow-y-auto space-y-3">
-                    {investorProfiles.length === 0 && <span className="text-muted-foreground">No document folder set up.</span>}
-                    {investorProfiles.map((p) => (
-                      <div key={p.id}>
-                        {investorProfiles.length > 1 && <div className="text-xs font-semibold uppercase mb-1">{p.name}</div>}
-                        <DriveSelectTree
-                          profileId={p.id}
-                          selection={linkDocSel[p.id] ?? new Map()}
-                          onChange={(next) => setLinkDocSel((s) => ({ ...s, [p.id]: next }))}
-                          filesOnly
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted-foreground">Open a folder to pick files inside it.</p>
-                </fieldset>
-              </div>
-              <p>Selected: <strong>{allLinkPicks.length ? `${allLinkPicks.length} item${allLinkPicks.length > 1 ? "s" : ""} — one link each` : "nothing yet"}</strong></p>
-              <h3 className="ef-subsection-title">2B · Choose link access</h3>
-              <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="invite-link-mode" checked={linkPersonal} onChange={() => setLinkPersonal(true)} />Personal link <span className="font-normal text-xs text-muted-foreground">(no password — they type their email; expires in 2 weeks)</span></label>
-                <label className="flex items-center gap-2 font-semibold"><input type="radio" name="invite-link-mode" checked={!linkPersonal} onChange={() => setLinkPersonal(false)} />Link with password</label>
-              </div>
-              {!linkPersonal && (
-                <div className="max-w-xs">
-                  <Label htmlFor="invite-link-pw">Password</Label>
-                  <Input id="invite-link-pw" value={linkPassword} onChange={(e) => setLinkPassword(e.target.value)} placeholder="At least 6 characters" autoComplete="off" />
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground">No account is created and no email is sent unless you click "Create link &amp; send email". The person appears in the Investor & user manager under "Link access".</p>
-            </div>
-            )}
+
     </>
   );
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail) return;
-    if (inviteMode === "link") { await createLinkFromInvite(false); return; }
     if (inviteAdmin) {
       setConfirmAdminInvite(true);
       return;
@@ -2334,19 +2275,6 @@ export default function AdminDashboard() {
             </div>
             {renderAccessSections()}
             <div className="md:col-span-12 flex justify-end">
-              {inviteMode === "link" ? (
-                <>
-                  <Button type="submit" variant="outline" disabled={busy || !inviteEmail} className="mr-3">
-                    Create link (no email)
-                  </Button>
-                  {linkPersonal && (
-                    <Button type="button" disabled={busy || !inviteEmail} className="ef-cta px-8" onClick={() => void createLinkFromInvite(true)}>
-                      Create link &amp; send email
-                    </Button>
-                  )}
-                </>
-              ) : (
-                <>
               <Button
                 type="button"
                 variant="outline"
@@ -2372,8 +2300,6 @@ export default function AdminDashboard() {
               <Button type="submit" disabled={busy} className="ef-cta px-8">
                 Create &amp; Invite
               </Button>
-                </>
-              )}
             </div>
           </form>
           <p className="text-xs text-muted-foreground mt-3">
@@ -2456,18 +2382,12 @@ export default function AdminDashboard() {
                   <div className="mt-2 h-2 w-full rounded bg-muted overflow-hidden"><div className="h-full bg-primary transition-all" style={{ width: `${(bulkStatus.done / Math.max(1, bulkStatus.total)) * 100}%` }} /></div>
                 </div>
               )}
-              {!bulkStatus && bulkDoneAction && importResults.length > 0 && (
+              {!bulkStatus && bulkDoneAction && importResults && importResults.length > 0 && (
                 <div role="status" className="rounded-md border-2 border-primary bg-primary/10 p-3 text-sm font-semibold">
                   Finished: {importResults.filter((r) => r.ok).length} of {importResults.length} done.{bulkDoneAction === "account" ? " Use “Copy the sign-in link for all of them” to send one link by email." : ""}
                 </div>
               )}
               <div className="flex flex-wrap gap-2 justify-end">
-                {inviteMode === "link" ? (
-                  <>
-                    <Button type="button" disabled={busy} className="ef-cta" onClick={() => void runBulkSame("link")}>Create links for {importRows.length} people (no email)</Button>
-                    {linkPersonal && <Button type="button" disabled={busy} className="ef-cta" onClick={() => void runBulkSame("link_send")}>Create links &amp; send emails</Button>}
-                  </>
-                ) : (
                   <>
                     <Button type="button" disabled={busy} className="ef-cta" onClick={() => void runBulkSame("invite")}>Create {importRows.length} {importRows.length === 1 ? "account" : "accounts"} (send the invite)</Button>
                     <Button type="button" disabled={busy || !!bulkStatus} className="ef-cta" onClick={() => void runBulkSame("account")}>Create {importRows.length} {importRows.length === 1 ? "account" : "accounts"} (no invite)</Button>
@@ -2475,7 +2395,6 @@ export default function AdminDashboard() {
                       <Button type="button" className="bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-lg ring-2 ring-orange-300 animate-pulse" onClick={() => void copySignInLink(importResults.filter((r) => r.ok).map((r) => r.email.trim().toLowerCase()))}><Copy className="w-4 h-4 mr-2" />Copy the sign-in link for all of them</Button>
                     )}
                   </>
-                )}
                 <Button
                   type="button"
                   variant="ghost"
