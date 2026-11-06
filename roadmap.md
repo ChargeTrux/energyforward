@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Match single/bulk invitation actions: left aligned, send-invite first, no-invite second, separate copy-link button after successful no-email creation.
+- [x] Match single/bulk invitation actions: left aligned, send-invite first, no-invite second, separate orange copy-link button after successful no-email creation. Isolated browser flow and 12 regression tests passed; no real accounts or emails used; preview only.
 
 - [x] Match single/bulk invitation forms: remove Access type, rename Access level, move custom password into three exclusive credential choices. Eleven tests and isolated desktop/phone form checks passed; no emails sent. Real-account sign-in remains unverified with external Supabase; publication pending.
 

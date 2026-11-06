@@ -2274,7 +2274,7 @@ export default function AdminDashboard() {
               />
             </div>
             {renderAccessSections()}
-            <div className="md:col-span-12 flex flex-wrap justify-start gap-2">
+            <div className="ef-invite-actions md:col-span-12 flex flex-wrap justify-start gap-2">
               <Button type="submit" disabled={busy} className="ef-cta">
                 Create and send the invite email
               </Button>
@@ -2386,7 +2386,7 @@ export default function AdminDashboard() {
                   Finished: {importResults.filter((r) => r.ok).length} of {importResults.length} done.
                 </div>
               )}
-              <div className="flex flex-wrap gap-2 justify-start">
+              <div className="ef-invite-actions flex flex-wrap gap-2 justify-start">
                   <>
                     <Button type="button" disabled={busy} className="ef-cta" onClick={() => void runBulkSame("invite")}>Create {importRows.length} {importRows.length === 1 ? "account" : "accounts"} (send the invite email)</Button>
                     <Button type="button" disabled={busy || !!bulkStatus} className="ef-cta" onClick={() => void runBulkSame("account")}>Create {importRows.length} {importRows.length === 1 ? "account" : "accounts"} (no invite email)</Button>
