@@ -8,7 +8,7 @@ test("single and bulk account invitation requests send personal entry emails wit
   const client = {
     auth: {
       getUser: async () => ({ data: { user: { id: "test-admin" } } }),
-      admin: { createUser: async () => ({ data: { user: { id: "test-user" } } }) },
+      admin: { listUsers: async () => ({ data: { users: [] } }), createUser: async () => ({ data: { user: { id: "test-user" } } }) },
     },
     from: (table: string) => {
       const query: Record<string, unknown> = {};
