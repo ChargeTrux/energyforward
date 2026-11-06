@@ -74,6 +74,7 @@ export function shell(opts: {
   securityNote?: string;
   contactEmail?: string;
   relationsLabel?: string;
+  signInUrl?: string;
 }): string {
   const { preheader, heading, bodyHtml, ctaLabel, ctaUrl, securityNote } = opts;
   const contactEmail = opts.contactEmail || EF_REPLY_TO;
@@ -119,7 +120,7 @@ export function shell(opts: {
           <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${MUTED};margin:6px 0 12px;letter-spacing:2px;text-transform:uppercase;">${escapeHtml(relationsLabel)}</div>
           <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.7;color:${MUTED};">
             <a href="${EF_SITE_URL}" style="color:${TEAL};text-decoration:none;">energyforward.com</a> &nbsp;·&nbsp;
-            <a href="${EF_PORTAL_URL}" style="color:${TEAL};text-decoration:none;">Sign in</a> &nbsp;·&nbsp;
+            <a href="${escapeHtml(opts.signInUrl || EF_PORTAL_URL)}" style="color:${TEAL};text-decoration:none;">Sign in</a> &nbsp;·&nbsp;
             <a href="mailto:${contactEmail}" style="color:${TEAL};text-decoration:none;">${contactEmail}</a>
           </div>
           <div style="margin-top:16px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${MUTED};line-height:1.6;">
@@ -196,13 +197,15 @@ export function welcomeEmail(args: {
   investorProfiles?: InvestorProfileInfo[] | null;
   /** Admin chose a lasting password: no forced change on first sign-in. */
   permanentPassword?: boolean;
+  /** Customized level uses the listed email and personal entry link only. */
+  emailOnly?: boolean;
 }) {
   const name = escapeHtml(args.name || "Investor");
   const email = escapeHtml(args.email);
   const pwd = escapeHtml(args.tempPassword);
   const baseLogin = args.loginUrl || "https://energyforward.com/";
   const sep = baseLogin.includes("?") ? "&" : "?";
-  const loginUrl = /[?&]login=1/.test(baseLogin)
+  const loginUrl = args.emailOnly || /[?&]login=1/.test(baseLogin)
     ? baseLogin
     : `${baseLogin}${sep}login=1&email=${encodeURIComponent(args.email)}`;
   const portals = (args.portals && args.portals.length > 0) ? args.portals : ["Investor"];
@@ -234,20 +237,20 @@ export function welcomeEmail(args: {
     <p style="margin:0 0 14px;">Dear ${name},</p>
     <p style="margin:0 0 14px;">Welcome to EnergyForward. Your access request has been reviewed and approved. You are now authorized to access the following through the EnergyForward investor portal.</p>
     ${itemsHtml}
-    <p style="margin:0 0 10px;"><strong style="color:${PEARL};">Signing in</strong><br/>${args.permanentPassword ? "Use the credentials below to sign in. You can change your password at any time with “Forgot password” on the sign-in screen." : "Use the credentials below to sign in for the first time. On your first sign-in you will be prompted to set a new password of your own; the temporary password below is for that first sign-in only."} Once you are logged in, the content you have been granted appears in the navigation on the left; click any item to open it. Your account settings are in the top right corner.</p>
+    <p style="margin:0 0 10px;"><strong style="color:${PEARL};">Signing in</strong><br/>${args.emailOnly ? "Open your personal portal link below and type the email address shown here. No password is needed, and you will not be asked to set one. This link expires in two weeks." : args.permanentPassword ? "Use the credentials below to sign in. You can change your password at any time with “Forgot password” on the sign-in screen." : "Use the credentials below to sign in for the first time. On your first sign-in you will be prompted to set a new password of your own; the temporary password below is for that first sign-in only."} Once you are logged in, you will see only the materials you have been granted.</p>
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:6px 0 4px;border:1px solid ${BORDER};border-radius:8px;background:#0d1730;">
       <tr><td style="padding:14px 16px;font-family:Arial,Helvetica,sans-serif;font-size:13px;">
         <div style="color:${MUTED};text-transform:uppercase;letter-spacing:1px;font-size:11px;font-weight:700;">Email</div>
         <div style="color:${PEARL};font-weight:600;font-size:14px;margin-top:2px;font-family:Consolas,Menlo,monospace;">${email}</div>
-        <div style="height:1px;background:${BORDER};margin:12px 0;"></div>
+        ${args.emailOnly ? "" : `<div style="height:1px;background:${BORDER};margin:12px 0;"></div>
         <div style="color:${MUTED};text-transform:uppercase;letter-spacing:1px;font-size:11px;font-weight:700;">${args.permanentPassword ? "Password" : "Temporary Password"}</div>
-        <div style="color:${AMBER};font-family:Consolas,Menlo,monospace;font-weight:700;font-size:15px;margin-top:2px;letter-spacing:0.5px;">${pwd}</div>
+        <div style="color:${AMBER};font-family:Consolas,Menlo,monospace;font-weight:700;font-size:15px;margin-top:2px;letter-spacing:0.5px;">${pwd}</div>`}
       </td></tr>
     </table>
     <div style="margin:22px 0 0;padding:14px 16px;background:#2a1410;border-left:3px solid #e85d3a;border-radius:4px;">
       <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;color:#f4b5a3;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">Confidential — Do Not Share</div>
       <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:${TEXT};">
-        Your credentials are personal, non-transferable, and strictly confidential. Sharing your login, password, or any portal content with another person is <strong style="color:#f4b5a3;">prohibited</strong> and may result in immediate revocation of access.
+        Your credentials are personal, non-transferable, and strictly confidential. Sharing your ${args.emailOnly ? "personal link" : "login or password"}, or any portal content with another person is <strong style="color:#f4b5a3;">prohibited</strong> and may result in immediate revocation of access.
       </p>
       <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:${TEXT};">
         Need access for a colleague or additional team member? Please direct them to submit a request through our <a href="${contactUrl}" style="color:${TEAL};text-decoration:none;font-weight:600;">Contact Us</a> page so we can review and authorize them individually.
@@ -262,10 +265,11 @@ export function welcomeEmail(args: {
       bodyHtml: body,
       ctaLabel: "Sign in to EnergyForward",
       ctaUrl: loginUrl,
+      signInUrl: loginUrl,
       contactEmail: branding.contactEmail,
       relationsLabel: branding.relationsLabel,
       securityNote:
-        "For your security, please change your password immediately after your first sign-in. Keep your credentials confidential. If you need assistance, contact <a href=\"mailto:" +
+        (args.emailOnly ? "Keep your personal portal link confidential. " : args.permanentPassword ? "Keep your credentials confidential. " : "For your security, please change your password immediately after your first sign-in. Keep your credentials confidential. ") + "If you need assistance, contact <a href=\"mailto:" +
         branding.contactEmail +
         "\" style=\"color:" +
         TEAL +
